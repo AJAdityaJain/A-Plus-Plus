@@ -1,7 +1,7 @@
+let a = (2D/1D)-(2.02*24);
 
-let a = 1;
+
+let b = 23.04-(a*a);
 
 
-let b = 2;
-
-a = b
+let c = a;

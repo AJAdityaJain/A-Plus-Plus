@@ -110,106 +110,42 @@ struct ASSIGNMENT : STATEMENT {
 	}
 };
 
+struct PARENTHESIS : VALUED {
+	VALUED* value;
 
-STATEMENT* parseStatement(vector<Token*> stack) {
-	if (stack.size() == 0) throw invalid_argument("Empty statement");
-
-	if (stack.size() == 1) {
-		if(stack[0]->type == ID)		return new ID_VAL(*(IdentifierToken*)stack[0]);
-		if(stack[0]->type == INT)		return new INT_VAL(*(IntToken*)stack[0]);
-		if (stack[0]->type == FLOAT)	return new FLOAT_VAL(*(FloatToken*)stack[0]);
-		if (stack[0]->type == DOUBLE)	return new DOUBLE_VAL(*(DoubleToken*)stack[0]);
-		if (stack[0]->type == BIT)		return new BIT_VAL(*(BitToken*)stack[0]);
-		if (stack[0]->type == STRING)	return new STRING_VAL(*(StringToken*)stack[0]);
-		
+	PARENTHESIS(VALUED* val) {
+		value = val;
 	}
-
-	///Variable Definition
-	if (stack[0]->type == LET && stack[1]->type == ID && stack[2]->type == ASSIGN) {
-		DEFINITION* def = new DEFINITION(
-			new ID_VAL(*(IdentifierToken*)stack[1]),
-			(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
-		);
-		return def;
-	}
-	/// Variable Assignment
-	if (stack[0]->type == ID && stack[1]->type == ASSIGN) {
-		cout << getToken(stack[2]->type) << endl;
-		ASSIGNMENT* def = new ASSIGNMENT(
-			new ID_VAL(*(IdentifierToken*)stack[0]),
-			(VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end()))
-		);
-		return def;
-	}
-	/// If Statement
-	if(stack[0]->type == IF && stack[stack.end-1] )
-
-	throw invalid_argument("Invalid Statement");
-}
-
-BLOCK parseTree(vector<Token*> tokens) {
-
-	BLOCK program = BLOCK();
-
-	vector<Token*> stack;
-	for (Token* token : tokens) {
-		if (token->type == LINEEND) {
-			program.code.push_back(parseStatement(stack));
-			stack.clear();
-		}
-		else
-			stack.push_back(token);
-	}
-
-	return program;
-}
-
-/*
-
-struct IF : STATEMENT {
-	VALUED* condition;
-	BLOCK code;
 
 	void print()override {
-		cout << "if ";
-		condition->print();
-		cout << endl;
-		code.print();
-		cout << endl;
-
+		cout << "(";
+		value->print();
+		cout << ")";
 	}
 };
 
-struct IF_ELSE : STATEMENT
-{
-	VALUED* condition;
-	BLOCK code;
-	BLOCK elseCode;
+struct OPERATION : VALUED {
+	VALUED* left;
+	VALUED* right;
+	Tokens op;
 
-	void print()override {
-		cout << "if ";
-		condition->print();
-		cout << endl;
-		code.print();
-		cout << "else" << endl;
-		elseCode.print();
-		cout << endl;
-
+	OPERATION(VALUED* left, Tokens op, VALUED* right) {
+		this->left = left;
+		this->right = right;
+		this->op = op;
 	}
 
-};
-
-struct WHILE : STATEMENT {
-	VALUED* condition;
-	BLOCK code;
-
 	void print()override {
-		cout << "while ";
-		condition->print();
-		cout << endl;
-		code.print();
-		cout << endl;
-
+		left->print();
+		cout << " " << getToken(op) << " ";
+		right->print();
 	}
-};
-*/
+};;
+
+
+STATEMENT* parseStatement(vector<Token*> stack);
+
+vector<STATEMENT*> parseStatements(vector<Token*> stack);
+
+BLOCK* parseTree(vector<Token*> tokens);
+

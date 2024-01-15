@@ -26,17 +26,21 @@ int main(int argc, char* argv[])
 	///TOKENIZE
 	cout << "TOKENIZING" << endl << endl;
 	vector<Token*> tokens;
-	tokens = tokenize(programString);
+	tokenize(programString, tokens);
 	programString.clear();
 
+		
 
 
 
-	//PARSE
+	///PARSE
 	cout << "PARSING" << endl << endl;
-	BLOCK tree = parseTree(tokens);
-	tree.print();
+	BLOCK* tree = parseTree(tokens);
+
+	cout << endl ;
+	tree->print();
 
 
 	return 0;
 }
+ 

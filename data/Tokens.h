@@ -30,7 +30,7 @@ enum Tokens {
 	PARENTHESIS_CLOSE,
 	CURLY_OPEN,
 	CURLY_CLOSE,
-	LINEEND,
+	LINE_END,
 	COMMA,
 
 	ASSIGN,
@@ -99,7 +99,8 @@ struct IdentifierToken : Token {
 };
 
 
-vector<Token*> tokenize(vector<string> lines);
+//vector<Token*> tokenize(vector<string> lines);
+void tokenize(vector<string> lines, vector<Token*>& tokens);
 
 int isNumeric(const std::string& str);
 const char* getToken(Tokens value);

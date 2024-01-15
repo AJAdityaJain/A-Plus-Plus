@@ -1,8 +1,8 @@
 #include "Tokens.h"
 
-vector<Token*> tokenize(vector<string> lines)
+void tokenize(vector<string> lines, vector<Token*>& tokens )
 {
-	vector<Token*> tokens;
+	tokens.push_back(new Token{ CURLY_OPEN});
 	string tempString;
 	bool cont = false;
 
@@ -38,7 +38,7 @@ vector<Token*> tokenize(vector<string> lines)
 				else if (c == '{')tokens.push_back(new Token{ CURLY_OPEN });
 				else if (c == '[')tokens.push_back(new Token{ BRACKET_OPEN });
 				else if (c == ']')tokens.push_back(new Token{ BRACKET_CLOSE });
-				else if (c == ';')tokens.push_back(new Token{ LINEEND });
+				else if (c == ';')tokens.push_back(new Token{ LINE_END });
 				else if (c == ',')tokens.push_back(new Token{ COMMA });
 				else if (c == '=')tokens.push_back(new Token{ ASSIGN });
 				else if (c == '+')tokens.push_back(new Token{ PLUS });
@@ -46,7 +46,7 @@ vector<Token*> tokenize(vector<string> lines)
 				else if (c == '*')tokens.push_back(new Token{ MULTIPLY });
 				else if (c == '/')tokens.push_back(new Token{ DIVIDE });
 				else if (c == '%')tokens.push_back(new Token{ MODULO });
-				else if (c == ' ')tempString.pop_back();
+				else if (c == ' ' || c == '\n' || c == '\r' || c== '\t')tempString.pop_back();
 				else {inLiteral = true;cont = true;}
 
 				if (!cont) 	tempString = "";
@@ -94,7 +94,9 @@ vector<Token*> tokenize(vector<string> lines)
 		}
 
 	}
-	return tokens;
+
+	tokens.push_back(new Token{ CURLY_CLOSE});
+
 }
 
 const char* getToken(Tokens value) {
@@ -108,13 +110,13 @@ const char* getToken(Tokens value) {
 	case RETURN: return "RETURN";
 	case BREAK: return "BREAK";
 
-	case BRACKET_OPEN: return "BRACKET_OPEN";
-	case BRACKET_CLOSE: return "BRACKET_CLOSE";
-	case PARENTHESIS_OPEN: return "PARENTHESIS_OPEN";
-	case PARENTHESIS_CLOSE: return "PARENTHESIS_CLOSE";
-	case CURLY_OPEN: return "CURLY_OPEN";
-	case CURLY_CLOSE: return "CURLY_CLOSE";
-	case LINEEND: return "LINEEND";
+	case BRACKET_OPEN: return "[";
+	case BRACKET_CLOSE: return "]";
+	case PARENTHESIS_OPEN: return "(";
+	case PARENTHESIS_CLOSE: return ")";
+	case CURLY_OPEN: return "}\n";
+	case CURLY_CLOSE: return "\n{";
+	case LINE_END: return "END\n";
 	case COMMA: return "COMMA";
 
 	case ASSIGN: return "ASSIGN";
