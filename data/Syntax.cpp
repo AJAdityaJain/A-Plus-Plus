@@ -1,6 +1,6 @@
 #include "Syntax.h"
 
-STATEMENT* synatxTree(Token* tokens)
+STATEMENT* parse(Token* tokens)
 {
 	return nullptr;
 }

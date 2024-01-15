@@ -183,4 +183,4 @@ struct WHILE : STATEMENT {
 };
 
 
-STATEMENT* synatxTree(Token* tokens);
+STATEMENT* parse(Token* tokens);

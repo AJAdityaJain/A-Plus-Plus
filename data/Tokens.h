@@ -28,42 +28,75 @@ enum Tokens {
 	PARENTHESIS_CLOSE,
 	CURLY_OPEN,
 	CURLY_CLOSE,
+	LINEEND,
+	COMMA,
 
-
+	ASSIGN,
 	PLUS,
 	MINUS,
 	MULTIPLY,
 	DIVIDE,
 	MODULO,
 
+
 	INT,
 	FLOAT,
 	DOUBLE,
 	BIT,
-	CHAR,
 	STRING,
 
-	VAL_INT,
-	VAL_FLOAT,
-	VAL_DOUBLE,
-	VAL_BIT,
-	VAL_CHAR,
-	VAL_STRING,
-
-	IDENTIFIER,
+	ID,
 
 };
 
 struct Token {
 	Tokens type;
+	
+	Token(Tokens type) : type(type) {}
 };
 
-struct TokenValue : Token {
+struct StringToken : Token {
 	string value;
+	StringToken(string value) : Token(STRING){
+		this->value = value;
+	}
+};
+struct BitToken : Token {
+	bool value;
+	BitToken(bool value) : Token(BIT){
+		this->value = value;
+	}
+};
+
+struct IntToken : Token {
+	int value;
+	IntToken(int value) : Token(INT){
+		this->value = value;
+	}
+};
+struct FloatToken : Token {
+	float value;
+	FloatToken(float value) : Token(FLOAT){
+		this->value = value;
+	}
+};
+
+struct DoubleToken : Token {
+	double value;
+	DoubleToken(double value) : Token(DOUBLE){
+		this->value = value;
+	}
+};
+
+struct IdentifierToken : Token {
+	string value;
+	IdentifierToken(string value) : Token(ID){
+		this->value = value;
+	}
 };
 
 
 vector<Token*> tokenize(vector<string> lines);
 
-bool isNumeric(const std::string& str);
-//const char* getToken(TokenType value);
+int isNumeric(const std::string& str);
+const char* getToken(Tokens value);
