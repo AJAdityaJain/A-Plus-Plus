@@ -1,3 +1,7 @@
 
-let b = "sb";   
-let a = 13;   
+let a = 1;
+
+
+let b = 2;
+
+a = b

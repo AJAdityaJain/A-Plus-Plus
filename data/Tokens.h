@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 #include <vector>
 #include <iostream>
@@ -46,6 +48,7 @@ enum Tokens {
 	STRING,
 
 	ID,
+	UNKNOWN
 
 };
 
