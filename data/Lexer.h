@@ -55,6 +55,8 @@ struct Token {
 	}
 	Token() {}
 };
+static Token* null = new Token();
+
 struct KeyWordToken : Token {
 	Tokens value;
 

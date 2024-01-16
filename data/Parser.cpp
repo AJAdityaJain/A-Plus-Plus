@@ -11,7 +11,6 @@ BLOCK* parseTree(vector<Token*> tokens) {
 
 
 STATEMENT* parseStatement(vector<Token*> stack) {
-	//printf("\x1B[32mTexting\033[0m\t\t\n");	for(Token* t : stack) {	cout << getToken(t->type) << " ";}	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n"); 
 	size_t size = stack.size();
 
 	if (size == 0) throw invalid_argument("Empty statement");
@@ -56,7 +55,6 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 		);
 		return def;
 	}
-
 	///Parenthesiss
 	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
 		int depth = 0;
@@ -70,9 +68,10 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 		if(depth == 0)
 			return new PARENTHESIS((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
 	}
-
 	///Operation 
 	if (size >= 3) {
+		printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) { cout << getToken(t->getType()) << " "; }	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
+
 		VALUED* LHS = nullptr;
 		VALUED* RHS = nullptr;
 		Tokens op = UNKNOWN;
@@ -80,6 +79,7 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 		int depth = 0;
 		vector<Token*> subStack = vector<Token*>();
 		
+		int i = 0;
 		for (Token* t : stack) {
 			subStack.push_back(t);
 			Tokens tt = t->getType();
@@ -91,22 +91,21 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 			}
 			
 			if (depth==0&&(tt == PLUS || tt == MINUS || tt == MULTIPLY || tt == DIVIDE || tt == MODULO)) {
-				op = tt;
 				subStack.clear();
+
+
+				op = tt;
+				RHS = (VALUED*)parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end()));
+
+				if (LHS != nullptr ) 
+					return new OPERATION(LHS, op, RHS);
 			}	
 			else if (depth == 0 && op == UNKNOWN) {
 				LHS = (VALUED*)parseStatement(subStack);
 				subStack.clear();
 			}
-			else if (depth == 0 && op != UNKNOWN) {
-				RHS = (VALUED*)parseStatement(subStack);
-				subStack.clear();
-			}
+			i++;
 		}
-
-
-		if(LHS != nullptr && RHS != nullptr && op != UNKNOWN)
-			return new OPERATION(LHS,op,RHS);
 	}
 
 

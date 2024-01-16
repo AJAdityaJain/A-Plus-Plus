@@ -34,12 +34,10 @@ int main(int argc, char* argv[])
 
 
 
-	cout << endl ;
-	tree->print();
 
 	///EXECUTE
-	/*cout << "EXECUTING" << endl << endl;
-	ExecuteBlock(tree);*/
+	cout << "EXECUTING" << endl << endl;
+	Execute(tree);
 
 
 	return 0;

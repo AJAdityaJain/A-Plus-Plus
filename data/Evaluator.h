@@ -13,9 +13,8 @@ static vector<Variable> varsStack ;
 static vector<int> scopesStack;
 
 
-Token* ExecuteBlock(BLOCK* block);
 
-Token* ExecuteLine(STATEMENT* line);
+Token* Execute(STATEMENT* line);
 
 
 
