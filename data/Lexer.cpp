@@ -1,8 +1,8 @@
-#include "Tokens.h"
+#include "Lexer.h"
 
 void tokenize(vector<string> lines, vector<Token*>& tokens )
 {
-	tokens.push_back(new Token{ CURLY_OPEN});
+	tokens.push_back(new KeyWordToken{ CURLY_OPEN});
 	string tempString;
 	bool cont = false;
 
@@ -32,20 +32,20 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 
 
 			if (!inStr && !inLiteral) {
-				if (c == '(')tokens.push_back(new Token{ PARENTHESIS_OPEN });
-				else if (c == ')')tokens.push_back(new Token{ PARENTHESIS_CLOSE });
-				else if (c == '}')tokens.push_back(new Token{ CURLY_CLOSE });
-				else if (c == '{')tokens.push_back(new Token{ CURLY_OPEN });
-				else if (c == '[')tokens.push_back(new Token{ BRACKET_OPEN });
-				else if (c == ']')tokens.push_back(new Token{ BRACKET_CLOSE });
-				else if (c == ';')tokens.push_back(new Token{ LINE_END });
-				else if (c == ',')tokens.push_back(new Token{ COMMA });
-				else if (c == '=')tokens.push_back(new Token{ ASSIGN });
-				else if (c == '+')tokens.push_back(new Token{ PLUS });
-				else if (c == '-')tokens.push_back(new Token{ MINUS });
-				else if (c == '*')tokens.push_back(new Token{ MULTIPLY });
-				else if (c == '/')tokens.push_back(new Token{ DIVIDE });
-				else if (c == '%')tokens.push_back(new Token{ MODULO });
+				if (c == '(')tokens.push_back(new KeyWordToken{ PARENTHESIS_OPEN });
+				else if (c == ')')tokens.push_back(new KeyWordToken{ PARENTHESIS_CLOSE });
+				else if (c == '{')tokens.push_back(new KeyWordToken{ CURLY_OPEN });
+				else if (c == '}')tokens.push_back(new KeyWordToken{ CURLY_CLOSE });
+				else if (c == '[')tokens.push_back(new KeyWordToken{ BRACKET_OPEN });
+				else if (c == ']')tokens.push_back(new KeyWordToken{ BRACKET_CLOSE });
+				else if (c == ';')tokens.push_back(new KeyWordToken{ LINE_END });
+				else if (c == ',')tokens.push_back(new KeyWordToken{ COMMA });
+				else if (c == '=')tokens.push_back(new KeyWordToken{ EQUALS });
+				else if (c == '+')tokens.push_back(new KeyWordToken{ PLUS });
+				else if (c == '-')tokens.push_back(new KeyWordToken{ MINUS });
+				else if (c == '*')tokens.push_back(new KeyWordToken{ MULTIPLY });
+				else if (c == '/')tokens.push_back(new KeyWordToken{ DIVIDE });
+				else if (c == '%')tokens.push_back(new KeyWordToken{ MODULO });
 				else if (c == ' ' || c == '\n' || c == '\r' || c== '\t')tempString.pop_back();
 				else {inLiteral = true;cont = true;}
 
@@ -58,13 +58,13 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					string sub = tempString.substr(0, tempString.size() - 1);
 					i--;
 
-						 if(sub.compare("let") == 0)		tokens.push_back(new Token{ LET });
-					else if (sub.compare("if") == 0)		tokens.push_back(new Token{ IF });
-					else if (sub.compare("else") == 0)		tokens.push_back(new Token{ ELSE });
-					else if (sub.compare("while") == 0)		tokens.push_back(new Token{ WHILE });
-					else if (sub.compare("continue") == 0)	tokens.push_back(new Token{ CONTINUE });
-					else if (sub.compare("break") == 0)		tokens.push_back(new Token{ BREAK });
-					else if (sub.compare("return") == 0)	tokens.push_back(new Token{ RETURN });
+						 if(sub.compare("let") == 0)		tokens.push_back(new KeyWordToken{ LET });
+					else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
+					else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE });
+					else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE });
+					else if (sub.compare("continue") == 0)	tokens.push_back(new KeyWordToken{ CONTINUE });
+					else if (sub.compare("break") == 0)		tokens.push_back(new KeyWordToken{ BREAK });
+					else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN });
 					else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true });
 					else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false });
 
@@ -78,7 +78,7 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 										t = true;
 										break;
 									}
-							if (t)tokens.push_back(new Token{ UNKNOWN });
+							if (t)tokens.push_back(new KeyWordToken{ UNKNOWN });
 							else tokens.push_back(new IdentifierToken{ sub });
 						}
 						else if (typ == 1)tokens.push_back(new IntToken{ stoi(sub) });
@@ -95,7 +95,7 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 
 	}
 
-	tokens.push_back(new Token{ CURLY_CLOSE});
+	tokens.push_back(new KeyWordToken{ CURLY_CLOSE});
 
 }
 
@@ -119,7 +119,7 @@ const char* getToken(Tokens value) {
 	case LINE_END: return "END\n";
 	case COMMA: return "COMMA";
 
-	case ASSIGN: return "ASSIGN";
+	case EQUALS: return "EQUALS";
 	case PLUS: return "PLUS";
 	case MINUS: return "MINUS";
 	case MULTIPLY: return "MULTIPLY";

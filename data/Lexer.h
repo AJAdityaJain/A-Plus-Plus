@@ -3,17 +3,9 @@
 #include <string>
 #include <vector>
 #include <iostream>
-//#include <map>
 
 using namespace std;
 
-//enum TokenType {
-//	_IDENTIFIER,
-//	_OPERATOR,
-//	_VALUE,
-//	_KEYWORD,
-//	_SEPARATOR
-//};
 
 enum Tokens {
 	LET,
@@ -33,7 +25,7 @@ enum Tokens {
 	LINE_END,
 	COMMA,
 
-	ASSIGN,
+	EQUALS,
 	PLUS,
 	MINUS,
 	MULTIPLY,
@@ -48,52 +40,99 @@ enum Tokens {
 	STRING,
 
 	ID,
-	UNKNOWN
+	UNKNOWN,
 
+	DEFINE,
+	ASSIGN,
+	OPERATE,
+	SCOPE,
+	PRECEDER,
 };
 
 struct Token {
-	Tokens type;
-	
-	Token(Tokens type) : type(type) {}
+	virtual Tokens getType() {
+		return UNKNOWN;
+	}
+	Token() {}
+};
+struct KeyWordToken : Token {
+	Tokens value;
+
+	Tokens getType()override {
+		return value;
+	}
+
+	KeyWordToken(Tokens value) {
+		this->value = value;
+	}
 };
 
 struct StringToken : Token {
 	string value;
-	StringToken(string value) : Token(STRING){
+
+	Tokens getType()override {
+		return STRING;
+	}
+
+	StringToken(string value){
 		this->value = value;
 	}
 };
 struct BitToken : Token {
 	bool value;
-	BitToken(bool value) : Token(BIT){
+
+	Tokens getType()override {
+		return BIT;
+	}
+
+	BitToken(bool value){
 		this->value = value;
 	}
 };
 
 struct IntToken : Token {
 	int value;
-	IntToken(int value) : Token(INT){
+
+	Tokens getType()override {
+		return INT;
+	}
+
+	IntToken(int value){
 		this->value = value;
 	}
 };
 struct FloatToken : Token {
 	float value;
-	FloatToken(float value) : Token(FLOAT){
+
+	Tokens getType()override {
+		return FLOAT;
+	}
+
+	FloatToken(float value){
 		this->value = value;
 	}
 };
 
 struct DoubleToken : Token {
 	double value;
-	DoubleToken(double value) : Token(DOUBLE){
+
+	Tokens getType()override {
+		return DOUBLE;
+	}
+
+	DoubleToken(double value){
 		this->value = value;
 	}
 };
 
 struct IdentifierToken : Token {
 	string value;
-	IdentifierToken(string value) : Token(ID){
+
+	Tokens getType()override {
+		return ID;
+	}
+
+	IdentifierToken(string value){
 		this->value = value;
 	}
 };

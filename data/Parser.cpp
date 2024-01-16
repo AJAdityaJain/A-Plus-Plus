@@ -1,4 +1,4 @@
-#include "Syntax.h"
+#include "Parser.h"
 
 
 BLOCK* parseTree(vector<Token*> tokens) {
@@ -15,47 +15,56 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 	size_t size = stack.size();
 
 	if (size == 0) throw invalid_argument("Empty statement");
+
+	Tokens st0 = stack[0]->getType();
+	Tokens stb = stack.back()->getType();
+
 	if (size == 1) {
-		if (stack[0]->type == ID)		return new ID_VAL(*(IdentifierToken*)stack[0]);
-		if (stack[0]->type == INT)		return new INT_VAL(*(IntToken*)stack[0]);
-		if (stack[0]->type == FLOAT)	return new FLOAT_VAL(*(FloatToken*)stack[0]);
-		if (stack[0]->type == DOUBLE)	return new DOUBLE_VAL(*(DoubleToken*)stack[0]);
-		if (stack[0]->type == BIT)		return new BIT_VAL(*(BitToken*)stack[0]);
-		if (stack[0]->type == STRING)	return new STRING_VAL(*(StringToken*)stack[0]);
+		switch (st0) {
+		case ID:return new ID_VAL(((IdentifierToken*)stack[0])->value);
+		case INT:return new INT_VAL(((IntToken*)stack[0])->value);
+		case FLOAT:	return new FLOAT_VAL(((FloatToken*)stack[0])->value);
+		case DOUBLE:return new DOUBLE_VAL(((DoubleToken*)stack[0])->value);
+		case BIT:return new BIT_VAL(((BitToken*)stack[0])->value);
+		case STRING:return new STRING_VAL(((StringToken*)stack[0])->value);
+		}
 
 	}
 	
+	Tokens st1 = stack[1]->getType();
 
 	///Scope Definition
-	if(size >= 2 && stack[0]->type == CURLY_OPEN && stack.back()->type == CURLY_CLOSE) {
+	if(size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
 		BLOCK* block = new BLOCK();
 
 		block->code = parseStatements(vector<Token*>(stack.begin()+1,stack.end()-1));
 		return block;
 	}
 	///Variable Definition
-	if (size >= 4 && stack[0]->type == LET && stack[1]->type == ID && stack[2]->type == ASSIGN) {
+	if (size >= 4 && st0 == LET && st1 == ID && stack[2]->getType() == EQUALS) {
 		DEFINITION* def = new DEFINITION(
-			new ID_VAL(*(IdentifierToken*)stack[1]),
+			new ID_VAL(((IdentifierToken*)stack[1])->value),
 			(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
 		);
 		return def;
 	}
 	/// Variable Assignment
-	if (size >= 3 && stack[0]->type == ID && stack[1]->type == ASSIGN) {
+	if (size >= 3 && st0 == ID && st1 == EQUALS) {
 		ASSIGNMENT* def = new ASSIGNMENT(
-			new ID_VAL(*(IdentifierToken*)stack[0]),
+			new ID_VAL(((IdentifierToken*)stack[0])->value),
 			(VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end()))
 		);
 		return def;
 	}
 
 	///Parenthesiss
-	if (size >= 3 && stack[0]->type == PARENTHESIS_OPEN && stack.back()->type == PARENTHESIS_CLOSE) {
+	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
 		int depth = 0;
 		for(int i = 1; i < stack.size()-1; i++){
-			if (stack[i]->type == PARENTHESIS_OPEN) depth++;
-			if (stack[i]->type == PARENTHESIS_CLOSE) depth--;
+			switch (stack[i]->getType()) {
+			case PARENTHESIS_OPEN: depth++; break;
+			case PARENTHESIS_CLOSE: depth--; break;
+			}
 			depth = abs(depth);
 		}
 		if(depth == 0)
@@ -73,11 +82,16 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 		
 		for (Token* t : stack) {
 			subStack.push_back(t);
-			if (t->type == PARENTHESIS_OPEN) depth++;
-			if (t->type == PARENTHESIS_CLOSE) depth--;
+			Tokens tt = t->getType();
+
+			switch (tt)
+			{
+			case PARENTHESIS_OPEN: depth++; break;
+			case PARENTHESIS_CLOSE: depth--; break;
+			}
 			
-			if (depth==0&&(t->type == PLUS || t->type == MINUS || t->type == MULTIPLY || t->type == DIVIDE || t->type == MODULO)) {
-				op = t->type;
+			if (depth==0&&(tt == PLUS || tt == MINUS || tt == MULTIPLY || tt == DIVIDE || tt == MODULO)) {
+				op = tt;
 				subStack.clear();
 			}	
 			else if (depth == 0 && op == UNKNOWN) {
@@ -107,15 +121,16 @@ vector<STATEMENT*> parseStatements(vector<Token*> stack) {
 	bool shouldParse = false;
 
 	for (int i = 0; i < stack.size(); i++) {
+		Tokens sti = stack[i]->getType();
 
-		if(stack[i]->type == CURLY_OPEN) depth++;
-		if (stack[i]->type == CURLY_CLOSE) depth--;
+		if(sti == CURLY_OPEN) depth++;
+		if (sti == CURLY_CLOSE) depth--;
 
-		if (stack[i]->type == LINE_END && depth == 0)shouldParse = true;
+		if (sti == LINE_END && depth == 0)shouldParse = true;
 		
 		else {
 			subStack.push_back(stack[i]);
-			if (stack[i]->type == CURLY_CLOSE && depth == 0)shouldParse = true;
+			if (sti == CURLY_CLOSE && depth == 0)shouldParse = true;
 		}
 
 

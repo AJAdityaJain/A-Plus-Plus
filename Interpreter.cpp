@@ -5,9 +5,9 @@ int main(int argc, char* argv[])
 {
 	cout << argc << ',' << * argv << endl << endl;
 
+
 	///READ FILE
 	cout << "READING" << endl << endl;
-
 	vector<string> programString;
 	ifstream File("C:\\Users\\agnee\\Code\\C++Proj\\Interpreter\\test.app");
 	string tempString;
@@ -20,25 +20,26 @@ int main(int argc, char* argv[])
 	File.close();
 
 
-
-
-
 	///TOKENIZE
 	cout << "TOKENIZING" << endl << endl;
 	vector<Token*> tokens;
 	tokenize(programString, tokens);
 	programString.clear();
 
-		
-
-
 
 	///PARSE
 	cout << "PARSING" << endl << endl;
 	BLOCK* tree = parseTree(tokens);
+	tokens.clear();
+
+
 
 	cout << endl ;
 	tree->print();
+
+	///EXECUTE
+	/*cout << "EXECUTING" << endl << endl;
+	ExecuteBlock(tree);*/
 
 
 	return 0;
