@@ -14,12 +14,12 @@ static vector<int> scopesStack;
 
 
 
-Token* Execute(STATEMENT* line);
+Token* Execute(Statement* line);
 
-Token* Operate(Token* left, Token* right, TokenType op);
-
+Token* Operate(Token* left, Token* right, OperatorType op);
+	
 template<typename T>
-T* Operatee(T* left, T* right, TokenType op) {
+T* Operatee(T* left, T* right, OperatorType op) {
 	switch (op)
 	{
 	case PLUS:

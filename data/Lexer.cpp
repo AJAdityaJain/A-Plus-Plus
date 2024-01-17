@@ -40,12 +40,16 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 				else if (c == ']')tokens.push_back(new KeyWordToken{ BRACKET_CLOSE });
 				else if (c == ';')tokens.push_back(new KeyWordToken{ LINE_END });
 				else if (c == ',')tokens.push_back(new KeyWordToken{ COMMA });
-				else if (c == '=')tokens.push_back(new KeyWordToken{ EQUALS });
-				else if (c == '+')tokens.push_back(new KeyWordToken{ PLUS });
-				else if (c == '-')tokens.push_back(new KeyWordToken{ MINUS });
-				else if (c == '*')tokens.push_back(new KeyWordToken{ MULTIPLY });
-				else if (c == '/')tokens.push_back(new KeyWordToken{ DIVIDE });
-				else if (c == '%')tokens.push_back(new KeyWordToken{ MODULO });
+
+				else if (c == '=')tokens.push_back(new AssignToken{ EQUALS });
+
+				else if (c == '+')tokens.push_back(new OperatorToken{ PLUS });
+				else if (c == '-')tokens.push_back(new OperatorToken{ MINUS });
+				else if (c == '*')tokens.push_back(new OperatorToken{ MULTIPLY });
+				else if (c == '/')tokens.push_back(new OperatorToken{ DIVIDE });
+				else if (c == '%')tokens.push_back(new OperatorToken{ MODULO });
+
+
 				else if (c == ' ' || c == '\n' || c == '\r' || c== '\t')tempString.pop_back();
 				else {inLiteral = true;cont = true;}
 
@@ -79,7 +83,7 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 										t = true;
 										break;
 									}
-							if (t)tokens.push_back(new KeyWordToken{ UNKNOWN });
+							if (t)tokens.push_back(new KeyWordToken{ NONE });
 							else tokens.push_back(new IdentifierToken{ sub });
 						}
 						else if (typ == 1)tokens.push_back(new IntToken{ stoi(sub) });
@@ -100,7 +104,91 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 
 }
 
+void printToken(TokenType t) {
+	switch (t)
+	{
+	case BIT:
+		cout << "BIT";
+		break;
+	case INT:
+		cout << "INT";
+		break;
+	case FLOAT:
+		cout << "FLOAT";
+		break;
+	case DOUBLE:
+		cout << "DOUBLE";
+		break;
+	case STRING:
+		cout << "STR";
+		break;
+	case ID:
+		cout << "ID";
+		break;
+	case LINE_END:
+		cout << ";";
+		break;
+	case NONE:
+		cout << "???";
+		break;
+	case LET:
+		cout << "LET";
+		break;
+	case IF:
+		cout << "if";
+		break;
+	case ELSE:
+		cout << "else";
+		break;
+	case WHILE:
+		cout << "while";
+		break;
+	case DO:
+		cout << "do";
+		break;
+	case AND:
+		cout << "&";
+		break;
+	case OR:
+		cout << "or";
+		break;
+	case RETURN:
+		cout << "ret";
+		break;
+	case BRACKET_OPEN:
+		cout << "[";
+		break;
+	case BRACKET_CLOSE:
+		cout << "]";
+		break;
+	case PARENTHESIS_OPEN:
+		cout << "(";
+		break;
+	case PARENTHESIS_CLOSE:
+		cout << ")";
+		break;
+	case CURLY_OPEN:
+		cout << "{";
+		break;
+	case CURLY_CLOSE:
+		cout << "}";
+		break;
+	case ASSIGN:
+		cout << " ?= ";
+		break;
+	case COMMA:
+		cout << " , ";
+		break;
+	case OPERATOR:
+		cout << " op ";
+		break;
+	default:
+		cout << "BUGGED LEXER";
+		break;
+	}
 
+	cout << " ";
+}
 int isNumeric(const std::string& str) {
 	if (str.empty()) {
 		return false;  // Empty string is not numeric

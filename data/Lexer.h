@@ -8,6 +8,17 @@ using namespace std;
 
 
 enum TokenType {
+	NONE,
+
+	BIT,
+	INT,
+	FLOAT,
+	DOUBLE,
+	STRING,
+
+	ID,
+	LINE_END,
+
 	LET,
 	IF,
 	ELSE,
@@ -23,43 +34,80 @@ enum TokenType {
 	PARENTHESIS_CLOSE,
 	CURLY_OPEN,
 	CURLY_CLOSE,
-	LINE_END,
+	
 	COMMA,
+	ASSIGN,
+	OPERATOR,
 
+
+
+	DEFINITION,
+	ASSIGNMENT,
+	OPERATION,
+	_SCOPE,
+	PARENTHESIS,
+};
+
+
+void printToken(TokenType t);
+
+enum AssignmentType {
+	NONE_ASSIGN,
 	EQUALS,
+	PLUS_EQUAL,
+	MINUS_EQUAL,
+	MULTIPLY_EQUAL,
+	DIVIDE_EQUAL
+};
+
+enum OperatorType {
+	NONE_OPERATOR,
+	NOT,
+	EEQUAL,
 	PLUS,
 	MINUS,
 	MULTIPLY,
 	DIVIDE,
 	MODULO,
-
-
-	BIT,
-	INT,
-	FLOAT,
-	DOUBLE,
-	STRING,
-
-	ID,
-	UNKNOWN,
-
-	DEFINE,
-	ASSIGN,
-	OPERATE,
-	SCOPE,
-	PRECEDER,
-
+	NOT_EQUAL,
+	GREATER_THAN,
+	SMALLER_THAN,
+	GREATER_THAN_EQUAL,
+	SMALLER_THAN_EQUAL,
 };
-
 
 struct Token {
 	virtual TokenType getType() {
-		return UNKNOWN;
+		return NONE;
 	}
 	Token() {}
 };
 static Token* null = new Token();
 
+
+struct AssignToken : Token {
+	AssignmentType value;
+
+	TokenType getType()override {
+		return ASSIGN;
+	}
+
+	AssignToken(AssignmentType value) {
+		this->value = value;
+	}
+};
+
+struct OperatorToken : Token {
+	OperatorType value;
+
+	TokenType getType()override {
+		return OPERATOR;
+	}
+
+	OperatorToken(OperatorType value) {
+		this->value = value;
+	}
+};
 struct KeyWordToken : Token {
 	TokenType value;
 

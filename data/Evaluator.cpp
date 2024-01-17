@@ -11,13 +11,13 @@ void EndScope() {
 	scopesStack.pop_back();
 }
 
-Token* Execute(STATEMENT* line) {
+Token* Execute(Statement* line) {
 	
 	switch (line->getType()) {
-	case SCOPE: {
+	case _SCOPE: {
 		StartScope();
 
-		for (STATEMENT* st : ((BLOCK*)line)->code) {
+		for (Statement* st : ((CodeBlock*)line)->code) {
 			Execute(st);
 		}
 
@@ -58,40 +58,40 @@ Token* Execute(STATEMENT* line) {
 
 	case ID: {
 		for (Variable v : varsStack) 		
-			if (((ID_VAL*)line)->value.value.compare(v.name) == 0) 
+			if (((Identifier*)line)->value.value.compare(v.name) == 0) 
 				return v.value;
 
 		break;
 	}
 
 	case BIT: {
-		return &((BIT_VAL*)line)->value;
+		return &((Bit*)line)->value;
 		break;
 
 	}
 	case INT: {
-		return &((INT_VAL*)line)->value;
+		return &((Int*)line)->value;
 		break;
 
 	}
 	case FLOAT: {
-		return &((FLOAT_VAL*)line)->value;
+		return &((Float*)line)->value;
 		break;
 
 	}
 	case DOUBLE: {
-		return &((DOUBLE_VAL*)line)->value;
+		return &((Double*)line)->value;
 		break;
 
 	}
 	case STRING: {
-		return &((STRING_VAL*)line)->value;
+		return &((String*)line)->value;
 		break;
 
 	}
 
-	case DEFINE: {
-		DEFINITION* def = (DEFINITION*)line;
+	case DEFINITION: {
+		Definition* def = (Definition*)line;
 		Token* value = Execute(def->value);
 		varsStack.push_back(Variable(def->name->value.value, value));
 		scopesStack.back()++;
@@ -99,8 +99,8 @@ Token* Execute(STATEMENT* line) {
 		break;
 	}
 
-	case ASSIGN: {
-		ASSIGNMENT* def = (ASSIGNMENT*)line;
+	case ASSIGNMENT: {
+		Assignment* def = (Assignment*)line;
 		Token* value = Execute(def->value);
 		for (Variable& v : varsStack)
 			if (def->name->value.value.compare(v.name) == 0) {
@@ -110,14 +110,14 @@ Token* Execute(STATEMENT* line) {
 		break;
 	}
 
-	case OPERATE: {
-		OPERATION* op = (OPERATION*)line;
+	case OPERATION: {
+		Operation* op = (Operation*)line;
 		return Operate(Execute(op->left), Execute(op->right), op->op);
 		break;
 	}
 
-	case PRECEDER:{
-		return Execute(((PARENTHESIS*)line)->value);
+	case PARENTHESIS:{
+		return Execute(((Parenthesis*)line)->value);
 		break;
 	}
 
@@ -130,7 +130,7 @@ Token* Execute(STATEMENT* line) {
 }
 
 
-Token* Operate(Token* left, Token* right, TokenType op) {
+Token* Operate(Token* left, Token* right, OperatorType op) {
 	TokenType lt = left->getType();
 	TokenType rt = right->getType();
 	if (lt > rt) {

@@ -5,16 +5,17 @@
 using namespace std;
 
 
-struct STATEMENT {
+struct Statement {
 	virtual TokenType getType() {
-		return UNKNOWN;
+		return NONE;
 	}
 	virtual void print() {
 		cout << "STMT_FAIL" << endl;
 	}
 
 };
-struct VALUED : STATEMENT {};
+
+struct VALUED : Statement {};
 
 
 
@@ -22,15 +23,15 @@ struct VALUED : STATEMENT {};
 
 
 
-struct BLOCK : STATEMENT {
-	vector<STATEMENT*> code; 
+struct CodeBlock : Statement {
+	vector<Statement*> code; 
 
 	TokenType getType()override {
-		return SCOPE;
+		return _SCOPE;
 	}
 	void print()override {
 		cout << "Start Block" << endl;
-		for (STATEMENT* statement : code) {
+		for (Statement* statement : code) {
 			statement->print();
 		}
 		cout << "End Block" << endl;
@@ -39,19 +40,19 @@ struct BLOCK : STATEMENT {
 
 
 
-struct INT_VAL : VALUED
+struct Int : VALUED
 {
 	IntToken value;
 
 	TokenType getType()override {
 		return INT;
 	}
-	INT_VAL(IntToken val) : value(val) {}
+	Int(IntToken val) : value(val) {}
 	void print()override {
 		cout << value.value;	
 	}
 };
-struct FLOAT_VAL :VALUED
+struct Float :VALUED
 {
 	FloatToken value;
 
@@ -59,12 +60,13 @@ struct FLOAT_VAL :VALUED
 		return FLOAT;
 	}
 
-	FLOAT_VAL(FloatToken val):value(val) {}
+	Float(FloatToken val):value(val) {}
 	void print()override {
 		cout << value.value;
 	}
 };
-struct DOUBLE_VAL : VALUED
+
+struct Double : VALUED
 {
 	DoubleToken value;
 
@@ -72,12 +74,13 @@ struct DOUBLE_VAL : VALUED
 		return DOUBLE;
 	}
 
-	DOUBLE_VAL(DoubleToken val):value(val) {}
+	Double(DoubleToken val):value(val) {}
 	void print()override {
 		cout << value.value << "d";
 	}
 };
-struct BIT_VAL : VALUED
+
+struct Bit : VALUED
 {
 	BitToken value;
 
@@ -85,12 +88,15 @@ struct BIT_VAL : VALUED
 		return BIT;
 	}
 
-	BIT_VAL(BitToken val) : value(val) {}
+	Bit(BitToken val) : value(val) {}
 	void print()override {
 		cout << value.value;
 	}
 };
-struct STRING_VAL : VALUED
+
+
+
+struct String : VALUED
 {
 
 	StringToken value;
@@ -99,12 +105,15 @@ struct STRING_VAL : VALUED
 		return STRING;
 	}
 
-	STRING_VAL(StringToken val) : value(val) {}
+	String(StringToken val) : value(val) {}
 	void print()override {
 		cout << value.value;
 	}
 };
-struct ID_VAL : VALUED
+
+
+
+struct Identifier : VALUED
 {
 
 	StringToken value;
@@ -113,7 +122,7 @@ struct ID_VAL : VALUED
 		return ID;
 	}
 
-	ID_VAL(StringToken val) : value(val) {}
+	Identifier(StringToken val) : value(val) {}
 	void print() {
 		cout << value.value;
 	}
@@ -125,15 +134,15 @@ struct ID_VAL : VALUED
 
 
 
-struct DEFINITION : STATEMENT {
-	ID_VAL* name;
+struct Definition : Statement {
+	Identifier* name;
 	VALUED* value;
 
 	TokenType getType()override {
-		return DEFINE;
+		return DEFINITION;
 	}
 
-	DEFINITION(ID_VAL* nam, VALUED* val) {
+	Definition(Identifier* nam, VALUED* val) {
 		name = nam;
 		value = val;
 	}
@@ -145,17 +154,21 @@ struct DEFINITION : STATEMENT {
 		cout << endl;
 	}
 };
-struct ASSIGNMENT : STATEMENT {
+
+struct Assignment : Statement {
 	
-	ID_VAL* name;
+	Identifier* name;
 	VALUED* value;
+	AssignmentType type;
+
 
 	TokenType getType()override {
-		return ASSIGN;
+		return ASSIGNMENT;
 	}
 
-	ASSIGNMENT(ID_VAL* nam, VALUED* val) {
+	Assignment(Identifier* nam, VALUED* val, AssignmentType type) {
 		name = nam;
+		this->type = type;
 		value = val;
 	}
 
@@ -168,15 +181,15 @@ struct ASSIGNMENT : STATEMENT {
 	}
 };
 
-struct PARENTHESIS : VALUED {
+struct Parenthesis : VALUED {
 	
 	VALUED* value;
 
 	TokenType getType()override {
-		return PRECEDER;
+		return PARENTHESIS;
 	}
 
-	PARENTHESIS(VALUED* val) {
+	Parenthesis(VALUED* val) {
 		value = val;
 	}
 
@@ -187,17 +200,17 @@ struct PARENTHESIS : VALUED {
 	}
 };
 
-struct OPERATION : VALUED {
+struct Operation : VALUED {
 
 	VALUED* left;
 	VALUED* right;
-	TokenType op;
+	OperatorType op;
 
 	TokenType getType()override {
-		return OPERATE;
+		return OPERATION;
 	}
 
-	OPERATION(VALUED* left, TokenType op, VALUED* right) {
+	Operation(VALUED* left, OperatorType op, VALUED* right) {
 		this->left = left;
 		this->right = right;
 		this->op = op;
@@ -211,9 +224,9 @@ struct OPERATION : VALUED {
 };;
 
 
-STATEMENT* parseStatement(vector<Token*> stack);
+Statement* parseStatement(vector<Token*> stack);
 
-vector<STATEMENT*> parseStatements(vector<Token*> stack);
+vector<Statement*> parseStatements(vector<Token*> stack);
 
-BLOCK* parseTree(vector<Token*> tokens);
+CodeBlock* parseTree(vector<Token*> tokens);
 
