@@ -15,8 +15,8 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 
 	if (size == 0) throw invalid_argument("Empty statement");
 
-	Tokens st0 = stack[0]->getType();
-	Tokens stb = stack.back()->getType();
+	TokenType st0 = stack[0]->getType();
+	TokenType stb = stack.back()->getType();
 
 	if (size == 1) {
 		switch (st0) {
@@ -30,7 +30,7 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 
 	}
 	
-	Tokens st1 = stack[1]->getType();
+	TokenType st1 = stack[1]->getType();
 
 	///Scope Definition
 	if(size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
@@ -70,11 +70,11 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 	}
 	///Operation 
 	if (size >= 3) {
-		printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) { cout << getToken(t->getType()) << " "; }	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
+		//printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) { cout << getToken(t->getType()) << " "; }	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
 
 		VALUED* LHS = nullptr;
 		VALUED* RHS = nullptr;
-		Tokens op = UNKNOWN;
+		TokenType op = UNKNOWN;
 
 		int depth = 0;
 		vector<Token*> subStack = vector<Token*>();
@@ -82,7 +82,7 @@ STATEMENT* parseStatement(vector<Token*> stack) {
 		int i = 0;
 		for (Token* t : stack) {
 			subStack.push_back(t);
-			Tokens tt = t->getType();
+			TokenType tt = t->getType();
 
 			switch (tt)
 			{
@@ -120,7 +120,7 @@ vector<STATEMENT*> parseStatements(vector<Token*> stack) {
 	bool shouldParse = false;
 
 	for (int i = 0; i < stack.size(); i++) {
-		Tokens sti = stack[i]->getType();
+		TokenType sti = stack[i]->getType();
 
 		if(sti == CURLY_OPEN) depth++;
 		if (sti == CURLY_CLOSE) depth--;
@@ -135,19 +135,9 @@ vector<STATEMENT*> parseStatements(vector<Token*> stack) {
 
 		if (shouldParse) {
 			shouldParse = false;
-
 			if(subStack.size() > 0)statements.push_back(parseStatement(subStack));
 			subStack.clear();
 		}
-
-
-		//else {
-		// 
-		//	for (Token* t : subStack) {
-		//		cout << "\x1B[35m" << getToken(t->type) << "\033[0m ";
-		//	}
-		//	cout << endl;
-		//}
 	}
 
 	return statements;

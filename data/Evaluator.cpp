@@ -12,23 +12,47 @@ void EndScope() {
 }
 
 Token* Execute(STATEMENT* line) {
+	
 	switch (line->getType()) {
 	case SCOPE: {
 		StartScope();
 
 		for (STATEMENT* st : ((BLOCK*)line)->code) {
-			cout << "Executing line : ";
-			st->print();
-			cout << endl;
 			Execute(st);
 		}
 
 		for (int i = 0; i < scopesStack.back(); i++) {
-			cout << varsStack[i].name << " = " << ((IntToken*)varsStack[i].value)->value << endl;;
+			TokenType t = varsStack[i].value->getType();
+
+			cout << varsStack[i].name << " = ";
+			switch (t) {
+			case BIT: {
+				cout << ((BitToken*)varsStack[i].value)->value;
+				break;
+			}
+			case INT: {
+				cout << ((IntToken*)varsStack[i].value)->value;
+				break;
+			}
+			case FLOAT: {
+				cout << ((FloatToken*)varsStack[i].value)->value;
+				break;
+			}
+			case DOUBLE: {
+				cout << ((DoubleToken*)varsStack[i].value)->value;
+				break;
+			}
+			case STRING: {
+				cout << ((StringToken*)varsStack[i].value)->value;
+				break;
+			}
+
+			}
+			cout << endl;
 		}
 
 		EndScope();
-		return new Token();
+		return null;
 		break;
 	}
 
@@ -40,8 +64,28 @@ Token* Execute(STATEMENT* line) {
 		break;
 	}
 
+	case BIT: {
+		return &((BIT_VAL*)line)->value;
+		break;
+
+	}
 	case INT: {
 		return &((INT_VAL*)line)->value;
+		break;
+
+	}
+	case FLOAT: {
+		return &((FLOAT_VAL*)line)->value;
+		break;
+
+	}
+	case DOUBLE: {
+		return &((DOUBLE_VAL*)line)->value;
+		break;
+
+	}
+	case STRING: {
+		return &((STRING_VAL*)line)->value;
 		break;
 
 	}
@@ -51,7 +95,7 @@ Token* Execute(STATEMENT* line) {
 		Token* value = Execute(def->value);
 		varsStack.push_back(Variable(def->name->value.value, value));
 		scopesStack.back()++;
-		return new Token();
+		return null;
 		break;
 	}
 
@@ -61,38 +105,14 @@ Token* Execute(STATEMENT* line) {
 		for (Variable& v : varsStack)
 			if (def->name->value.value.compare(v.name) == 0) {
 				v.value = value;
-				return new Token();
+				return null;
 			}
 		break;
 	}
 
 	case OPERATE: {
 		OPERATION* op = (OPERATION*)line;
-		IntToken lhs = *(IntToken*)Execute(op->left);
-		IntToken rhs = *(IntToken*)Execute(op->right);
-
-		switch (op->op) {
-		case PLUS:
-			return new IntToken(lhs.value + rhs.value);
-			break;
-
-		case MINUS:
-			return new IntToken(lhs.value - rhs.value);
-			break;
-
-		case MULTIPLY:
-			return new IntToken(lhs.value * rhs.value);
-			break;
-
-		case DIVIDE:
-			return new IntToken(lhs.value / rhs.value);
-			break;
-		default:
-			cout << "ERROR : Unknown Operator type" << endl;
-			cout << line->getType() << endl;
-			break;
-
-		}
+		return Operate(Execute(op->left), Execute(op->right), op->op);
 		break;
 	}
 
@@ -106,6 +126,44 @@ Token* Execute(STATEMENT* line) {
 		break;
 	}
 
-	return new Token();
+	return null;
 }
 
+
+Token* Operate(Token* left, Token* right, TokenType op) {
+	TokenType lt = left->getType();
+	TokenType rt = right->getType();
+	if (lt > rt) {
+		Token* tmp = left;
+		left = right;
+		right = tmp;
+		lt = left->getType();
+		rt = right->getType();
+	}
+	if (lt <= rt) {
+		if (lt == INT && rt == INT) {
+			if (op == MODULO) 
+				return new IntToken(((IntToken*)left)->value % ((IntToken*)right)->value);
+			return Operatee<IntToken>((IntToken*)left, (IntToken*)right, op);
+		}
+		else if (lt == FLOAT && rt == FLOAT) {
+			return Operatee<FloatToken>((FloatToken*)left, (FloatToken*)right, op);
+		}
+		else if (lt == DOUBLE && rt == DOUBLE) {
+			return Operatee<DoubleToken>((DoubleToken*)left, (DoubleToken*)right, op);
+		}
+		else if (lt == INT && rt == FLOAT) {
+			return Operatee<FloatToken>(new FloatToken(((IntToken*)left)->value), (FloatToken*)right, op);
+		}
+		else if (lt == FLOAT && rt == DOUBLE) {
+			return Operatee<DoubleToken>(new DoubleToken(((FloatToken*)left)->value), (DoubleToken*)right, op);
+		}
+		else if (lt == INT && rt == DOUBLE) {
+			return Operatee<DoubleToken>(new DoubleToken(((IntToken*)left)->value), (DoubleToken*)right, op);
+		}
+	}
+	else {
+		cout << "ERROR : Faulty operands" << endl;
+		return null;
+	}
+}

@@ -7,14 +7,15 @@
 using namespace std;
 
 
-enum Tokens {
+enum TokenType {
 	LET,
 	IF,
 	ELSE,
 	WHILE,
-	CONTINUE,
+	DO,
+	AND,
+	OR,
 	RETURN,
-	BREAK,
 
 	BRACKET_OPEN,
 	BRACKET_CLOSE,
@@ -33,10 +34,10 @@ enum Tokens {
 	MODULO,
 
 
+	BIT,
 	INT,
 	FLOAT,
 	DOUBLE,
-	BIT,
 	STRING,
 
 	ID,
@@ -47,10 +48,12 @@ enum Tokens {
 	OPERATE,
 	SCOPE,
 	PRECEDER,
+
 };
 
+
 struct Token {
-	virtual Tokens getType() {
+	virtual TokenType getType() {
 		return UNKNOWN;
 	}
 	Token() {}
@@ -58,13 +61,13 @@ struct Token {
 static Token* null = new Token();
 
 struct KeyWordToken : Token {
-	Tokens value;
+	TokenType value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return value;
 	}
 
-	KeyWordToken(Tokens value) {
+	KeyWordToken(TokenType value) {
 		this->value = value;
 	}
 };
@@ -72,7 +75,7 @@ struct KeyWordToken : Token {
 struct StringToken : Token {
 	string value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return STRING;
 	}
 
@@ -83,7 +86,7 @@ struct StringToken : Token {
 struct BitToken : Token {
 	bool value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return BIT;
 	}
 
@@ -95,7 +98,7 @@ struct BitToken : Token {
 struct IntToken : Token {
 	int value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return INT;
 	}
 
@@ -106,7 +109,7 @@ struct IntToken : Token {
 struct FloatToken : Token {
 	float value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return FLOAT;
 	}
 
@@ -118,7 +121,7 @@ struct FloatToken : Token {
 struct DoubleToken : Token {
 	double value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return DOUBLE;
 	}
 
@@ -130,7 +133,7 @@ struct DoubleToken : Token {
 struct IdentifierToken : Token {
 	string value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return ID;
 	}
 
@@ -144,4 +147,4 @@ struct IdentifierToken : Token {
 void tokenize(vector<string> lines, vector<Token*>& tokens);
 
 int isNumeric(const std::string& str);
-const char* getToken(Tokens value);
+const char* getToken(TokenType value);

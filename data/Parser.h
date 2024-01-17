@@ -6,7 +6,7 @@ using namespace std;
 
 
 struct STATEMENT {
-	virtual Tokens getType() {
+	virtual TokenType getType() {
 		return UNKNOWN;
 	}
 	virtual void print() {
@@ -25,7 +25,7 @@ struct VALUED : STATEMENT {};
 struct BLOCK : STATEMENT {
 	vector<STATEMENT*> code; 
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return SCOPE;
 	}
 	void print()override {
@@ -43,7 +43,7 @@ struct INT_VAL : VALUED
 {
 	IntToken value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return INT;
 	}
 	INT_VAL(IntToken val) : value(val) {}
@@ -55,7 +55,7 @@ struct FLOAT_VAL :VALUED
 {
 	FloatToken value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return FLOAT;
 	}
 
@@ -68,7 +68,7 @@ struct DOUBLE_VAL : VALUED
 {
 	DoubleToken value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return DOUBLE;
 	}
 
@@ -81,7 +81,7 @@ struct BIT_VAL : VALUED
 {
 	BitToken value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return BIT;
 	}
 
@@ -95,7 +95,7 @@ struct STRING_VAL : VALUED
 
 	StringToken value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return STRING;
 	}
 
@@ -109,7 +109,7 @@ struct ID_VAL : VALUED
 
 	StringToken value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return ID;
 	}
 
@@ -129,7 +129,7 @@ struct DEFINITION : STATEMENT {
 	ID_VAL* name;
 	VALUED* value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return DEFINE;
 	}
 
@@ -150,7 +150,7 @@ struct ASSIGNMENT : STATEMENT {
 	ID_VAL* name;
 	VALUED* value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return ASSIGN;
 	}
 
@@ -172,7 +172,7 @@ struct PARENTHESIS : VALUED {
 	
 	VALUED* value;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return PRECEDER;
 	}
 
@@ -191,13 +191,13 @@ struct OPERATION : VALUED {
 
 	VALUED* left;
 	VALUED* right;
-	Tokens op;
+	TokenType op;
 
-	Tokens getType()override {
+	TokenType getType()override {
 		return OPERATE;
 	}
 
-	OPERATION(VALUED* left, Tokens op, VALUED* right) {
+	OPERATION(VALUED* left, TokenType op, VALUED* right) {
 		this->left = left;
 		this->right = right;
 		this->op = op;
@@ -205,7 +205,7 @@ struct OPERATION : VALUED {
 
 	void print()override {
 		left->print();
-		cout << " " << getToken(op) << " ";
+		cout << " " << (op) << " ";
 		right->print();
 	}
 };;

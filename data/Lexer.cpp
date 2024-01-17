@@ -62,8 +62,9 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
 					else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE });
 					else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE });
-					else if (sub.compare("continue") == 0)	tokens.push_back(new KeyWordToken{ CONTINUE });
-					else if (sub.compare("break") == 0)		tokens.push_back(new KeyWordToken{ BREAK });
+					else if (sub.compare("do") == 0)	tokens.push_back(new KeyWordToken{ DO });
+					else if (sub.compare("and") == 0)		tokens.push_back(new KeyWordToken{ AND });
+					else if (sub.compare("or") == 0)		tokens.push_back(new KeyWordToken{ OR});
 					else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN });
 					else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true });
 					else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false });
@@ -99,45 +100,6 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 
 }
 
-const char* getToken(Tokens value) {
-	switch (value) {
-	case LET: return "LET";
-	case IF: return "IF";
-	case ELSE: return "ELSE";
-
-	case WHILE: return "WHILE";
-	case CONTINUE: return "CONTINUE";
-	case RETURN: return "RETURN";
-	case BREAK: return "BREAK";
-
-	case BRACKET_OPEN: return "[";
-	case BRACKET_CLOSE: return "]";
-	case PARENTHESIS_OPEN: return "(";
-	case PARENTHESIS_CLOSE: return ")";
-	case CURLY_OPEN: return "}\n";
-	case CURLY_CLOSE: return "\n{";
-	case LINE_END: return "END\n";
-	case COMMA: return "COMMA";
-
-	case EQUALS: return "EQUALS";
-	case PLUS: return "PLUS";
-	case MINUS: return "MINUS";
-	case MULTIPLY: return "MULTIPLY";
-	case DIVIDE: return "DIVIDE";
-	case MODULO: return "MODULO";
-
-	case INT: return "INT";
-	case FLOAT: return "FLOAT";
-	case DOUBLE: return "DOUBLE";
-	case BIT: return "BIT";
-	case STRING: return "STRING";
-
-	case ID: return "ID";
-	case UNKNOWN: return "UNKNOWN";
-	}
-
-	return "Tokens.cpp->getToken() Bugged";
-}
 
 int isNumeric(const std::string& str) {
 	if (str.empty()) {
@@ -169,6 +131,8 @@ int isNumeric(const std::string& str) {
 
 	if (i != str.length())return 0;
 	else if (decimalPointFound && !isDouble) return 2;
-	else if (isDouble) return 3;
+	else if (isDouble)
+		if(str.length() >1)	return 3;
+		else return 0;
 	else return 1;
 }
