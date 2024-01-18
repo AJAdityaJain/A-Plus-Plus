@@ -39,6 +39,7 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 				else if (c == '[')tokens.push_back(new KeyWordToken{ BRACKET_OPEN });
 				else if (c == ']')tokens.push_back(new KeyWordToken{ BRACKET_CLOSE });
 				else if (c == ';')tokens.push_back(new KeyWordToken{ LINE_END });
+				else if (c == ':')tokens.push_back(new KeyWordToken{ COLON});
 				else if (c == ',')tokens.push_back(new KeyWordToken{ COMMA });
 
 				else if (c == '=')tokens.push_back(new AssignToken{ EQUALS });
@@ -115,10 +116,9 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					i--;
 
 						 if(sub.compare("let") == 0)		tokens.push_back(new KeyWordToken{ LET });
-					else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
-					else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE });
+						 else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
+						 else if (sub.compare("else") == 0) tokens.push_back(new KeyWordToken{ ELSE });
 					else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE });
-					else if (sub.compare("do") == 0)		tokens.push_back(new KeyWordToken{ DO });
 					else if (sub.compare("and") == 0)		tokens.push_back(new OperatorToken{ AND });
 					else if (sub.compare("or") == 0)		tokens.push_back(new OperatorToken{ OR });
 					else if (sub.compare("xor") == 0)		tokens.push_back(new OperatorToken{ XOR});
@@ -190,14 +190,14 @@ void printToken(Token* t) {
 	case IF:
 		cout << "if";
 		break;
+	case COLON:
+		cout << " : ";
+		break;
 	case ELSE:
 		cout << "else";
 		break;
 	case WHILE:
 		cout << "while";
-		break;
-	case DO:
-		cout << "do";
 		break;
 	case RETURN:
 		cout << "ret";

@@ -11,6 +11,8 @@ void EndScope() {
 	scopesStack.pop_back();
 }
 
+bool waitForElse = false;
+
 Token* Execute(Statement* line) {
 	
 	switch (line->getType()) {
@@ -56,14 +58,7 @@ Token* Execute(Statement* line) {
 		break;
 	}
 
-	case ID: {
-		for (Variable v : varsStack) 		
-			if (((Identifier*)line)->value.value.compare(v.name) == 0) 
-				return v.value;
-
-		break;
-	}
-
+	case ID: {for (Variable v : varsStack) if (((Identifier*)line)->value.value.compare(v.name) == 0) return v.value;break;}
 	case BIT: return &((Bit*)line)->value;
 	case INT: return &((Int*)line)->value;
 	case FLOAT: return &((Float*)line)->value;
@@ -87,6 +82,34 @@ Token* Execute(Statement* line) {
 				v.value = value;
 				return null;
 			}
+		break;
+	}
+
+	case ELSE_STMT: {
+		if (waitForElse) {
+			waitForElse = false;
+			Execute(((ElseStatement*)line)->elseBlock);
+		}
+		return null;
+		break;
+	}
+				   
+	case IF_STMT: {
+		IfStatement* ifst = (IfStatement*)line;
+		Token* cond = Execute(ifst->condition);
+	
+		if (cond->getType() == BIT) {
+			if (((BitToken*)cond)->value) {
+				Execute(ifst->ifBlock);
+			}
+			else {
+				waitForElse = true;
+			}
+		}
+		else {
+			cout << "ERROR : Condition is not a boolean" << endl;
+		}
+		return null;
 		break;
 	}
 
@@ -159,11 +182,13 @@ Token* Execute(Statement* line) {
 
 	case PARENTHESIS: Execute(((Parenthesis*)line)->value);
 
-	default:
+	default: {
 		cout << "ERROR : Unknown statement type" << line->getType() << endl;
 		break;
 	}
+	}
 
+	waitForElse = false;
 	return null;
 }
 

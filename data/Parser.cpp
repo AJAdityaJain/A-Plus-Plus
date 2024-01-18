@@ -7,7 +7,9 @@ CodeBlock* parseTree(vector<Token*> tokens) {
 
 
 
-Statement* parseStatement(vector<Token*> stack) {
+Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
+	printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) printToken(t);	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
+
 	size_t size = stack.size();
 
 	if (size == 0) throw invalid_argument("Empty statement");
@@ -82,42 +84,31 @@ Statement* parseStatement(vector<Token*> stack) {
 		return new Assignment(id, Value);
 	}
 
-
-	///IF
-	printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) printToken(t);	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
+	///If
 	if (st0 == IF) {
-		int doIdx =0, elseIdx = 0;
-		int i = 0, depth = 1;
-
-		for (int i = 1; i < stack.size() - 1; i++) {
-			TokenType ty = stack[i]->getType();
-			switch (ty) {
-			case IF: depth++; break;
-			case DO: depth--; break;
-			}
-			if (depth == 0) {
-				switch (ty) {
-				case DO: doIdx = i; break;
-				case ELSE: elseIdx = i; break;
-
+		if (st1 == PARENTHESIS_OPEN) {
+			int depth = 0;
+			for (int i = 1; i < stack.size() - 1; i++) {
+				switch (stack[i]->getType()) {
+				case PARENTHESIS_OPEN: depth++; break;
+				case PARENTHESIS_CLOSE: depth--; break;
 				}
+				depth = abs(depth);
+				if (depth == 0) return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+
+				
 			}
 		}
+		for (int i = 1; i < stack.size() - 1; i++) 
+			if (stack[i]->getType() == COLON) 
+				return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));		
 
-		if (doIdx != 0) {
-			VALUED* condition = (VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + doIdx));
-			Statement* doBlock = parseStatement(vector<Token*>(stack.begin() + doIdx + 1, stack.end()));
-
-			if (elseIdx != 0) {
-				Statement* elseBlock = parseStatement(vector<Token*>(stack.begin() + elseIdx + 1, stack.end()));
-				return new IfElseStatement(condition, doBlock, elseBlock);
-			}
-			else {
-				return new IfElseStatement(condition, doBlock);
-			}
-		}
 	}
 
+	///Else
+	if (st0 == ELSE) {
+		return new ElseStatement(parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
+	}
 
 	///Parenthesis
 	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {

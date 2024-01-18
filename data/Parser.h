@@ -179,26 +179,18 @@ struct Assignment : Statement {
 	}
 };
 
-struct IfElseStatement: Statement {
+struct IfStatement: Statement {
 	VALUED* condition;
 	Statement* ifBlock;
-	Statement* elseBlock;
-
+	
 
 	StatementType getType()override {
-		return IF_ELSE;
+		return IF_STMT;
 	}
 
-	IfElseStatement(VALUED* con, Statement* ifb) {
+	IfStatement(VALUED* con, Statement* ifb) {
 		condition = con;
 		ifBlock = ifb;
-		elseBlock = nullptr;
-	}
-
-	IfElseStatement(VALUED* con, Statement* ifb, Statement* elseb) {
-		condition = con;
-		ifBlock = ifb;
-		elseBlock = elseb;
 	}
 
 	void print()override {
@@ -207,12 +199,24 @@ struct IfElseStatement: Statement {
 		cout << " do ";
 		ifBlock->print();
 		cout << endl;
-		if (elseBlock != nullptr) {
-			cout << "else ";
-			elseBlock->print();
-			cout << endl;
-		}
+	}
+};
 
+struct ElseStatement : Statement {
+	Statement* elseBlock;
+
+	StatementType getType()override {
+		return ELSE_STMT;
+	}
+
+	ElseStatement(Statement* elseb) {
+		elseBlock = elseb;
+	}
+
+	void print()override {
+		cout << "else ";
+		elseBlock->print();
+		cout << endl;
 	}
 };
 
@@ -280,7 +284,7 @@ struct UnaryOperation : VALUED {
 };
 
 
-Statement* parseStatement(vector<Token*> stack);
+Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
 
 vector<Statement*> parseStatements(vector<Token*> stack);
 

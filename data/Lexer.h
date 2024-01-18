@@ -22,7 +22,6 @@ enum TokenType {
 	IF,
 	ELSE,
 	WHILE,
-	DO,
 	RETURN,
 
 	BRACKET_OPEN,
@@ -34,6 +33,7 @@ enum TokenType {
 	
 	LINE_END,
 	COMMA,
+	COLON,
 	ASSIGN,
 	OPERATOR,
 
@@ -50,7 +50,8 @@ enum StatementType {
 
 	DEFINITION,
 	ASSIGNMENT,
-	IF_ELSE,
+	IF_STMT,
+	ELSE_STMT,
 	BI_OPERATION,
 	UN_OPERATION,
 	SCOPE,
