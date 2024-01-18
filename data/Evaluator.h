@@ -1,11 +1,10 @@
 #pragma once
 
 #include "Parser.h"
-#include <map>
 
 
 struct Variable {
-	string& name;
+	unsigned int name;
 	Token* value;
 };
 

@@ -2,6 +2,9 @@
 
 void tokenize(vector<string> lines, vector<Token*>& tokens )
 {
+	map<string, unsigned int> idMap;
+	unsigned int idx = 0;
+
 	tokens.push_back(new KeyWordToken{ CURLY_OPEN});
 	string tempString;
 	bool cont = false;
@@ -60,9 +63,9 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 				else if (c == ' ' || c == '\n' || c == '\r' || c == '\t')tempString.pop_back();
 				else { inLiteral = true; cont = true; }
 
-				if (!inLiteral && tokens.size() > 1 && i + 1 < line.size()) {
+				if (!inLiteral && tokens.size() > 1 && i < line.size()-1) {
 					Token* b = tokens.back();
-					if (line[i + 1] == '=') {
+					if (line[i+1] == '=') {
 						if (b->getType() == ASSIGN) {
 							tokens.pop_back();
 							tokens.push_back(new OperatorToken(COMPARISON));
@@ -137,7 +140,16 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 										break;
 									}
 							if (t)tokens.push_back(new KeyWordToken{ NONE });
-							else tokens.push_back(new IdentifierToken{ sub });
+							else { 
+								if (idMap.count(sub) > 0) {
+									tokens.push_back(new IdentifierToken{ idMap[sub] });
+								}
+								else {
+									idMap.insert({ sub, idx });
+									tokens.push_back(new IdentifierToken{ idx });
+									idx++;
+								}
+							}
 						}
 						else if (typ == 1)tokens.push_back(new IntToken{ stoi(sub) });
 						else if (typ == 2)tokens.push_back(new FloatToken{ stof(sub) });

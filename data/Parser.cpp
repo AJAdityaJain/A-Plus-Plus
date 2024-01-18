@@ -8,24 +8,25 @@ CodeBlock* parseTree(vector<Token*> tokens) {
 
 
 Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
-	printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) printToken(t);	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
+	//printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) printToken(t);	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
 
 	size_t size = stack.size();
 
-	if (size == 0) throw invalid_argument("Empty statement");
+	if (size == 0)
+		return new Statement();
 
 	TokenType st0 = stack[0]->getType();
 	TokenType stb = stack.back()->getType();
 
 	if (size == 1) {
 		switch (st0) {
-		case ID:return new Identifier(((IdentifierToken*)stack[0])->value);
-		case INT:return new Int(((IntToken*)stack[0])->value);
-		case FLOAT:	return new Float(((FloatToken*)stack[0])->value);
-		case DOUBLE:return new Double(((DoubleToken*)stack[0])->value);
-		case BIT:return new Bit(((BitToken*)stack[0])->value);
-		case STRING:return new String(((StringToken*)stack[0])->value);
-		default:cout << "ERROR : Unable to identify datatype";
+		case ID:return new Identifier(*((IdentifierToken*)stack[0]));
+		case INT:return new Int(*((IntToken*)stack[0]));
+		case FLOAT:	return new Float(*((FloatToken*)stack[0]));
+		case DOUBLE:return new Double(*((DoubleToken*)stack[0]));
+		case BIT:return new Bit(*((BitToken*)stack[0]));
+		case STRING:return new String(*((StringToken*)stack[0]));
+		default:printf("\x1B[31m Unexpected identifier \033[0m\t\t\n");
 		}
 
 	}
@@ -50,6 +51,33 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			return def;
 		}
 	}
+
+	///Calling
+	if (size >= 3 && st0 == ID && st1 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE){
+		vector<VALUED*> params;
+		vector<Token*> sub;
+		int depth = 0;
+
+
+		for (int i = 2; i < stack.size() - 1; i++)
+		{
+			TokenType t = stack[i]->getType();
+
+			if (t == PARENTHESIS_OPEN) depth++;
+			if (t == PARENTHESIS_CLOSE) depth--;
+			if (depth == 0 && t == COMMA) {
+				params.push_back((VALUED*)parseStatement(sub));
+				sub.clear();
+			}
+			else sub.push_back(stack[i]);
+
+		}
+		if(sub.size() >0)
+			params.push_back((VALUED*)parseStatement(sub));
+
+		return new CallingFunc(*(IdentifierToken*)stack[0],params);
+	}
+
 
 	/// Variable Assignment
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
@@ -84,6 +112,26 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		return new Assignment(id, Value);
 	}
 
+	///While
+	if (st0 == WHILE) {
+		if (st1 == PARENTHESIS_OPEN) {
+			int depth = 0;
+			for (int i = 1; i < stack.size() - 1; i++) {
+				switch (stack[i]->getType()) {
+				case PARENTHESIS_OPEN: depth++; break;
+				case PARENTHESIS_CLOSE: depth--; break;
+				}
+				depth = abs(depth);
+				if (depth == 0) return new WhileStatement ((VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+
+			}
+		}
+		for (int i = 1; i < stack.size() - 1; i++)
+			if (stack[i]->getType() == COLON)
+				return new WhileStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+
+	}
+
 	///If
 	if (st0 == IF) {
 		if (st1 == PARENTHESIS_OPEN) {
@@ -96,12 +144,12 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 				depth = abs(depth);
 				if (depth == 0) return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
 
-				
+
 			}
 		}
-		for (int i = 1; i < stack.size() - 1; i++) 
-			if (stack[i]->getType() == COLON) 
-				return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));		
+		for (int i = 1; i < stack.size() - 1; i++)
+			if (stack[i]->getType() == COLON)
+				return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
 
 	}
 
@@ -176,7 +224,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		return new UnaryOperation(((OperatorToken*)stack[0])->uValue, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
 	}
 
-	throw invalid_argument("Invalid Statement");
+	return new Statement();
 }
 
 vector<Statement*> parseStatements(vector<Token*> stack) {

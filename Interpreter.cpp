@@ -26,21 +26,21 @@ int main(int argc, char* argv[])
 	tokenize(programString, tokens);
 	programString.clear();
 
-	for (Token* t : tokens) {
-		printToken(t);
-	}
+	//for (Token* t : tokens) {
+	//	printToken(t);
+	//}
 	
 	///PARSE
 	cout << "PARSING" << endl << endl;
 	CodeBlock* tree = parseTree(tokens);
 	tokens.clear();
 	
-	tree->print();
+	//tree->print();
 	 
 	 
-	/////EXECUTE
-	//cout << "EXECUTING" << endl << endl;
-	//Execute(tree);
+	///EXECUTE
+	cout << "EXECUTING" << endl << endl;
+	Execute(tree);
 
 
 	return 0;

@@ -58,13 +58,17 @@ Token* Execute(Statement* line) {
 		break;
 	}
 
-	case ID: {for (Variable v : varsStack) if (((Identifier*)line)->value.value.compare(v.name) == 0) return v.value;break;}
+	case ID: {for (Variable v : varsStack) if (((Identifier*)line)->value.value == v.name) return v.value;break;}
 	case BIT: return &((Bit*)line)->value;
 	case INT: return &((Int*)line)->value;
 	case FLOAT: return &((Float*)line)->value;
 	case DOUBLE: return &((Double*)line)->value;
 	case STRING: return &((String*)line)->value;
 
+	case CALL: {
+		CallingFunc* cf = (CallingFunc*)line;
+
+	}
 	case DEFINITION: {
 		Definition* def = (Definition*)line;
 		Token* value = Execute(def->value);
@@ -78,7 +82,7 @@ Token* Execute(Statement* line) {
 		Assignment* def = (Assignment*)line;
 		Token* value = Execute(def->value);
 		for (Variable& v : varsStack)
-			if (def->name->value.value.compare(v.name) == 0) {
+			if (def->name->value.value == v.name) {
 				v.value = value;
 				return null;
 			}
@@ -91,6 +95,22 @@ Token* Execute(Statement* line) {
 			Execute(((ElseStatement*)line)->elseBlock);
 		}
 		return null;
+		break;
+	}
+
+	case WHILE_STMT: {
+		WhileStatement* whilest = (WhileStatement*)line;
+		Token* cond = Execute(whilest->condition);
+		if (cond->getType() == BIT) {
+			while (((BitToken*)cond)->value) {
+				Execute(whilest->whileBlock);
+				cond = Execute(whilest->condition);
+			}
+			waitForElse = true;
+		}
+		else {
+			printf("\x1B[31m Not a boolean condition \033[0m\t\t\n");
+		}
 		break;
 	}
 				   
@@ -107,7 +127,7 @@ Token* Execute(Statement* line) {
 			}
 		}
 		else {
-			cout << "ERROR : Condition is not a boolean" << endl;
+			printf("\x1B[31m Not a boolean condition \033[0m\t\t\n");
 		}
 		return null;
 		break;
@@ -175,15 +195,18 @@ Token* Execute(Statement* line) {
 			}
 		}
 		else {
-			cout << "ERROR : Faulty operands" << endl;
+			printf("\x1B[31m Faulty Operands \033[0m\t\t\n");
 			return null;
-		}		break;
+		}
+		break;
 	}
 
-	case PARENTHESIS: Execute(((Parenthesis*)line)->value);
-
+	case PARENTHESIS: {
+		Execute(((Parenthesis*)line)->value);
+		break;
+	}
 	default: {
-		cout << "ERROR : Unknown statement type" << line->getType() << endl;
+		printf("\x1B[31m Unexpected statement \033[0m\t\t\n");
 		break;
 	}
 	}
@@ -239,7 +262,7 @@ Token* Operate_Binary_Dec(T* left, T* right, BinaryOperatorType op) {
 	case SMALLER_THAN_EQUAL:
 		return new BitToken(left->value <= right->value);
 	}
-	cout << "Error: Unknown operator" << endl;
+	printf("\x1B[31m Unknown Binary Operator \033[0m\t\t\n");
 	return null;
 }
 
@@ -257,8 +280,6 @@ Token* Operate_Unary(T* right, UnaryOperatorType op) {
 	default:
 		return Operate_Unary_Dec(right, op);
 	}
-	cout << "Error: Unknown operator" << endl;
-	return null;
 }
 
 template<typename T>
@@ -272,6 +293,7 @@ Token* Operate_Unary_Dec(T* right, UnaryOperatorType op) {
 		return new T(-right->value);
 	}
 	}
-	cout << "Error: Unknown operator" << endl;
+	printf("\x1B[31m Unknown Unary Operator \033[0m\t\t\n");
+
 	return null;
 }

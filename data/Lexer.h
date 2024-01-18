@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <map>
 
 using namespace std;
 
@@ -48,8 +49,10 @@ enum StatementType {
 	STRING_STMT,
 	ID_STMT,
 
+	CALL,
 	DEFINITION,
 	ASSIGNMENT,
+	WHILE_STMT,
 	IF_STMT,
 	ELSE_STMT,
 	BI_OPERATION,
@@ -219,14 +222,16 @@ struct DoubleToken : Token {
 	}
 };
 
+
+
 struct IdentifierToken : Token {
-	string value;
+	unsigned int value;
 
 	TokenType getType()override {
 		return ID;
 	}
 
-	IdentifierToken(string value){
+	IdentifierToken(unsigned int value){
 		this->value = value;
 	}
 };

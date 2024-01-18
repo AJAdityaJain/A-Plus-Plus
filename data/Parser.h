@@ -116,15 +116,41 @@ struct String : VALUED
 struct Identifier : VALUED
 {
 
-	StringToken value;
+	IdentifierToken value;
 
 	StatementType getType()override {
 		return ID_STMT;
 	}
 
-	Identifier(StringToken val) : value(val) {}
+	Identifier(IdentifierToken val) : value(val) {}
 	void print() {
 		cout << value.value;
+	}
+
+
+};
+
+struct CallingFunc : VALUED
+{
+	IdentifierToken name;
+	vector<VALUED*> params;
+
+	StatementType getType()override {
+		return CALL;
+	}
+
+	CallingFunc(IdentifierToken val) : name(val) {}
+	CallingFunc(IdentifierToken val, vector<VALUED*> params) : name(val) {
+		this->params = params;
+	}
+
+	void print() {
+		cout << name.value << "(";
+		for (VALUED* v : params) {
+			v->print();
+			cout << " ";
+		}
+		cout << ")" ;
 	}
 
 
@@ -179,10 +205,33 @@ struct Assignment : Statement {
 	}
 };
 
-struct IfStatement: Statement {
+struct WhileStatement : Statement {
+	VALUED* condition;
+	Statement* whileBlock;
+
+
+	StatementType getType()override {
+		return WHILE_STMT;
+	}
+
+	WhileStatement(VALUED* con, Statement* whileb) {
+		condition = con;
+		whileBlock = whileb;
+	}
+
+	void print()override {
+		cout << "while ";
+		condition->print();
+		cout << " :";
+		whileBlock->print();
+		cout << endl;
+	}
+};
+
+struct IfStatement : Statement {
 	VALUED* condition;
 	Statement* ifBlock;
-	
+
 
 	StatementType getType()override {
 		return IF_STMT;
