@@ -17,15 +17,12 @@ enum TokenType {
 	STRING,
 
 	ID,
-	LINE_END,
 
 	LET,
 	IF,
 	ELSE,
 	WHILE,
 	DO,
-	AND,
-	OR,
 	RETURN,
 
 	BRACKET_OPEN,
@@ -35,21 +32,30 @@ enum TokenType {
 	CURLY_OPEN,
 	CURLY_CLOSE,
 	
+	LINE_END,
 	COMMA,
 	ASSIGN,
 	OPERATOR,
 
+};
 
+enum StatementType {
+	NONE_STMT,
+	BIT_STMT,
+	INT_STMT,
+	FLOAT_STMT,
+	DOUBLE_STMT,
+	STRING_STMT,
+	ID_STMT,
 
 	DEFINITION,
 	ASSIGNMENT,
-	OPERATION,
-	_SCOPE,
+	IF_ELSE,
+	BI_OPERATION,
+	UN_OPERATION,
+	SCOPE,
 	PARENTHESIS,
 };
-
-
-void printToken(TokenType t);
 
 enum AssignmentType {
 	NONE_ASSIGN,
@@ -57,23 +63,45 @@ enum AssignmentType {
 	PLUS_EQUAL,
 	MINUS_EQUAL,
 	MULTIPLY_EQUAL,
-	DIVIDE_EQUAL
+	DIVIDE_EQUAL,
+
+	MODULO_EQUAL,
+	BITWISE_OR_EQUAL,
+	BITWISE_AND_EQUAL,
+
 };
 
-enum OperatorType {
-	NONE_OPERATOR,
+enum UnaryOperatorType {
+	NONE_UN_OPERATOR,
 	NOT,
-	EEQUAL,
-	PLUS,
-	MINUS,
-	MULTIPLY,
-	DIVIDE,
-	MODULO,
+	BITWISE_NOT,
+	POSITIVE,
+	NEGATIVE,
+};
+
+enum BinaryOperatorType {
+	NONE_BI_OPERATOR,
+
+	OR,
+	AND,
+	BITWISE_OR,
+	XOR,
+	BITWISE_AND,
+
+	COMPARISON,
 	NOT_EQUAL,
+
 	GREATER_THAN,
 	SMALLER_THAN,
 	GREATER_THAN_EQUAL,
 	SMALLER_THAN_EQUAL,
+
+	PLUS,
+	MINUS,
+
+	MULTIPLY,
+	DIVIDE,
+	MODULO,
 };
 
 struct Token {
@@ -98,16 +126,28 @@ struct AssignToken : Token {
 };
 
 struct OperatorToken : Token {
-	OperatorType value;
+	BinaryOperatorType biValue;
+	UnaryOperatorType uValue;
 
 	TokenType getType()override {
 		return OPERATOR;
 	}
 
-	OperatorToken(OperatorType value) {
-		this->value = value;
+	OperatorToken(UnaryOperatorType u, BinaryOperatorType bi) {
+		uValue = u;
+		biValue = bi;
+	}
+	OperatorToken(BinaryOperatorType value) {
+		biValue = value;
+		uValue = NONE_UN_OPERATOR;
+	}
+	OperatorToken(UnaryOperatorType value) {
+		uValue = value;
+		biValue = NONE_BI_OPERATOR;
 	}
 };
+
+
 struct KeyWordToken : Token {
 	TokenType value;
 
@@ -193,6 +233,5 @@ struct IdentifierToken : Token {
 
 //vector<Token*> tokenize(vector<string> lines);
 void tokenize(vector<string> lines, vector<Token*>& tokens);
-
+void printToken(Token* t);
 int isNumeric(const std::string& str);
-const char* getToken(TokenType value);

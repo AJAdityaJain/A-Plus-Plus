@@ -20,8 +20,8 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 				inStr = true;
 				strStart = c;
 			}
-			
-			
+
+
 			else if (inStr && c == strStart) {
 				inStr = false;
 				strStart = ' ';
@@ -42,19 +42,71 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 				else if (c == ',')tokens.push_back(new KeyWordToken{ COMMA });
 
 				else if (c == '=')tokens.push_back(new AssignToken{ EQUALS });
-
-				else if (c == '+')tokens.push_back(new OperatorToken{ PLUS });
-				else if (c == '-')tokens.push_back(new OperatorToken{ MINUS });
+				else if (c == '!')tokens.push_back(new OperatorToken{ NOT });
+				else if (c == '+')tokens.push_back(new OperatorToken{ POSITIVE, PLUS });
+				else if (c == '-')tokens.push_back(new OperatorToken{ NEGATIVE, MINUS });
 				else if (c == '*')tokens.push_back(new OperatorToken{ MULTIPLY });
 				else if (c == '/')tokens.push_back(new OperatorToken{ DIVIDE });
 				else if (c == '%')tokens.push_back(new OperatorToken{ MODULO });
+				else if (c == '>')tokens.push_back(new OperatorToken{ GREATER_THAN });
+				else if (c == '<')tokens.push_back(new OperatorToken{ SMALLER_THAN });
+
+				else if (c == '&')tokens.push_back(new OperatorToken{ BITWISE_AND });
+				else if (c == '|')tokens.push_back(new OperatorToken{ BITWISE_OR });
+				else if (c == '~')tokens.push_back(new OperatorToken{ BITWISE_NOT });
 
 
-				else if (c == ' ' || c == '\n' || c == '\r' || c== '\t')tempString.pop_back();
-				else {inLiteral = true;cont = true;}
+				else if (c == ' ' || c == '\n' || c == '\r' || c == '\t')tempString.pop_back();
+				else { inLiteral = true; cont = true; }
 
+				if (!inLiteral && tokens.size() > 1 && i + 1 < line.size()) {
+					Token* b = tokens.back();
+					if (line[i + 1] == '=') {
+						if (b->getType() == ASSIGN) {
+							tokens.pop_back();
+							tokens.push_back(new OperatorToken(COMPARISON));
+							i++;
+						}
+						if (b->getType() == OPERATOR) {
+							Token* replace = null;
+							switch (((OperatorToken*)b)->uValue) {
+							case NOT:
+								replace = new OperatorToken(NOT_EQUAL);
+								break;
+							}
+							switch (((OperatorToken*)b)->biValue) {
+							case PLUS:
+								replace = new AssignToken(PLUS_EQUAL);
+								break;
+							case MINUS:
+								replace = new AssignToken(MINUS_EQUAL);
+								break;
+							case MULTIPLY:
+								replace = new AssignToken(MULTIPLY_EQUAL);
+								break;
+							case DIVIDE:
+								replace = new AssignToken(DIVIDE_EQUAL);
+								break;
+							case GREATER_THAN:
+								replace = new OperatorToken(GREATER_THAN_EQUAL);
+								break;
+							case SMALLER_THAN:
+								replace = new OperatorToken(SMALLER_THAN_EQUAL);
+								break;
+							case BITWISE_AND:
+								replace = new AssignToken(BITWISE_AND_EQUAL);
+								break;
+							case BITWISE_OR:
+								replace = new AssignToken(BITWISE_OR_EQUAL);
+								break;
+							}
+							tokens.pop_back();
+							tokens.push_back(replace);
+							i++;
+						}
+					}
+				}
 				if (!cont) 	tempString = "";
-
 			}
 			else if (!inStr && inLiteral) {
 				if (!isalnum(c) && c != '.') {
@@ -66,9 +118,10 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
 					else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE });
 					else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE });
-					else if (sub.compare("do") == 0)	tokens.push_back(new KeyWordToken{ DO });
-					else if (sub.compare("and") == 0)		tokens.push_back(new KeyWordToken{ AND });
-					else if (sub.compare("or") == 0)		tokens.push_back(new KeyWordToken{ OR});
+					else if (sub.compare("do") == 0)		tokens.push_back(new KeyWordToken{ DO });
+					else if (sub.compare("and") == 0)		tokens.push_back(new OperatorToken{ AND });
+					else if (sub.compare("or") == 0)		tokens.push_back(new OperatorToken{ OR });
+					else if (sub.compare("xor") == 0)		tokens.push_back(new OperatorToken{ XOR});
 					else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN });
 					else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true });
 					else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false });
@@ -104,8 +157,8 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 
 }
 
-void printToken(TokenType t) {
-	switch (t)
+void printToken(Token* t) {
+	switch (t->getType())
 	{
 	case BIT:
 		cout << "BIT";
@@ -126,7 +179,7 @@ void printToken(TokenType t) {
 		cout << "ID";
 		break;
 	case LINE_END:
-		cout << ";";
+		cout << "end";
 		break;
 	case NONE:
 		cout << "???";
@@ -145,12 +198,6 @@ void printToken(TokenType t) {
 		break;
 	case DO:
 		cout << "do";
-		break;
-	case AND:
-		cout << "&";
-		break;
-	case OR:
-		cout << "or";
 		break;
 	case RETURN:
 		cout << "ret";
@@ -173,14 +220,18 @@ void printToken(TokenType t) {
 	case CURLY_CLOSE:
 		cout << "}";
 		break;
-	case ASSIGN:
-		cout << " ?= ";
+	case ASSIGN: {
+		AssignToken at = *(AssignToken*)t;
+		cout << at.value;
+	}
 		break;
 	case COMMA:
 		cout << " , ";
 		break;
-	case OPERATOR:
+	case OPERATOR: {
 		cout << " op ";
+
+	}
 		break;
 	default:
 		cout << "BUGGED LEXER";

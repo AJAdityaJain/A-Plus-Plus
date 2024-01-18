@@ -23,90 +23,167 @@ Statement* parseStatement(vector<Token*> stack) {
 		case DOUBLE:return new Double(((DoubleToken*)stack[0])->value);
 		case BIT:return new Bit(((BitToken*)stack[0])->value);
 		case STRING:return new String(((StringToken*)stack[0])->value);
+		default:cout << "ERROR : Unable to identify datatype";
 		}
 
 	}
-	
+
 	TokenType st1 = stack[1]->getType();
 
 	///Scope Definition
-	if(size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
+	if (size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
 		CodeBlock* block = new CodeBlock();
 
-		block->code = parseStatements(vector<Token*>(stack.begin()+1,stack.end()-1));
+		block->code = parseStatements(vector<Token*>(stack.begin() + 1, stack.end() - 1));
 		return block;
 	}
+
 	///Variable Definition
 	if (size >= 4 && st0 == LET && st1 == ID && stack[2]->getType() == ASSIGN) {
-		Definition* def = new Definition(
-			new Identifier(((IdentifierToken*)stack[1])->value),
-			(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
-		);
-		return def;
+		if (((AssignToken*)stack[2])->value == EQUALS) {
+			Definition* def = new Definition(
+				new Identifier(((IdentifierToken*)stack[1])->value),
+				(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
+			);
+			return def;
+		}
 	}
+
 	/// Variable Assignment
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
-		Assignment* def = new Assignment(
-			new Identifier(((IdentifierToken*)stack[0])->value),
-			(VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())),
-			((AssignToken*)st1)->value
-		);
-		return def;
+		AssignmentType at = ((AssignToken*)stack[1])->value;
+		Identifier* id = new Identifier(((IdentifierToken*)stack[0])->value);
+		VALUED* Value = (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
+
+		switch (at) {
+		case PLUS_EQUAL:
+			Value = new BinaryOperation(id, PLUS, Value);
+			break;
+		case MINUS_EQUAL:
+			Value = new BinaryOperation(id, MINUS, Value);
+			break;
+		case MULTIPLY_EQUAL:
+			Value = new BinaryOperation(id, MULTIPLY, Value);
+			break;
+		case DIVIDE_EQUAL:
+			Value = new BinaryOperation(id, DIVIDE, Value);
+			break;
+		case MODULO_EQUAL:
+			Value = new BinaryOperation(id, MODULO, Value);
+			break;
+		case BITWISE_OR_EQUAL:
+			Value = new BinaryOperation(id, BITWISE_OR, Value);
+			break;
+		case BITWISE_AND_EQUAL:
+			Value = new BinaryOperation(id, BITWISE_AND, Value);
+			break;
+		}
+
+		return new Assignment(id, Value);
 	}
-	///Parenthesiss
+
+
+	///IF
+	printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) printToken(t);	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
+	if (st0 == IF) {
+		int doIdx =0, elseIdx = 0;
+		int i = 0, depth = 1;
+
+		for (int i = 1; i < stack.size() - 1; i++) {
+			TokenType ty = stack[i]->getType();
+			switch (ty) {
+			case IF: depth++; break;
+			case DO: depth--; break;
+			}
+			if (depth == 0) {
+				switch (ty) {
+				case DO: doIdx = i; break;
+				case ELSE: elseIdx = i; break;
+
+				}
+			}
+		}
+
+		if (doIdx != 0) {
+			VALUED* condition = (VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + doIdx));
+			Statement* doBlock = parseStatement(vector<Token*>(stack.begin() + doIdx + 1, stack.end()));
+
+			if (elseIdx != 0) {
+				Statement* elseBlock = parseStatement(vector<Token*>(stack.begin() + elseIdx + 1, stack.end()));
+				return new IfElseStatement(condition, doBlock, elseBlock);
+			}
+			else {
+				return new IfElseStatement(condition, doBlock);
+			}
+		}
+	}
+
+
+	///Parenthesis
 	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
 		int depth = 0;
-		for(int i = 1; i < stack.size()-1; i++){
+		for (int i = 1; i < stack.size() - 1; i++) {
 			switch (stack[i]->getType()) {
 			case PARENTHESIS_OPEN: depth++; break;
 			case PARENTHESIS_CLOSE: depth--; break;
 			}
 			depth = abs(depth);
 		}
-		if(depth == 0)
+		if (depth == 0)
 			return new Parenthesis((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
 	}
-	///Operation 
+
+
+	///Binary Operation 
 	if (size >= 3) {
-		//printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) { cout << getToken(t->getType()) << " "; }	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
-
-		VALUED* LHS = nullptr;
-		VALUED* RHS = nullptr;
-		OperatorType op = (NONE_OPERATOR);
-
-		int depth = 0;
-		vector<Token*> subStack = vector<Token*>();
-		
 		int i = 0;
-		for (Token* t : stack) {
-			subStack.push_back(t);
-			TokenType tt = t->getType();
+		int depth = 0;
+		int tokenIdx = 0;
+		BinaryOperatorType bot = NONE_BI_OPERATOR;
 
-			switch (tt)
+		for (Token* t : stack) {
+			switch (t->getType())
 			{
 			case PARENTHESIS_OPEN: depth++; break;
 			case PARENTHESIS_CLOSE: depth--; break;
+			case OPERATOR: {
+				if (i != 0 && depth == 0) {
+					BinaryOperatorType tt = ((OperatorToken*)t)->biValue;
+					if (bot == NONE_BI_OPERATOR) {
+						bot = tt;
+						tokenIdx = i;
+					}
+					else if (tt < bot) {
+						bot = tt;
+						tokenIdx = i;
+					}
+
+				}
+				break;
 			}
-			
-			if (depth==0&&(tt == OPERATOR)) {
-				subStack.clear();
-
-
-				op = ((OperatorToken*)t)->value;
-				RHS = (VALUED*)parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end()));
-
-				if (LHS != nullptr ) 
-					return new Operation(LHS, op, RHS);
-			}	
-			else if (depth == 0 && op == NONE_OPERATOR) {
-				LHS = (VALUED*)parseStatement(subStack);
-				subStack.clear();
-
 			}
 			i++;
 		}
+
+		if (bot != NONE_BI_OPERATOR) {
+				return new BinaryOperation(
+				(VALUED*)parseStatement(vector<Token*>(
+					stack.begin(),
+					stack.begin() + tokenIdx
+				)),
+				bot,
+				(VALUED*)parseStatement(vector<Token*>(
+					stack.begin() + tokenIdx + 1,
+					stack.end()
+				))
+			);
+		}
 	}
 
+	///Unary Operation 
+	if (size >= 2 && st0 == OPERATOR) {
+		return new UnaryOperation(((OperatorToken*)stack[0])->uValue, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
+	}
 
 	throw invalid_argument("Invalid Statement");
 }

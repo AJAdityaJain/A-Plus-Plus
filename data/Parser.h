@@ -6,8 +6,8 @@ using namespace std;
 
 
 struct Statement {
-	virtual TokenType getType() {
-		return NONE;
+	virtual StatementType getType() {
+		return NONE_STMT;
 	}
 	virtual void print() {
 		cout << "STMT_FAIL" << endl;
@@ -26,8 +26,8 @@ struct VALUED : Statement {};
 struct CodeBlock : Statement {
 	vector<Statement*> code; 
 
-	TokenType getType()override {
-		return _SCOPE;
+	StatementType getType()override {
+		return SCOPE;
 	}
 	void print()override {
 		cout << "Start Block" << endl;
@@ -44,8 +44,8 @@ struct Int : VALUED
 {
 	IntToken value;
 
-	TokenType getType()override {
-		return INT;
+	StatementType getType()override {
+		return INT_STMT;
 	}
 	Int(IntToken val) : value(val) {}
 	void print()override {
@@ -56,8 +56,8 @@ struct Float :VALUED
 {
 	FloatToken value;
 
-	TokenType getType()override {
-		return FLOAT;
+	StatementType getType()override {
+		return FLOAT_STMT;
 	}
 
 	Float(FloatToken val):value(val) {}
@@ -70,8 +70,8 @@ struct Double : VALUED
 {
 	DoubleToken value;
 
-	TokenType getType()override {
-		return DOUBLE;
+	StatementType getType()override {
+		return DOUBLE_STMT;
 	}
 
 	Double(DoubleToken val):value(val) {}
@@ -84,8 +84,8 @@ struct Bit : VALUED
 {
 	BitToken value;
 
-	TokenType getType()override {
-		return BIT;
+	StatementType getType()override {
+		return BIT_STMT;
 	}
 
 	Bit(BitToken val) : value(val) {}
@@ -101,8 +101,8 @@ struct String : VALUED
 
 	StringToken value;
 
-	TokenType getType()override {
-		return STRING;
+	StatementType getType()override {
+		return STRING_STMT;
 	}
 
 	String(StringToken val) : value(val) {}
@@ -118,8 +118,8 @@ struct Identifier : VALUED
 
 	StringToken value;
 
-	TokenType getType()override {
-		return ID;
+	StatementType getType()override {
+		return ID_STMT;
 	}
 
 	Identifier(StringToken val) : value(val) {}
@@ -138,7 +138,7 @@ struct Definition : Statement {
 	Identifier* name;
 	VALUED* value;
 
-	TokenType getType()override {
+	StatementType getType()override {
 		return DEFINITION;
 	}
 
@@ -159,16 +159,14 @@ struct Assignment : Statement {
 	
 	Identifier* name;
 	VALUED* value;
-	AssignmentType type;
 
 
-	TokenType getType()override {
+	StatementType getType()override {
 		return ASSIGNMENT;
 	}
 
-	Assignment(Identifier* nam, VALUED* val, AssignmentType type) {
+	Assignment(Identifier* nam, VALUED* val) {
 		name = nam;
-		this->type = type;
 		value = val;
 	}
 
@@ -181,11 +179,49 @@ struct Assignment : Statement {
 	}
 };
 
+struct IfElseStatement: Statement {
+	VALUED* condition;
+	Statement* ifBlock;
+	Statement* elseBlock;
+
+
+	StatementType getType()override {
+		return IF_ELSE;
+	}
+
+	IfElseStatement(VALUED* con, Statement* ifb) {
+		condition = con;
+		ifBlock = ifb;
+		elseBlock = nullptr;
+	}
+
+	IfElseStatement(VALUED* con, Statement* ifb, Statement* elseb) {
+		condition = con;
+		ifBlock = ifb;
+		elseBlock = elseb;
+	}
+
+	void print()override {
+		cout << "if";
+		condition->print();
+		cout << " do ";
+		ifBlock->print();
+		cout << endl;
+		if (elseBlock != nullptr) {
+			cout << "else ";
+			elseBlock->print();
+			cout << endl;
+		}
+
+	}
+};
+
+
 struct Parenthesis : VALUED {
 	
 	VALUED* value;
 
-	TokenType getType()override {
+	StatementType getType()override {
 		return PARENTHESIS;
 	}
 
@@ -200,17 +236,17 @@ struct Parenthesis : VALUED {
 	}
 };
 
-struct Operation : VALUED {
+struct BinaryOperation : VALUED {
 
 	VALUED* left;
 	VALUED* right;
-	OperatorType op;
+	BinaryOperatorType op;
 
-	TokenType getType()override {
-		return OPERATION;
+	StatementType getType()override {
+		return BI_OPERATION;
 	}
 
-	Operation(VALUED* left, OperatorType op, VALUED* right) {
+	BinaryOperation(VALUED* left, BinaryOperatorType op, VALUED* right) {
 		this->left = left;
 		this->right = right;
 		this->op = op;
@@ -221,7 +257,27 @@ struct Operation : VALUED {
 		cout << " " << (op) << " ";
 		right->print();
 	}
-};;
+};
+
+struct UnaryOperation : VALUED {
+
+	UnaryOperatorType op;
+	VALUED* right;
+
+	StatementType getType()override {
+		return UN_OPERATION;
+	}
+
+	UnaryOperation(UnaryOperatorType op, VALUED* right) {
+		this->right = right;
+		this->op = op;
+	}
+
+	void print()override {
+		cout << (op) << " ";
+		right->print();
+	}
+};
 
 
 Statement* parseStatement(vector<Token*> stack);

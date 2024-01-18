@@ -16,33 +16,17 @@ static vector<int> scopesStack;
 
 Token* Execute(Statement* line);
 
-Token* Operate(Token* left, Token* right, OperatorType op);
-	
+
 template<typename T>
-T* Operatee(T* left, T* right, OperatorType op) {
-	switch (op)
-	{
-	case PLUS:
-		return new T(left->value + right->value);
-	case MINUS:
-		return new T(left->value - right->value);
-	case MULTIPLY:
-		return new T(left->value * right->value);
-	case DIVIDE:
-		return new T(left->value / right->value);
-	}
-	cout << "Error: Unknown operator" << endl;
-}
+Token* Operate_Unary(T* right, UnaryOperatorType op);
+template<typename T>
+Token* Operate_Unary_Dec(T* right, UnaryOperatorType op);
+
+
+template<typename T>
+Token* Operate_Binary(T* left, T* right, BinaryOperatorType op);
+template<typename T>
+Token* Operate_Binary_Dec(T* left, T* right, BinaryOperatorType op);
 
 void StartScope();
 void EndScope();
-
-/*
-ii i
-if f
-id d
-ff f
-fd d
-dd d
-
-*/
