@@ -17,7 +17,7 @@ struct Statement {
 
 struct VALUED : Statement {};
 
-
+void deallocstmt(Statement* statement);
 
 
 
@@ -26,6 +26,13 @@ struct VALUED : Statement {};
 struct CodeBlock : Statement {
 	vector<Statement*> code; 
 
+	~CodeBlock() {
+		for (Statement* statement : code) {
+			deallocstmt(statement);
+		}
+		code.clear();
+		code.shrink_to_fit();
+	}
 	StatementType getType()override {
 		return SCOPE;
 	}
@@ -139,6 +146,13 @@ struct CallingFunc : VALUED
 		return CALL;
 	}
 
+	~CallingFunc(){
+		for (Statement* p : params)
+			deallocstmt(p);
+		params.clear();
+		params.shrink_to_fit();
+	}
+
 	CallingFunc(IdentifierToken val) : name(val) {}
 	CallingFunc(IdentifierToken val, vector<VALUED*> params) : name(val) {
 		this->params = params;
@@ -152,8 +166,6 @@ struct CallingFunc : VALUED
 		}
 		cout << ")" ;
 	}
-
-
 };
 
 
@@ -168,6 +180,10 @@ struct Definition : Statement {
 		return DEFINITION;
 	}
 
+	~Definition() {
+		deallocstmt(name);
+		deallocstmt(value);
+	}
 	Definition(Identifier* nam, VALUED* val) {
 		name = nam;
 		value = val;
@@ -189,6 +205,11 @@ struct Assignment : Statement {
 
 	StatementType getType()override {
 		return ASSIGNMENT;
+	}
+
+	~Assignment() {
+		deallocstmt(name);
+		deallocstmt(value);
 	}
 
 	Assignment(Identifier* nam, VALUED* val) {
@@ -214,6 +235,11 @@ struct WhileStatement : Statement {
 		return WHILE_STMT;
 	}
 
+	~WhileStatement() {
+		deallocstmt(condition);
+		deallocstmt(whileBlock);
+	}
+
 	WhileStatement(VALUED* con, Statement* whileb) {
 		condition = con;
 		whileBlock = whileb;
@@ -221,7 +247,7 @@ struct WhileStatement : Statement {
 
 	void print()override {
 		cout << "while ";
-		condition->print();
+		//condition->print();
 		cout << " :";
 		whileBlock->print();
 		cout << endl;
@@ -235,6 +261,11 @@ struct IfStatement : Statement {
 
 	StatementType getType()override {
 		return IF_STMT;
+	}
+
+	~IfStatement() {
+		deallocstmt(condition);
+		deallocstmt(ifBlock);
 	}
 
 	IfStatement(VALUED* con, Statement* ifb) {
@@ -258,6 +289,10 @@ struct ElseStatement : Statement {
 		return ELSE_STMT;
 	}
 
+	~ElseStatement() {
+		deallocstmt(elseBlock);
+	}
+
 	ElseStatement(Statement* elseb) {
 		elseBlock = elseb;
 	}
@@ -276,6 +311,10 @@ struct Parenthesis : VALUED {
 
 	StatementType getType()override {
 		return PARENTHESIS;
+	}
+
+	~Parenthesis() {
+		deallocstmt(value);
 	}
 
 	Parenthesis(VALUED* val) {
@@ -299,6 +338,11 @@ struct BinaryOperation : VALUED {
 		return BI_OPERATION;
 	}
 
+	~BinaryOperation() {
+		deallocstmt(left);
+		deallocstmt(right);
+	}
+
 	BinaryOperation(VALUED* left, BinaryOperatorType op, VALUED* right) {
 		this->left = left;
 		this->right = right;
@@ -319,6 +363,10 @@ struct UnaryOperation : VALUED {
 
 	StatementType getType()override {
 		return UN_OPERATION;
+	}
+
+	~UnaryOperation() {
+		deallocstmt(right);
 	}
 
 	UnaryOperation(UnaryOperatorType op, VALUED* right) {

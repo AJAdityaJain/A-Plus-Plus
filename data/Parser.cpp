@@ -1,6 +1,82 @@
 #include "Parser.h"
 
 
+void deallocstmt(Statement * statement){
+		switch (statement->getType())
+		{
+		case NONE_STMT: {
+			delete statement;
+			break;
+		}
+		case BIT_STMT: {
+			delete (Bit*)statement;
+			break;
+		}
+		case INT_STMT: {
+			delete (Int*)statement;
+			break;
+		}
+		case FLOAT_STMT: {
+			delete (Float*)statement;
+			break;
+		}
+		case DOUBLE_STMT: {
+			delete (Double*)statement;
+			break;
+		}
+		case STRING_STMT: {
+			delete (String*)statement;
+			break;
+		}
+		case ID_STMT: {
+			delete (Identifier*)statement;
+			break;
+		}
+		case CALL: {
+			delete (CallingFunc*)statement;
+			break;
+		}
+		case DEFINITION: {
+			delete (Definition*)statement;
+			break;
+		}
+		case ASSIGNMENT: {
+			delete (Assignment*)statement;
+			break;
+		}
+		case WHILE_STMT: {
+			delete (WhileStatement*)statement;
+			break;
+		}
+		case IF_STMT: {
+			delete (IfStatement*)statement;
+			break;
+		}
+		case ELSE_STMT: {
+			delete (ElseStatement*)statement;
+			break;
+		}
+		case BI_OPERATION: {
+			delete (BinaryOperation*)statement;
+			break;
+		}
+		case UN_OPERATION: {
+			delete (UnaryOperation*)statement;
+			break;
+		}
+		case SCOPE: {
+			delete (CodeBlock*)statement;
+			break;
+		}
+		case PARENTHESIS: {
+			delete (Parenthesis*)statement;
+			break;
+		}
+		default:
+			break;
+		}	
+}
+
 CodeBlock* parseTree(vector<Token*> tokens) {
 	return (CodeBlock*)parseStatement(tokens);
 }
@@ -44,14 +120,14 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	///Variable Definition
 	if (size >= 4 && st0 == LET && st1 == ID && stack[2]->getType() == ASSIGN) {
 		if (((AssignToken*)stack[2])->value == EQUALS) {
-			Definition* def = new Definition(
-				new Identifier(((IdentifierToken*)stack[1])->value),
-				(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
-			);
-			return def;
+			return new Definition(
+					new Identifier(((IdentifierToken*)stack[1])->value),
+					(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
+				);
 		}
 	}
 
+	///UNSAFE
 	///Calling
 	if (size >= 3 && st0 == ID && st1 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE){
 		vector<VALUED*> params;
@@ -83,31 +159,35 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
 		AssignmentType at = ((AssignToken*)stack[1])->value;
 		Identifier* id = new Identifier(((IdentifierToken*)stack[0])->value);
-		VALUED* Value = (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
+		VALUED* Value = nullptr;
 
 		switch (at) {
 		case PLUS_EQUAL:
-			Value = new BinaryOperation(id, PLUS, Value);
+			Value = new BinaryOperation(new Identifier(*id), PLUS, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MINUS_EQUAL:
-			Value = new BinaryOperation(id, MINUS, Value);
+			Value = new BinaryOperation(new Identifier(*id), MINUS, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MULTIPLY_EQUAL:
-			Value = new BinaryOperation(id, MULTIPLY, Value);
+			Value = new BinaryOperation(new Identifier(*id), MULTIPLY, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case DIVIDE_EQUAL:
-			Value = new BinaryOperation(id, DIVIDE, Value);
+			Value = new BinaryOperation(new Identifier(*id), DIVIDE, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MODULO_EQUAL:
-			Value = new BinaryOperation(id, MODULO, Value);
+			Value = new BinaryOperation(new Identifier(*id), MODULO, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case BITWISE_OR_EQUAL:
-			Value = new BinaryOperation(id, BITWISE_OR, Value);
+			Value = new BinaryOperation(new Identifier(*id), BITWISE_OR, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case BITWISE_AND_EQUAL:
-			Value = new BinaryOperation(id, BITWISE_AND, Value);
+			Value = new BinaryOperation(new Identifier(*id), BITWISE_AND, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			break;
+		default:
+			Value = (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
 			break;
 		}
+		
 
 		return new Assignment(id, Value);
 	}

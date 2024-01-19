@@ -1,4 +1,4 @@
-
 let i = 0;
-while i < 100000000:
+
+while true:
 	i+=1;

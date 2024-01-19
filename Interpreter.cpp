@@ -16,8 +16,10 @@ int main(int argc, char* argv[])
 		tempString.erase(find_if_not(tempString.rbegin(), tempString.rend(),[](char c) { return isspace(c); }).base(),tempString.end());
 		if(tempString.size() > 0)programString.push_back(tempString+";");
 	}
-
 	File.close();
+
+	tempString.clear();
+	tempString.shrink_to_fit();
 
 
 	///TOKENIZE
@@ -25,23 +27,23 @@ int main(int argc, char* argv[])
 	vector<Token*> tokens;
 	tokenize(programString, tokens);
 	programString.clear();
+	programString.shrink_to_fit();
 
-	//for (Token* t : tokens) {
-	//	printToken(t);
-	//}
-	
+
+
 	///PARSE
 	cout << "PARSING" << endl << endl;
 	CodeBlock* tree = parseTree(tokens);
+	for (Token* t : tokens) delete t;
 	tokens.clear();
+	tokens.shrink_to_fit();
 	
-	//tree->print();
-	 
 	 
 	///EXECUTE
 	cout << "EXECUTING" << endl << endl;
 	Execute(tree);
-
+	cin >> tempString;
+	delete tree;
 
 	return 0;
 }
