@@ -9,6 +9,9 @@ void EndScope() {
 		varsStack.pop_back();
 	}
 	scopesStack.pop_back();
+
+	varsStack.shrink_to_fit();
+	scopesStack.shrink_to_fit();
 }
 
 bool waitForElse = false;
@@ -20,7 +23,8 @@ Token* Execute(Statement* line) {
 		StartScope();
 
 		for (Statement* st : ((CodeBlock*)line)->code) {
-			Execute(st);
+			Token* t = Execute(st);
+			if (t != null) delete t;
 		}
 
 		for (int i = 0; i < scopesStack.back(); i++) {
@@ -58,31 +62,50 @@ Token* Execute(Statement* line) {
 		break;
 	}
 
-	case ID: {for (Variable v : varsStack) if (((Identifier*)line)->value.value == v.name) return v.value;break;}
-	case BIT: return &((Bit*)line)->value;
-	case INT: return &((Int*)line)->value;
-	case FLOAT: return &((Float*)line)->value;
-	case DOUBLE: return &((Double*)line)->value;
-	case STRING: return &((String*)line)->value;
+	case ID_STMT: {
+		for (Variable v : varsStack)
+			if (((Identifier*)line)->value.value == v.name)
+				switch (v.value->getType()) {
+				case BIT:
+					return new BitToken(*(BitToken*)v.value);
+				case INT:
+					return new IntToken(*(IntToken*)v.value);
+				case FLOAT:
+					return new FloatToken(*(FloatToken*)v.value);
+				case DOUBLE:
+					return new DoubleToken(*(DoubleToken*)v.value);
+				case STRING:
+					return new StringToken(*(StringToken*)v.value);
+				}
+		break;
+	}
+	case BIT_STMT: return new BitToken(((Bit*)line)->value);
+	case INT_STMT: return new IntToken(((Int*)line)->value);
+	case FLOAT_STMT: return new FloatToken(((Float*)line)->value);
+	case DOUBLE_STMT: return new DoubleToken(((Double*)line)->value);
+	case STRING_STMT: return new StringToken(((String*)line)->value);
 
 	case CALL: {
-		CallingFunc* cf = (CallingFunc*)line;
+
 
 	}
 	case DEFINITION: {
 		Definition* def = (Definition*)line;
-		Token* value = Execute(def->value);
-		varsStack.push_back(Variable(def->name->value.value, value));
+
+		varsStack.push_back(Variable(def->name->value.value, Execute(def->value)));
 		scopesStack.back()++;
+
 		return null;
 		break;
 	}
 
 	case ASSIGNMENT: {
 		Assignment* def = (Assignment*)line;
+		
 		Token* value = Execute(def->value);
 		for (Variable& v : varsStack)
 			if (def->name->value.value == v.name) {
+				delete v.value;
 				v.value = value;
 				return null;
 			}
@@ -92,8 +115,11 @@ Token* Execute(Statement* line) {
 	case ELSE_STMT: {
 		if (waitForElse) {
 			waitForElse = false;
-			Execute(((ElseStatement*)line)->elseBlock);
+			Token*t = Execute(((ElseStatement*)line)->elseBlock);
+			if (t != null)
+				delete t;
 		}
+
 		return null;
 		break;
 	}
@@ -101,9 +127,12 @@ Token* Execute(Statement* line) {
 	case WHILE_STMT: {
 		WhileStatement* whilest = (WhileStatement*)line;
 		Token* cond = Execute(whilest->condition);
+		
 		if (cond->getType() == BIT) {
 			while (((BitToken*)cond)->value) {
-				Execute(whilest->whileBlock);
+				Token* t = Execute(whilest->whileBlock);
+				if (t != null) delete t;
+				delete cond;
 				cond = Execute(whilest->condition);
 			}
 			waitForElse = true;
@@ -111,6 +140,8 @@ Token* Execute(Statement* line) {
 		else {
 			printf("\x1B[31m Not a boolean condition \033[0m\t\t\n");
 		}
+		delete cond;
+		return null;
 		break;
 	}
 				   
@@ -120,7 +151,8 @@ Token* Execute(Statement* line) {
 	
 		if (cond->getType() == BIT) {
 			if (((BitToken*)cond)->value) {
-				Execute(ifst->ifBlock);
+				Token *t =Execute(ifst->ifBlock);
+				if (t != null) delete t;
 			}
 			else {
 				waitForElse = true;
@@ -129,6 +161,7 @@ Token* Execute(Statement* line) {
 		else {
 			printf("\x1B[31m Not a boolean condition \033[0m\t\t\n");
 		}
+		delete cond;
 		return null;
 		break;
 	}
@@ -136,16 +169,28 @@ Token* Execute(Statement* line) {
 	case UN_OPERATION: {
 		UnaryOperation* oper = (UnaryOperation*)line;
 		Token* right = Execute(oper->right);
+		Token* res = null;
+
 		switch (right->getType()) {
-		case BIT:
-			return Operate_Unary<BitToken>((BitToken*)right, oper->op);
-		case INT:
-			return Operate_Unary<IntToken>((IntToken*)right, oper->op);
-		case FLOAT:
-			return Operate_Unary_Dec<FloatToken>((FloatToken*)right, oper->op);
-		case DOUBLE:
-			return Operate_Unary_Dec<DoubleToken>((DoubleToken*)right, oper->op);
+		case BIT: {
+			res = Operate_Unary<BitToken>((BitToken*)right, oper->op);
+			break;
 		}
+		case INT:
+			res = Operate_Unary<IntToken>((IntToken*)right, oper->op);
+			break;
+		case FLOAT:
+			res = Operate_Unary_Dec<FloatToken>((FloatToken*)right, oper->op);
+			break;
+		case DOUBLE:
+			res = Operate_Unary_Dec<DoubleToken>((DoubleToken*)right, oper->op);
+			break;
+		}
+
+		if(right != null)
+			delete right;
+
+		return res;
 		break;
 	}
 
@@ -153,6 +198,7 @@ Token* Execute(Statement* line) {
 		BinaryOperation* oper = (BinaryOperation*)line;
 		Token* left = Execute(oper->left);
 		Token* right = Execute(oper->right);
+		Token* res = null;
 
 		TokenType lt = left->getType();
 		TokenType rt = right->getType();
@@ -167,50 +213,58 @@ Token* Execute(Statement* line) {
 		}
 		if (lt <= rt) {
 			if (lt == BIT && rt == BIT) {
-				return Operate_Binary((BitToken*)left, (BitToken*)right, oper->op);
+				res = Operate_Binary((BitToken*)left, (BitToken*)right, oper->op);
 			}
 			if (lt == INT && rt == INT) {
-				return Operate_Binary<IntToken>((IntToken*)left, (IntToken*)right, oper->op);
+				res = Operate_Binary<IntToken>((IntToken*)left, (IntToken*)right, oper->op);
 			}
 			else if (lt == FLOAT && rt == FLOAT) {
-				return Operate_Binary_Dec<FloatToken>((FloatToken*)left, (FloatToken*)right, oper->op);
+				res = Operate_Binary_Dec<FloatToken>((FloatToken*)left, (FloatToken*)right, oper->op);
 			}
 			else if (lt == DOUBLE && rt == DOUBLE) {
-				return Operate_Binary_Dec<DoubleToken>((DoubleToken*)left, (DoubleToken*)right, oper->op);
+				res = Operate_Binary_Dec<DoubleToken>((DoubleToken*)left, (DoubleToken*)right, oper->op);
 			}
 			else if (lt == INT && rt == FLOAT) {
 				if (flip)
-					return Operate_Binary_Dec<FloatToken>((FloatToken*)right, new FloatToken(((IntToken*)left)->value), oper->op);
-				return Operate_Binary_Dec<FloatToken>(new FloatToken(((IntToken*)left)->value), (FloatToken*)right, oper->op);
+					res = Operate_Binary_Dec<FloatToken>((FloatToken*)right, new FloatToken(((IntToken*)left)->value), oper->op);
+				else
+					res = Operate_Binary_Dec<FloatToken>(new FloatToken(((IntToken*)left)->value), (FloatToken*)right, oper->op);
 			}
 			else if (lt == FLOAT && rt == DOUBLE) {
 				if (flip)
-					return Operate_Binary_Dec<DoubleToken>((DoubleToken*)right, new DoubleToken(((FloatToken*)left)->value), oper->op);
-				return Operate_Binary_Dec<DoubleToken>(new DoubleToken(((FloatToken*)left)->value), (DoubleToken*)right, oper->op);
+					res = Operate_Binary_Dec<DoubleToken>((DoubleToken*)right, new DoubleToken(((FloatToken*)left)->value), oper->op);
+				else
+					res = Operate_Binary_Dec<DoubleToken>(new DoubleToken(((FloatToken*)left)->value), (DoubleToken*)right, oper->op);
 			}
 			else if (lt == INT && rt == DOUBLE) {
 				if (flip)
-					return Operate_Binary_Dec<DoubleToken>((DoubleToken*)right, new DoubleToken(((IntToken*)left)->value), oper->op);
-				return Operate_Binary_Dec<DoubleToken>(new DoubleToken(((IntToken*)left)->value), (DoubleToken*)right, oper->op);
+					res = Operate_Binary_Dec<DoubleToken>((DoubleToken*)right, new DoubleToken(((IntToken*)left)->value), oper->op);
+				else
+					res = Operate_Binary_Dec<DoubleToken>(new DoubleToken(((IntToken*)left)->value), (DoubleToken*)right, oper->op);
 			}
 		}
 		else {
 			printf("\x1B[31m Faulty Operands \033[0m\t\t\n");
-			return null;
 		}
+
+
+		if (left != null)
+			delete left;
+		if (right != null)
+			delete right;
+
+		return res;
 		break;
 	}
 
 	case PARENTHESIS: {
-		Execute(((Parenthesis*)line)->value);
-		break;
-	}
-	default: {
-		printf("\x1B[31m Unexpected statement \033[0m\t\t\n");
+		return Execute(((Parenthesis*)line)->value);
 		break;
 	}
 	}
 
+	printf("\x1B[31m Unexpected statement \033[0m\t\t\n");
+	deallocstmt(line);
 	waitForElse = false;
 	return null;
 }

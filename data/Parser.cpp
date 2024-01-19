@@ -2,6 +2,8 @@
 
 
 void deallocstmt(Statement * statement){
+	cout << "Deallocation of " << statement << endl;
+	cout << statement->getType();
 		switch (statement->getType())
 		{
 		case NONE_STMT: {
@@ -122,7 +124,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		if (((AssignToken*)stack[2])->value == EQUALS) {
 			return new Definition(
 					new Identifier(((IdentifierToken*)stack[1])->value),
-					(VALUED*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
+					parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
 				);
 		}
 	}
@@ -130,7 +132,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	///UNSAFE
 	///Calling
 	if (size >= 3 && st0 == ID && st1 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE){
-		vector<VALUED*> params;
+		vector<Statement*> params;
 		vector<Token*> sub;
 		int depth = 0;
 
@@ -142,14 +144,14 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			if (t == PARENTHESIS_OPEN) depth++;
 			if (t == PARENTHESIS_CLOSE) depth--;
 			if (depth == 0 && t == COMMA) {
-				params.push_back((VALUED*)parseStatement(sub));
+				params.push_back(parseStatement(sub));
 				sub.clear();
 			}
 			else sub.push_back(stack[i]);
 
 		}
 		if(sub.size() >0)
-			params.push_back((VALUED*)parseStatement(sub));
+			params.push_back(parseStatement(sub));
 
 		return new CallingFunc(*(IdentifierToken*)stack[0],params);
 	}
@@ -159,32 +161,32 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
 		AssignmentType at = ((AssignToken*)stack[1])->value;
 		Identifier* id = new Identifier(((IdentifierToken*)stack[0])->value);
-		VALUED* Value = nullptr;
+		Statement* Value = nullptr;
 
 		switch (at) {
 		case PLUS_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), PLUS, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), PLUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MINUS_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), MINUS, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), MINUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MULTIPLY_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), MULTIPLY, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), MULTIPLY, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case DIVIDE_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), DIVIDE, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), DIVIDE, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MODULO_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), MODULO, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), MODULO, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case BITWISE_OR_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), BITWISE_OR, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), BITWISE_OR, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case BITWISE_AND_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), BITWISE_AND, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			Value = new BinaryOperation(new Identifier(*id), BITWISE_AND, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		default:
-			Value = (VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
+			Value = parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
 			break;
 		}
 		
@@ -202,13 +204,13 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 				case PARENTHESIS_CLOSE: depth--; break;
 				}
 				depth = abs(depth);
-				if (depth == 0) return new WhileStatement ((VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+				if (depth == 0) return new WhileStatement (parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
 
 			}
 		}
 		for (int i = 1; i < stack.size() - 1; i++)
 			if (stack[i]->getType() == COLON)
-				return new WhileStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+				return new WhileStatement(parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
 
 	}
 
@@ -222,14 +224,14 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 				case PARENTHESIS_CLOSE: depth--; break;
 				}
 				depth = abs(depth);
-				if (depth == 0) return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+				if (depth == 0) return new IfStatement(parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
 
 
 			}
 		}
 		for (int i = 1; i < stack.size() - 1; i++)
 			if (stack[i]->getType() == COLON)
-				return new IfStatement((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+				return new IfStatement(parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
 
 	}
 
@@ -249,7 +251,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			depth = abs(depth);
 		}
 		if (depth == 0)
-			return new Parenthesis((VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
+			return new Parenthesis(parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
 	}
 
 
@@ -286,12 +288,12 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 		if (bot != NONE_BI_OPERATOR) {
 				return new BinaryOperation(
-				(VALUED*)parseStatement(vector<Token*>(
+				parseStatement(vector<Token*>(
 					stack.begin(),
 					stack.begin() + tokenIdx
 				)),
 				bot,
-				(VALUED*)parseStatement(vector<Token*>(
+				parseStatement(vector<Token*>(
 					stack.begin() + tokenIdx + 1,
 					stack.end()
 				))
@@ -301,7 +303,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	///Unary Operation 
 	if (size >= 2 && st0 == OPERATOR) {
-		return new UnaryOperation(((OperatorToken*)stack[0])->uValue, (VALUED*)parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
+		return new UnaryOperation(((OperatorToken*)stack[0])->uValue, parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
 	}
 
 	return new Statement();

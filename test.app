@@ -1,4 +1,5 @@
 let i = 0;
 
-while true:
+while (i < 2140)
 	i+=1;
+

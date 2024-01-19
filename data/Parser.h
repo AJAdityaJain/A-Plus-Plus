@@ -15,7 +15,6 @@ struct Statement {
 
 };
 
-struct VALUED : Statement {};
 
 void deallocstmt(Statement* statement);
 
@@ -47,7 +46,7 @@ struct CodeBlock : Statement {
 
 
 
-struct Int : VALUED
+struct Int : Statement
 {
 	IntToken value;
 
@@ -59,7 +58,7 @@ struct Int : VALUED
 		cout << value.value;	
 	}
 };
-struct Float :VALUED
+struct Float :Statement
 {
 	FloatToken value;
 
@@ -73,7 +72,7 @@ struct Float :VALUED
 	}
 };
 
-struct Double : VALUED
+struct Double : Statement
 {
 	DoubleToken value;
 
@@ -87,7 +86,7 @@ struct Double : VALUED
 	}
 };
 
-struct Bit : VALUED
+struct Bit : Statement
 {
 	BitToken value;
 
@@ -103,7 +102,7 @@ struct Bit : VALUED
 
 
 
-struct String : VALUED
+struct String : Statement
 {
 
 	StringToken value;
@@ -120,7 +119,7 @@ struct String : VALUED
 
 
 
-struct Identifier : VALUED
+struct Identifier : Statement
 {
 
 	IdentifierToken value;
@@ -137,10 +136,10 @@ struct Identifier : VALUED
 
 };
 
-struct CallingFunc : VALUED
+struct CallingFunc : Statement
 {
 	IdentifierToken name;
-	vector<VALUED*> params;
+	vector<Statement*> params;
 
 	StatementType getType()override {
 		return CALL;
@@ -154,13 +153,13 @@ struct CallingFunc : VALUED
 	}
 
 	CallingFunc(IdentifierToken val) : name(val) {}
-	CallingFunc(IdentifierToken val, vector<VALUED*> params) : name(val) {
+	CallingFunc(IdentifierToken val, vector<Statement*> params) : name(val) {
 		this->params = params;
 	}
 
 	void print() {
 		cout << name.value << "(";
-		for (VALUED* v : params) {
+		for (Statement* v : params) {
 			v->print();
 			cout << " ";
 		}
@@ -174,7 +173,7 @@ struct CallingFunc : VALUED
 
 struct Definition : Statement {
 	Identifier* name;
-	VALUED* value;
+	Statement* value;
 
 	StatementType getType()override {
 		return DEFINITION;
@@ -184,7 +183,7 @@ struct Definition : Statement {
 		deallocstmt(name);
 		deallocstmt(value);
 	}
-	Definition(Identifier* nam, VALUED* val) {
+	Definition(Identifier* nam, Statement* val) {
 		name = nam;
 		value = val;
 	}
@@ -200,7 +199,7 @@ struct Definition : Statement {
 struct Assignment : Statement {
 	
 	Identifier* name;
-	VALUED* value;
+	Statement* value;
 
 
 	StatementType getType()override {
@@ -212,7 +211,7 @@ struct Assignment : Statement {
 		deallocstmt(value);
 	}
 
-	Assignment(Identifier* nam, VALUED* val) {
+	Assignment(Identifier* nam, Statement* val) {
 		name = nam;
 		value = val;
 	}
@@ -227,7 +226,7 @@ struct Assignment : Statement {
 };
 
 struct WhileStatement : Statement {
-	VALUED* condition;
+	Statement* condition;
 	Statement* whileBlock;
 
 
@@ -240,7 +239,7 @@ struct WhileStatement : Statement {
 		deallocstmt(whileBlock);
 	}
 
-	WhileStatement(VALUED* con, Statement* whileb) {
+	WhileStatement(Statement* con, Statement* whileb) {
 		condition = con;
 		whileBlock = whileb;
 	}
@@ -255,7 +254,7 @@ struct WhileStatement : Statement {
 };
 
 struct IfStatement : Statement {
-	VALUED* condition;
+	Statement* condition;
 	Statement* ifBlock;
 
 
@@ -268,7 +267,7 @@ struct IfStatement : Statement {
 		deallocstmt(ifBlock);
 	}
 
-	IfStatement(VALUED* con, Statement* ifb) {
+	IfStatement(Statement* con, Statement* ifb) {
 		condition = con;
 		ifBlock = ifb;
 	}
@@ -305,9 +304,9 @@ struct ElseStatement : Statement {
 };
 
 
-struct Parenthesis : VALUED {
+struct Parenthesis : Statement {
 	
-	VALUED* value;
+	Statement* value;
 
 	StatementType getType()override {
 		return PARENTHESIS;
@@ -317,7 +316,7 @@ struct Parenthesis : VALUED {
 		deallocstmt(value);
 	}
 
-	Parenthesis(VALUED* val) {
+	Parenthesis(Statement* val) {
 		value = val;
 	}
 
@@ -328,10 +327,10 @@ struct Parenthesis : VALUED {
 	}
 };
 
-struct BinaryOperation : VALUED {
+struct BinaryOperation : Statement {
 
-	VALUED* left;
-	VALUED* right;
+	Statement* left;
+	Statement* right;
 	BinaryOperatorType op;
 
 	StatementType getType()override {
@@ -343,7 +342,7 @@ struct BinaryOperation : VALUED {
 		deallocstmt(right);
 	}
 
-	BinaryOperation(VALUED* left, BinaryOperatorType op, VALUED* right) {
+	BinaryOperation(Statement* left, BinaryOperatorType op, Statement* right) {
 		this->left = left;
 		this->right = right;
 		this->op = op;
@@ -356,10 +355,10 @@ struct BinaryOperation : VALUED {
 	}
 };
 
-struct UnaryOperation : VALUED {
+struct UnaryOperation : Statement {
 
 	UnaryOperatorType op;
-	VALUED* right;
+	Statement* right;
 
 	StatementType getType()override {
 		return UN_OPERATION;
@@ -369,7 +368,7 @@ struct UnaryOperation : VALUED {
 		deallocstmt(right);
 	}
 
-	UnaryOperation(UnaryOperatorType op, VALUED* right) {
+	UnaryOperation(UnaryOperatorType op, Statement* right) {
 		this->right = right;
 		this->op = op;
 	}
