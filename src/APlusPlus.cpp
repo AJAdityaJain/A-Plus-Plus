@@ -1,4 +1,4 @@
-﻿#include "Interpreter.h"
+﻿#include "APlusPlus.h"
 
 
 int main(int argc, char* argv[])
@@ -9,7 +9,7 @@ int main(int argc, char* argv[])
 	///READ FILE
 	cout << "READING" << endl << endl;
 	vector<string> programString;
-	ifstream File("C:\\Users\\agnee\\Code\\C++Proj\\Interpreter\\test.app");
+	ifstream File("C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus\\test.app");
 	string tempString;
 	while (getline(File, tempString, ';')) {
 		tempString.erase(tempString.begin(),find_if_not(tempString.begin(), tempString.end(),[](char c) { return isspace(c); }));

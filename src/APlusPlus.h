@@ -5,7 +5,7 @@
 #include <fstream>
 #include <algorithm>
 
-#include "data/Evaluator.h"
+#include "Evaluator.h"
 
 
 // TODO: Reference additional headers your program requires here.

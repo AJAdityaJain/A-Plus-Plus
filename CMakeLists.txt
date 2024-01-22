@@ -9,13 +9,13 @@ if (POLICY CMP0141)
   set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<IF:$<AND:$<C_COMPILER_ID:MSVC>,$<CXX_COMPILER_ID:MSVC>>,$<$<CONFIG:Debug,RelWithDebInfo>:EditAndContinue>,$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>>")
 endif()
 
-project ("Interpreter")
+project ("APlusPlus")
 
 # Add source to this project's executable.
-add_executable (Interpreter "Interpreter.cpp" "Interpreter.h" "data/Lexer.h" "data/Lexer.cpp" "data/Parser.h" "data/Parser.cpp" "data/Evaluator.h" "data/Evaluator.cpp" "data/Enums.h")
+add_executable (APlusPlus "src/APlusPlus.cpp" "src/APlusPlus.h" "src/Lexer.h" "src/Lexer.cpp" "src/Parser.h" "src/Parser.cpp" "src/Evaluator.h" "src/Evaluator.cpp" "src/Enums.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Interpreter PROPERTY CXX_STANDARD 20)
+  set_property(TARGET APlusPlus PROPERTY CXX_STANDARD 20)
 endif()
 
 # TODO: Add tests and install targets if needed.

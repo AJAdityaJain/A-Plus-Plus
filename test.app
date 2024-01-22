@@ -5,5 +5,5 @@ func recurse(i){
 }
 
 func main(){
-	recurse(3044);
+	recurse(34);
 }
