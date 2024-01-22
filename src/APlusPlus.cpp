@@ -39,9 +39,6 @@ int main(int argc, char* argv[])
 	tokens.shrink_to_fit();
 	
 	//for(Statement* s : tree) s->print();
-	///EXECUTE
-	cout << "EXECUTING" << endl << endl;
-	ExecuteTree(tree);
 	
 	cout << "FREEING" << endl << endl;
 	for (Statement* s : tree) deallocstmt(s);
