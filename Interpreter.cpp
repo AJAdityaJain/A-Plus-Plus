@@ -33,17 +33,20 @@ int main(int argc, char* argv[])
 
 	///PARSE
 	cout << "PARSING" << endl << endl;
-	CodeBlock* tree = parseTree(tokens);
+	vector<Statement*> tree = parseStatements(tokens);
 	for (Token* t : tokens) delete t;
 	tokens.clear();
 	tokens.shrink_to_fit();
 	
-	 
+	//for(Statement* s : tree) s->print();
 	///EXECUTE
 	cout << "EXECUTING" << endl << endl;
-	Execute(tree);
+	ExecuteTree(tree);
+	
+	cout << "FREEING" << endl << endl;
+	for (Statement* s : tree) deallocstmt(s);
+
 	cin >> tempString;
-	delete tree;
 
 	return 0;
 }

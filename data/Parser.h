@@ -4,6 +4,10 @@
 
 using namespace std;
 
+struct Variable {
+	unsigned int name;
+	Token* value;
+};
 
 struct Statement {
 	virtual StatementType getType() {
@@ -14,6 +18,8 @@ struct Statement {
 	}
 
 };
+static Statement* nullstmt = new Statement();
+
 
 
 void deallocstmt(Statement* statement);
@@ -128,7 +134,7 @@ struct Identifier : Statement
 		return ID_STMT;
 	}
 
-	Identifier(IdentifierToken val) : value(val) {}
+	Identifier(IdentifierToken val = -1) : value(val) {}
 	void print() {
 		cout << value.value;
 	}
@@ -158,6 +164,7 @@ struct CallingFunc : Statement
 	}
 
 	void print() {
+
 		cout << name.value << "(";
 		for (Statement* v : params) {
 			v->print();
@@ -170,6 +177,64 @@ struct CallingFunc : Statement
 
 
 
+
+struct Func : Statement {
+	IdentifierToken name;
+	
+	vector<IdentifierToken> params;
+	
+	CodeBlock* body;
+
+
+
+
+	StatementType getType()override {
+		return FUNC_DEFINITION;
+	}
+
+	~Func () {
+
+		deallocstmt(body);
+	}
+	Func(IdentifierToken nam , vector<IdentifierToken> param, CodeBlock* val) : name(nam) {
+		params = param;
+		body = val;
+	}
+	
+	void print() override {
+		cout << "Defining func " << name.value;
+		cout << " as ";
+		body->print();
+		cout << endl;
+
+	}
+};
+
+struct FuncInstance {
+	Func* parent;
+	vector<Variable> varsStack;
+	vector<int> scopesStack;
+
+	~FuncInstance() {
+		for (Variable v : varsStack)
+			delete v.value;
+	}
+
+	void startScope() {
+		scopesStack.push_back(0);
+	}
+
+	void endScope() {
+		for (int i = 0; i < scopesStack.back(); i++) {
+			varsStack.pop_back();
+		}
+		scopesStack.pop_back();
+
+		varsStack.shrink_to_fit();
+		scopesStack.shrink_to_fit();
+	}
+
+};
 
 struct Definition : Statement {
 	Identifier* name;
@@ -187,7 +252,7 @@ struct Definition : Statement {
 		name = nam;
 		value = val;
 	}
-	
+
 	void print() override {
 		cout << "Defining " << name->value.value;
 		cout << " as ";
@@ -195,7 +260,6 @@ struct Definition : Statement {
 		cout << endl;
 	}
 };
-
 struct Assignment : Statement {
 	
 	Identifier* name;

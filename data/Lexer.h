@@ -4,113 +4,17 @@
 #include <vector>
 #include <iostream>
 #include <map>
+#include "Enums.h"
 
 using namespace std;
 
 
-enum TokenType {
-	NONE,
-
-	BIT,
-	INT,
-	FLOAT,
-	DOUBLE,
-	STRING,
-
-	ID,
-
-	LET,
-	IF,
-	ELSE,
-	WHILE,
-	RETURN,
-
-	BRACKET_OPEN,
-	BRACKET_CLOSE,
-	PARENTHESIS_OPEN,
-	PARENTHESIS_CLOSE,
-	CURLY_OPEN,
-	CURLY_CLOSE,
-	
-	LINE_END,
-	COMMA,
-	COLON,
-	ASSIGN,
-	OPERATOR,
-
-};
-
-enum StatementType {
-	NONE_STMT,
-	BIT_STMT,
-	INT_STMT,
-	FLOAT_STMT,
-	DOUBLE_STMT,
-	STRING_STMT,
-	ID_STMT,
-
-	CALL,
-	DEFINITION,
-	ASSIGNMENT,
-	WHILE_STMT,
-	IF_STMT,
-	ELSE_STMT,
-	BI_OPERATION,
-	UN_OPERATION,
-	SCOPE,
-	PARENTHESIS,
-};
-
-enum AssignmentType {
-	NONE_ASSIGN,
-	EQUALS,
-	PLUS_EQUAL,
-	MINUS_EQUAL,
-	MULTIPLY_EQUAL,
-	DIVIDE_EQUAL,
-
-	MODULO_EQUAL,
-	BITWISE_OR_EQUAL,
-	BITWISE_AND_EQUAL,
-
-};
-
-enum UnaryOperatorType {
-	NONE_UN_OPERATOR,
-	NOT,
-	BITWISE_NOT,
-	POSITIVE,
-	NEGATIVE,
-};
-
-enum BinaryOperatorType {
-	NONE_BI_OPERATOR,
-
-	OR,
-	AND,
-	BITWISE_OR,
-	XOR,
-	BITWISE_AND,
-
-	COMPARISON,
-	NOT_EQUAL,
-
-	GREATER_THAN,
-	SMALLER_THAN,
-	GREATER_THAN_EQUAL,
-	SMALLER_THAN_EQUAL,
-
-	PLUS,
-	MINUS,
-
-	MULTIPLY,
-	DIVIDE,
-	MODULO,
-};
-
 struct Token {
 	virtual TokenType getType() {
 		return NONE;
+	}
+	virtual void print(){
+		cout << "..." << endl;
 	}
 	Token() {}
 };
@@ -170,7 +74,9 @@ struct StringToken : Token {
 	TokenType getType()override {
 		return STRING;
 	}
-
+	void print() override {
+		cout << value << endl;
+	}
 	StringToken(string value){
 		this->value = value;
 	}
@@ -180,6 +86,12 @@ struct BitToken : Token {
 
 	TokenType getType()override {
 		return BIT;
+	}
+	void print() override {
+		if(value)
+			cout << "True" << endl;
+		else
+			cout << "False" << endl;
 	}
 
 	BitToken(bool value){
@@ -193,6 +105,9 @@ struct IntToken : Token {
 	TokenType getType()override {
 		return INT;
 	}
+	void print() override {
+		cout << value << endl;
+	}
 
 	IntToken(int value){
 		this->value = value;
@@ -203,6 +118,9 @@ struct FloatToken : Token {
 
 	TokenType getType()override {
 		return FLOAT;
+	}
+	void print() override {
+		cout << value << endl;
 	}
 
 	FloatToken(float value){
@@ -215,6 +133,9 @@ struct DoubleToken : Token {
 
 	TokenType getType()override {
 		return DOUBLE;
+	}
+	void print() override {
+		cout << value << endl;
 	}
 
 	DoubleToken(double value){

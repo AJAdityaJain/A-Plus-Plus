@@ -12,7 +12,7 @@ endif()
 project ("Interpreter")
 
 # Add source to this project's executable.
-add_executable (Interpreter "Interpreter.cpp" "Interpreter.h" "data/Lexer.h" "data/Lexer.cpp" "data/Parser.h" "data/Parser.cpp" "data/Evaluator.h" "data/Evaluator.cpp")
+add_executable (Interpreter "Interpreter.cpp" "Interpreter.h" "data/Lexer.h" "data/Lexer.cpp" "data/Parser.h" "data/Parser.cpp" "data/Evaluator.h" "data/Evaluator.cpp" "data/Enums.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Interpreter PROPERTY CXX_STANDARD 20)

@@ -3,15 +3,19 @@
 void tokenize(vector<string> lines, vector<Token*>& tokens )
 {
 	map<string, unsigned int> idMap;
+	string tempString;
+
 	unsigned int idx = 0;
 
-	tokens.push_back(new KeyWordToken{ CURLY_OPEN});
-	string tempString;
 	bool cont = false;
 
 	char strStart = ' ';
 	bool inStr = false;
+
 	bool inLiteral = false;
+
+	idMap.insert({ "main", idx++ });
+	idMap.insert({ "print", idx++ });
 
 	for (string line : lines) {
 		for (int i = 0; i < line.size(); i++) {
@@ -28,7 +32,7 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 			else if (inStr && c == strStart) {
 				inStr = false;
 				strStart = ' ';
-				tokens.push_back(new StringToken{ tempString });
+				tokens.push_back(new StringToken{ tempString.substr(1,tempString.length()-2)});
 				tempString = "";
 				continue;
 			}
@@ -119,13 +123,14 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					i--;
 
 						 if(sub.compare("let") == 0)		tokens.push_back(new KeyWordToken{ LET });
-						 else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
-						 else if (sub.compare("else") == 0) tokens.push_back(new KeyWordToken{ ELSE });
+					else if (sub.compare("func") == 0)		tokens.push_back(new KeyWordToken{ FUNC});
+					else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
+					else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE });
 					else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE });
+					else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN });
 					else if (sub.compare("and") == 0)		tokens.push_back(new OperatorToken{ AND });
 					else if (sub.compare("or") == 0)		tokens.push_back(new OperatorToken{ OR });
 					else if (sub.compare("xor") == 0)		tokens.push_back(new OperatorToken{ XOR});
-					else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN });
 					else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true });
 					else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false });
 
@@ -156,17 +161,11 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 						else if (typ == 3)tokens.push_back(new DoubleToken{ stod(sub) });
 
 					}
-
 					tempString = "";
 				}
 			}
-
 		}
-
 	}
-
-	tokens.push_back(new KeyWordToken{ CURLY_CLOSE});
-
 }
 
 void printToken(Token* t) {

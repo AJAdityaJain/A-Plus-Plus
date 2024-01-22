@@ -3,17 +3,11 @@
 #include "Parser.h"
 
 
-struct Variable {
-	unsigned int name;
-	Token* value;
-};
-
-static vector<Variable> varsStack ;
-static vector<int> scopesStack;
+static vector<Func*> funcStack;
 
 
-
-Token* Execute(Statement* line);
+void ExecuteTree(vector<Statement*> tree);
+Token* Execute(Statement* line, FuncInstance* parentFunc);
 
 
 template<typename T>
@@ -27,5 +21,3 @@ Token* Operate_Binary(T* left, T* right, BinaryOperatorType op);
 template<typename T>
 Token* Operate_Binary_Dec(T* left, T* right, BinaryOperatorType op);
 
-void StartScope();
-void EndScope();

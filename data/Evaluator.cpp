@@ -1,55 +1,50 @@
 #include "Evaluator.h"
 
-void StartScope() {
-	scopesStack.push_back(0);
-}
-
-void EndScope() {
-	for (int i = 0; i < scopesStack.back(); i++) {
-		varsStack.pop_back();
-	}
-	scopesStack.pop_back();
-
-	varsStack.shrink_to_fit();
-	scopesStack.shrink_to_fit();
-}
-
 bool waitForElse = false;
 
-Token* Execute(Statement* line) {
+void ExecuteTree(vector<Statement*> tree) {
+	for (Statement* s : tree) {
+		Token* t = Execute(s, nullptr);
+		if (t != null) delete t;
+	}
+
+	Execute(new CallingFunc(MAIN, vector<Statement*>()), nullptr);
+}
+
+Token* Execute(Statement* line, FuncInstance* pf) {
 	
 	switch (line->getType()) {
 	case SCOPE: {
-		StartScope();
+		pf->startScope();
 
 		for (Statement* st : ((CodeBlock*)line)->code) {
-			Token* t = Execute(st);
+			Token* t = Execute(st, pf);
 			if (t != null) delete t;
 		}
 
-		for (int i = 0; i < scopesStack.back(); i++) {
-			TokenType t = varsStack[i].value->getType();
+		for (int i = 0; i < pf->scopesStack.back(); i++) {
+			TokenType t = pf->varsStack[i].value->getType();
 
-			cout << varsStack[i].name << " = ";
+			cout << pf->varsStack[i].name << " = ";
 			switch (t) {
 			case BIT: {
-				cout << ((BitToken*)varsStack[i].value)->value;
+				cout << ((BitToken*)pf->varsStack[i].value)->value;
 				break;
 			}
 			case INT: {
-				cout << ((IntToken*)varsStack[i].value)->value;
+				cout << ((IntToken*)pf->varsStack[i].value)->value;
 				break;
 			}
 			case FLOAT: {
-				cout << ((FloatToken*)varsStack[i].value)->value;
+				cout << ((FloatToken*)pf->varsStack[i].value)->value;
 				break;
 			}
 			case DOUBLE: {
-				cout << ((DoubleToken*)varsStack[i].value)->value;
+				cout << ((DoubleToken*)pf->varsStack[i].value)->value;
 				break;
 			}
 			case STRING: {
-				cout << ((StringToken*)varsStack[i].value)->value;
+				cout << ((StringToken*)pf->varsStack[i].value)->value;
 				break;
 			}
 
@@ -57,13 +52,13 @@ Token* Execute(Statement* line) {
 			cout << endl;
 		}
 
-		EndScope();
+		pf->endScope();
 		return null;
 		break;
 	}
 
 	case ID_STMT: {
-		for (Variable v : varsStack)
+		for (Variable v : pf->varsStack)
 			if (((Identifier*)line)->value.value == v.name)
 				switch (v.value->getType()) {
 				case BIT:
@@ -86,14 +81,46 @@ Token* Execute(Statement* line) {
 	case STRING_STMT: return new StringToken(((String*)line)->value);
 
 	case CALL: {
+		CallingFunc* call = (CallingFunc*)line;
 
+		switch (call->name.value) {
+		case PRINT: {
+			Execute(call->params[0], pf)->print();
+			return null;
+		}
+		}
 
+		for (Func* fn : funcStack) {
+			if (fn->name.value == call->name.value) {
+				FuncInstance* fi = new FuncInstance();
+				fi->parent = fn;
+
+				fi->startScope();
+				for (size_t i = 0; i < fn->params.size(); i++)
+				{
+					Token* ff = Execute(call->params[i], pf);
+					fi->varsStack.push_back(Variable({fn->params[i].value,ff}));
+					fi->scopesStack.back()++;
+				}
+
+				Execute(fi->parent->body,fi);
+				fi->endScope();
+				return null;
+			}
+		}
+		break;
+	}
+
+	case FUNC_DEFINITION: {
+		funcStack.push_back((Func*)line);
+		return null;
+		break;
 	}
 	case DEFINITION: {
 		Definition* def = (Definition*)line;
 
-		varsStack.push_back(Variable(def->name->value.value, Execute(def->value)));
-		scopesStack.back()++;
+		pf->varsStack.push_back(Variable(def->name->value.value, Execute(def->value, pf)));
+		pf->scopesStack.back()++;
 
 		return null;
 		break;
@@ -101,9 +128,9 @@ Token* Execute(Statement* line) {
 
 	case ASSIGNMENT: {
 		Assignment* def = (Assignment*)line;
-		
-		Token* value = Execute(def->value);
-		for (Variable& v : varsStack)
+
+		Token* value = Execute(def->value, pf);
+		for (Variable& v : pf->varsStack)
 			if (def->name->value.value == v.name) {
 				delete v.value;
 				v.value = value;
@@ -115,7 +142,7 @@ Token* Execute(Statement* line) {
 	case ELSE_STMT: {
 		if (waitForElse) {
 			waitForElse = false;
-			Token*t = Execute(((ElseStatement*)line)->elseBlock);
+			Token* t = Execute(((ElseStatement*)line)->elseBlock, pf);
 			if (t != null)
 				delete t;
 		}
@@ -126,14 +153,14 @@ Token* Execute(Statement* line) {
 
 	case WHILE_STMT: {
 		WhileStatement* whilest = (WhileStatement*)line;
-		Token* cond = Execute(whilest->condition);
-		
+		Token* cond = Execute(whilest->condition, pf);
+
 		if (cond->getType() == BIT) {
 			while (((BitToken*)cond)->value) {
-				Token* t = Execute(whilest->whileBlock);
+				Token* t = Execute(whilest->whileBlock, pf);
 				if (t != null) delete t;
 				delete cond;
-				cond = Execute(whilest->condition);
+				cond = Execute(whilest->condition, pf);
 			}
 			waitForElse = true;
 		}
@@ -144,14 +171,14 @@ Token* Execute(Statement* line) {
 		return null;
 		break;
 	}
-				   
+
 	case IF_STMT: {
 		IfStatement* ifst = (IfStatement*)line;
-		Token* cond = Execute(ifst->condition);
-	
+		Token* cond = Execute(ifst->condition, pf);
+
 		if (cond->getType() == BIT) {
 			if (((BitToken*)cond)->value) {
-				Token *t =Execute(ifst->ifBlock);
+				Token* t = Execute(ifst->ifBlock, pf);
 				if (t != null) delete t;
 			}
 			else {
@@ -168,7 +195,7 @@ Token* Execute(Statement* line) {
 
 	case UN_OPERATION: {
 		UnaryOperation* oper = (UnaryOperation*)line;
-		Token* right = Execute(oper->right);
+		Token* right = Execute(oper->right, pf);
 		Token* res = null;
 
 		switch (right->getType()) {
@@ -187,7 +214,7 @@ Token* Execute(Statement* line) {
 			break;
 		}
 
-		if(right != null)
+		if (right != null)
 			delete right;
 
 		return res;
@@ -196,8 +223,8 @@ Token* Execute(Statement* line) {
 
 	case BI_OPERATION: {
 		BinaryOperation* oper = (BinaryOperation*)line;
-		Token* left = Execute(oper->left);
-		Token* right = Execute(oper->right);
+		Token* left = Execute(oper->left, pf);
+		Token* right = Execute(oper->right, pf);
 		Token* res = null;
 
 		TokenType lt = left->getType();
@@ -258,7 +285,7 @@ Token* Execute(Statement* line) {
 	}
 
 	case PARENTHESIS: {
-		return Execute(((Parenthesis*)line)->value);
+		return Execute(((Parenthesis*)line)->value, pf);
 		break;
 	}
 	}

@@ -2,9 +2,8 @@
 
 
 void deallocstmt(Statement * statement){
-	cout << "Deallocation of " << statement << endl;
-	cout << statement->getType();
-		switch (statement->getType())
+	cout << "Deallocating "<< statement->getType()  <<" at " << statement << endl;
+	switch (statement->getType())
 		{
 		case NONE_STMT: {
 			delete statement;
@@ -36,6 +35,10 @@ void deallocstmt(Statement * statement){
 		}
 		case CALL: {
 			delete (CallingFunc*)statement;
+			break;
+		}
+		case FUNC_DEFINITION: {
+			delete (Func*)statement;
 			break;
 		}
 		case DEFINITION: {
@@ -91,7 +94,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	size_t size = stack.size();
 
 	if (size == 0)
-		return new Statement();
+		return nullstmt;
 
 	TokenType st0 = stack[0]->getType();
 	TokenType stb = stack.back()->getType();
@@ -119,6 +122,30 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		return block;
 	}
 
+	///Func Definition
+	if (st0 == FUNC && st1 == ID) {
+		vector<IdentifierToken> params;
+
+		int bi = -1;
+		int depth = 0;
+		for (int i = 2; i < stack.size(); i++) {
+			TokenType t = stack[i]->getType();
+			if (t == PARENTHESIS_OPEN) depth++;
+			if (t == PARENTHESIS_CLOSE) depth--;
+			if (depth == 1 && t == ID && bi == -1) {
+				params.push_back(*(IdentifierToken*)stack[i]);
+			} 
+
+			if (depth == 0 && t == CURLY_OPEN) {
+				bi = i;
+			}
+		}
+
+		CodeBlock* body = (CodeBlock*)parseStatement(vector<Token*>(stack.begin() + bi, stack.end()));
+		return new Func(*(IdentifierToken*)stack[1], params, body);
+		
+	}
+
 	///Variable Definition
 	if (size >= 4 && st0 == LET && st1 == ID && stack[2]->getType() == ASSIGN) {
 		if (((AssignToken*)stack[2])->value == EQUALS) {
@@ -129,7 +156,6 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		}
 	}
 
-	///UNSAFE
 	///Calling
 	if (size >= 3 && st0 == ID && st1 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE){
 		vector<Statement*> params;
@@ -306,7 +332,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		return new UnaryOperation(((OperatorToken*)stack[0])->uValue, parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
 	}
 
-	return new Statement();
+	return nullstmt;
 }
 
 vector<Statement*> parseStatements(vector<Token*> stack) {
