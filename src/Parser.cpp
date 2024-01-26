@@ -150,7 +150,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	if (size >= 4 && st0 == LET && st1 == ID && stack[2]->getType() == ASSIGN) {
 		if (((AssignToken*)stack[2])->value == EQUALS) {
 			return new Definition(
-					new Identifier(((IdentifierToken*)stack[1])->value),
+					*(IdentifierToken*)stack[1],
 					parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
 				);
 		}

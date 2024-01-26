@@ -5,8 +5,9 @@
 using namespace std;
 
 struct Variable {
-	unsigned int name;
-	Token* value;
+	unsigned int id;
+	unsigned int off;
+	unsigned int size;
 };
 
 struct Statement {
@@ -186,6 +187,10 @@ struct Func : Statement {
 	CodeBlock* body;
 
 
+	vector<Variable> varsStack;
+	
+	vector<int> scopesStack;
+
 
 
 	StatementType getType()override {
@@ -210,34 +215,9 @@ struct Func : Statement {
 	}
 };
 
-struct FuncInstance {
-	Func* parent;
-	vector<Variable> varsStack;
-	vector<int> scopesStack;
-
-	~FuncInstance() {
-		for (Variable v : varsStack)
-			delete v.value;
-	}
-
-	void startScope() {
-		scopesStack.push_back(0);
-	}
-
-	void endScope() {
-		for (int i = 0; i < scopesStack.back(); i++) {
-			varsStack.pop_back();
-		}
-		scopesStack.pop_back();
-
-		varsStack.shrink_to_fit();
-		scopesStack.shrink_to_fit();
-	}
-
-};
 
 struct Definition : Statement {
-	Identifier* name;
+	IdentifierToken name;
 	Statement* value;
 
 	StatementType getType()override {
@@ -245,16 +225,15 @@ struct Definition : Statement {
 	}
 
 	~Definition() {
-		deallocstmt(name);
+
 		deallocstmt(value);
 	}
-	Definition(Identifier* nam, Statement* val) {
-		name = nam;
+	Definition(IdentifierToken nam = -1, Statement* val = nullptr) : name(nam){
 		value = val;
 	}
 
 	void print() override {
-		cout << "Defining " << name->value.value;
+		cout << "Defining " << name.value;
 		cout << " as ";
 		value->print();
 		cout << endl;

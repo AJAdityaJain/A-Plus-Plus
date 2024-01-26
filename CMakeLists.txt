@@ -12,7 +12,7 @@ endif()
 project ("APlusPlus")
 
 # Add source to this project's executable.
-add_executable (APlusPlus "src/APlusPlus.cpp" "src/APlusPlus.h" "src/Lexer.h" "src/Lexer.cpp" "src/Parser.h" "src/Parser.cpp"   "src/Enums.h")
+add_executable (APlusPlus "src/APlusPlus.cpp" "src/APlusPlus.h" "src/Lexer.h" "src/Lexer.cpp" "src/Parser.h" "src/Parser.cpp"   "src/Enums.h" "src/Compiler.cpp" "src/Compiler.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET APlusPlus PROPERTY CXX_STANDARD 20)

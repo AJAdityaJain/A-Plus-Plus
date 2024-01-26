@@ -2,10 +2,9 @@
 // or project specific include files.
 
 #pragma once
-#include <fstream>
 #include <algorithm>
 
-#include "Parser.h"
+#include "Compiler.h"
 
 
 // TODO: Reference additional headers your program requires here.

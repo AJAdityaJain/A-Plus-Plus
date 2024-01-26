@@ -39,11 +39,16 @@ int main(int argc, char* argv[])
 	tokens.shrink_to_fit();
 	
 	//for(Statement* s : tree) s->print();
+
+	cout << "COMPILING" << endl << endl;
 	
+	Compiler compiler = Compiler();
+	compiler.compile(tree,"C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus");
+
+
 	cout << "FREEING" << endl << endl;
 	for (Statement* s : tree) deallocstmt(s);
 
-	cin >> tempString;
 
 	return 0;
 }

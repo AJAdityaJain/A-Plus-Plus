@@ -1,9 +1,7 @@
-func recurse(i){
-	print(i);
-	if(i > 0)
-		recurse(i-1);
-}
 
 func main(){
-	recurse(34);
+	let a = 12;
+	let b = 0;
+	let c = a;
+	c = b;
 }
