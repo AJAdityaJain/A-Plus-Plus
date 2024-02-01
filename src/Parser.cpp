@@ -2,7 +2,7 @@
 
 
 void deallocstmt(Statement * statement){
-	cout << "Deallocating "<< statement->getType()  <<" at " << statement << endl;
+	//cout << "Deallocating "<< statement->getType()  <<" at " << statement << endl;
 	switch (statement->getType())
 		{
 		case NONE_STMT: {
@@ -61,8 +61,8 @@ void deallocstmt(Statement * statement){
 			delete (ElseStatement*)statement;
 			break;
 		}
-		case BI_OPERATION: {
-			delete (BinaryOperation*)statement;
+		case MULTI_OPERATION: {
+			delete (MultipleOperation*)statement;
 			break;
 		}
 		case UN_OPERATION: {
@@ -71,10 +71,6 @@ void deallocstmt(Statement * statement){
 		}
 		case SCOPE: {
 			delete (CodeBlock*)statement;
-			break;
-		}
-		case PARENTHESIS: {
-			delete (Parenthesis*)statement;
 			break;
 		}
 		default:
@@ -191,25 +187,25 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 		switch (at) {
 		case PLUS_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), PLUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), PLUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MINUS_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), MINUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), MINUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MULTIPLY_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), MULTIPLY, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), MULTIPLY, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case DIVIDE_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), DIVIDE, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), DIVIDE, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case MODULO_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), MODULO, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), MODULO, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case BITWISE_OR_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), BITWISE_OR, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), BITWISE_OR, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		case BITWISE_AND_EQUAL:
-			Value = new BinaryOperation(new Identifier(*id), BITWISE_AND, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			//Value = new BinaryOperation(new Identifier(*id), BITWISE_AND, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			break;
 		default:
 			Value = parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
@@ -277,7 +273,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			depth = abs(depth);
 		}
 		if (depth == 0)
-			return new Parenthesis(parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
+			return parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1));
 	}
 
 
@@ -285,8 +281,8 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	if (size >= 3) {
 		int i = 0;
 		int depth = 0;
-		int tokenIdx = 0;
-		BinaryOperatorType bot = NONE_BI_OPERATOR;
+		vector<int> tokenIdx;
+		MultipleOperatorType bot = NONE_BI_OPERATOR;
 
 		for (Token* t : stack) {
 			switch (t->getType())
@@ -295,16 +291,10 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			case PARENTHESIS_CLOSE: depth--; break;
 			case OPERATOR: {
 				if (i != 0 && depth == 0) {
-					BinaryOperatorType tt = ((OperatorToken*)t)->biValue;
-					if (bot == NONE_BI_OPERATOR) {
+					MultipleOperatorType tt = ((OperatorToken*)t)->biValue;
+					if (bot == NONE_BI_OPERATOR || tt < bot) {
 						bot = tt;
-						tokenIdx = i;
 					}
-					else if (tt < bot) {
-						bot = tt;
-						tokenIdx = i;
-					}
-
 				}
 				break;
 			}
@@ -312,18 +302,47 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			i++;
 		}
 
+		i = 0;
+		for (Token* t : stack) {
+			switch (t->getType())
+			{
+			case PARENTHESIS_OPEN: depth++; break;
+			case PARENTHESIS_CLOSE: depth--; break;
+			case OPERATOR: {
+				if (i != 0 && depth == 0) {
+					if (((OperatorToken*)t)->biValue == bot) {
+						tokenIdx.push_back(i);
+					}
+				}
+				break;
+			}
+			}
+			i++;
+		}
+
+
 		if (bot != NONE_BI_OPERATOR) {
-				return new BinaryOperation(
-				parseStatement(vector<Token*>(
-					stack.begin(),
-					stack.begin() + tokenIdx
-				)),
-				bot,
-				parseStatement(vector<Token*>(
-					stack.begin() + tokenIdx + 1,
-					stack.end()
-				))
-			);
+			vector<Statement*> operands;
+			operands.push_back(parseStatement(vector<Token*>(
+				stack.begin(),
+				stack.begin() + tokenIdx[0]
+			)));
+
+			for (size_t j = 0; j < tokenIdx.size()-1; j++)
+			{
+
+				operands.push_back(parseStatement(vector<Token*>(
+					stack.begin() + tokenIdx[j] + 1,
+					stack.begin() + tokenIdx[j+1]
+				)));
+			}
+
+			operands.push_back(parseStatement(vector<Token*>(
+				stack.begin() + tokenIdx.back()+1,
+				stack.end()
+			)));
+
+			return new MultipleOperation(bot, operands);
 		}
 	}
 

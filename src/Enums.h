@@ -47,10 +47,9 @@ enum StatementType {
 	WHILE_STMT,
 	IF_STMT,
 	ELSE_STMT,
-	BI_OPERATION,
+	MULTI_OPERATION,
 	UN_OPERATION,
 	SCOPE,
-	PARENTHESIS,
 };
 
 enum AssignmentType {
@@ -75,7 +74,7 @@ enum UnaryOperatorType {
 	NEGATIVE,
 };
 
-enum BinaryOperatorType {
+enum MultipleOperatorType {
 	NONE_BI_OPERATOR,
 
 	OR,

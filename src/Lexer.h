@@ -34,18 +34,18 @@ struct AssignToken : Token {
 };
 
 struct OperatorToken : Token {
-	BinaryOperatorType biValue;
+	MultipleOperatorType biValue;
 	UnaryOperatorType uValue;
 
 	TokenType getType()override {
 		return OPERATOR;
 	}
 
-	OperatorToken(UnaryOperatorType u, BinaryOperatorType bi) {
+	OperatorToken(UnaryOperatorType u, MultipleOperatorType bi) {
 		uValue = u;
 		biValue = bi;
 	}
-	OperatorToken(BinaryOperatorType value) {
+	OperatorToken(MultipleOperatorType value) {
 		biValue = value;
 		uValue = NONE_UN_OPERATOR;
 	}

@@ -1,7 +1,8 @@
 
 func main(){
-	let a = 12;
-	let b = 0;
-	let c = a;
-	c = b;
+	let a = 0;
+
+
+	a = 1+2+3+(4+5+6);
+
 }

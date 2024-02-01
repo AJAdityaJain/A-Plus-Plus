@@ -347,54 +347,40 @@ struct ElseStatement : Statement {
 };
 
 
-struct Parenthesis : Statement {
-	
-	Statement* value;
+
+struct MultipleOperation : Statement {
+
+	vector<Statement*> operands;
+	//Statement* right;
+	MultipleOperatorType op;
 
 	StatementType getType()override {
-		return PARENTHESIS;
+		return MULTI_OPERATION;
 	}
 
-	~Parenthesis() {
-		deallocstmt(value);
+	~MultipleOperation() {
+		for (Statement* operand :operands)
+		{
+			deallocstmt(operand);
+
+		}
+		operands.clear();
+		operands.shrink_to_fit();
 	}
 
-	Parenthesis(Statement* val) {
-		value = val;
-	}
-
-	void print()override {
-		cout << "(";
-		value->print();
-		cout << ")";
-	}
-};
-
-struct BinaryOperation : Statement {
-
-	Statement* left;
-	Statement* right;
-	BinaryOperatorType op;
-
-	StatementType getType()override {
-		return BI_OPERATION;
-	}
-
-	~BinaryOperation() {
-		deallocstmt(left);
-		deallocstmt(right);
-	}
-
-	BinaryOperation(Statement* left, BinaryOperatorType op, Statement* right) {
-		this->left = left;
-		this->right = right;
+	MultipleOperation(MultipleOperatorType op, vector<Statement*> operands) {
+		this->operands = operands;
 		this->op = op;
 	}
 
 	void print()override {
-		left->print();
-		cout << " " << (op) << " ";
-		right->print();
+		cout << "(";
+		for (Statement* operand : operands)
+		{
+			cout << " " << (op) << " ";
+			operand->print();
+		}
+		cout << ")";
 	}
 };
 
