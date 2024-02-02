@@ -1,4 +1,4 @@
-﻿#include "APlusPlus.h"
+﻿#include "Compiler.h"
 
 
 int main(int argc, char* argv[])
@@ -12,20 +12,21 @@ int main(int argc, char* argv[])
 	ifstream File("C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus\\test.app");
 	string tempString;
 	while (getline(File, tempString, ';')) {
-		tempString.erase(tempString.begin(),find_if_not(tempString.begin(), tempString.end(),[](char c) { return isspace(c); }));
-		tempString.erase(find_if_not(tempString.rbegin(), tempString.rend(),[](char c) { return isspace(c); }).base(),tempString.end());
-		if(tempString.size() > 0)programString.push_back(tempString+";");
+		//tempString.erase(tempString.begin(),find_if_not(tempString.begin(), tempString.end(),[](char c) { return isspace(c); }));
+		//tempString.erase(find_if_not(tempString.rbegin(), tempString.rend(),[](char c) { return isspace(c); }).base(),tempString.end());
+		programString.push_back(tempString+";\n");
 	}
 	File.close();
 
 	tempString.clear();
 	tempString.shrink_to_fit();
 
-
+	
 	///TOKENIZE
 	cout << "TOKENIZING" << endl << endl;
-	vector<Token*> tokens;
-	tokenize(programString, tokens);
+	Lexer lexer = Lexer();
+	lexer.tokenize(programString);
+
 	programString.clear();
 	programString.shrink_to_fit();
 
@@ -33,12 +34,10 @@ int main(int argc, char* argv[])
 
 	///PARSE
 	cout << "PARSING" << endl << endl;
-	vector<Statement*> tree = parseStatements(tokens);
-	for (Token* t : tokens) delete t;
-	tokens.clear();
-	tokens.shrink_to_fit();
+	vector<Statement*> tree = parseStatements(lexer.tokens);
+	lexer.clean();
 	
-	//for(Statement* s : tree) s->print();
+	for(Statement* s : tree) s->print();
 
 	cout << "COMPILING" << endl << endl;
 	

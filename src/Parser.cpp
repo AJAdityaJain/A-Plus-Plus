@@ -85,25 +85,23 @@ CodeBlock* parseTree(vector<Token*> tokens) {
 
 
 Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
-	//printf("\x1B[32mTexting\033[0m\t\t\n");	for (Token* t : stack) printToken(t);	printf("\n\x1B[31mTexting\033[0m\t\t\n\n\n");
 
 	size_t size = stack.size();
 
-	if (size == 0)
-		return nullstmt;
+	if (size == 0)aThrowError(2, -1);
 
 	TokenType st0 = stack[0]->getType();
 	TokenType stb = stack.back()->getType();
 
 	if (size == 1) {
 		switch (st0) {
-		case ID:return new Identifier(*((IdentifierToken*)stack[0]));
+		case ID:return new Identifier(((IdentifierToken*)stack[0])->value);
 		case INT:return new Int(*((IntToken*)stack[0]));
 		case FLOAT:	return new Float(*((FloatToken*)stack[0]));
 		case DOUBLE:return new Double(*((DoubleToken*)stack[0]));
 		case BIT:return new Bit(*((BitToken*)stack[0]));
 		case STRING:return new String(*((StringToken*)stack[0]));
-		default:printf("\x1B[31m Unexpected identifier \033[0m\t\t\n");
+		default:aThrowError(0,stack[0]->ln);
 		}
 
 	}
@@ -263,17 +261,20 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	}
 
 	///Parenthesis
-	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
-		int depth = 0;
-		for (int i = 1; i < stack.size() - 1; i++) {
-			switch (stack[i]->getType()) {
-			case PARENTHESIS_OPEN: depth++; break;
-			case PARENTHESIS_CLOSE: depth--; break;
+	if (size >= 3 && st0 == PARENTHESIS_OPEN) {
+		if (stb == PARENTHESIS_CLOSE) {
+			int depth = 0;
+			for (int i = 1; i < stack.size() - 1; i++) {
+				switch (stack[i]->getType()) {
+				case PARENTHESIS_OPEN: depth++; break;
+				case PARENTHESIS_CLOSE: depth--; break;
+				}
+				depth = abs(depth);
 			}
-			depth = abs(depth);
+			if (depth == 0)
+				return parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1));
 		}
-		if (depth == 0)
-			return parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1));
+		else aThrowError(4, stack[0]->ln);
 	}
 
 
@@ -282,7 +283,9 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		int i = 0;
 		int depth = 0;
 		vector<int> tokenIdx;
+		tokenIdx.push_back(-1);
 		MultipleOperatorType bot = NONE_BI_OPERATOR;
+		MultipleOperatorType _bot = NONE_BI_OPERATOR;
 
 		for (Token* t : stack) {
 			switch (t->getType())
@@ -292,6 +295,8 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			case OPERATOR: {
 				if (i != 0 && depth == 0) {
 					MultipleOperatorType tt = ((OperatorToken*)t)->biValue;
+					if (tt == MINUS) tt = PLUS;
+					if (tt == DIVIDE) tt = MULTIPLY;
 					if (bot == NONE_BI_OPERATOR || tt < bot) {
 						bot = tt;
 					}
@@ -302,16 +307,22 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			i++;
 		}
 
+		if (bot == PLUS) _bot = MINUS;
+		if (bot == MULTIPLY) _bot = DIVIDE;
 		i = 0;
 		for (Token* t : stack) {
 			switch (t->getType())
 			{
 			case PARENTHESIS_OPEN: depth++; break;
-			case PARENTHESIS_CLOSE: depth--; break;
+			case PARENTHESIS_CLOSE: depth--; break; 
 			case OPERATOR: {
 				if (i != 0 && depth == 0) {
-					if (((OperatorToken*)t)->biValue == bot) {
+					MultipleOperatorType a = ((OperatorToken*)t)->biValue;
+					if (a == bot) {
 						tokenIdx.push_back(i);
+					}
+					else if (a == _bot) {
+						tokenIdx.push_back(-i);
 					}
 				}
 				break;
@@ -320,38 +331,43 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			i++;
 		}
 
+		tokenIdx.push_back(i);
 
 		if (bot != NONE_BI_OPERATOR) {
 			vector<Statement*> operands;
-			operands.push_back(parseStatement(vector<Token*>(
-				stack.begin(),
-				stack.begin() + tokenIdx[0]
-			)));
+			vector<Statement*> invoperands;
+
 
 			for (size_t j = 0; j < tokenIdx.size()-1; j++)
 			{
-
-				operands.push_back(parseStatement(vector<Token*>(
-					stack.begin() + tokenIdx[j] + 1,
-					stack.begin() + tokenIdx[j+1]
-				)));
+				if (tokenIdx[j] > 0 || j == 0) {
+					operands.push_back(parseStatement(vector<Token*>(
+						stack.begin() + (tokenIdx[j] + 1),
+						stack.begin() + abs(tokenIdx[j + 1])
+					)));
+				}
+				else {
+					invoperands.push_back(parseStatement(vector<Token*>(
+						stack.begin() + (abs(tokenIdx[j]) + 1),
+						stack.begin() + abs(tokenIdx[j + 1])
+					)));
+				}
 			}
 
-			operands.push_back(parseStatement(vector<Token*>(
-				stack.begin() + tokenIdx.back()+1,
-				stack.end()
-			)));
-
-			return new MultipleOperation(bot, operands);
+			return new MultipleOperation(bot, operands, invoperands);
 		}
 	}
 
 	///Unary Operation 
 	if (size >= 2 && st0 == OPERATOR) {
-		return new UnaryOperation(((OperatorToken*)stack[0])->uValue, parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
+		UnaryOperatorType uop = ((OperatorToken*)stack[0])->uValue;
+		if (uop == POSITIVE) {
+			return parseStatement(vector<Token*>(stack.begin() + 1, stack.end()));
+		}
+		return new UnaryOperation(uop, parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
 	}
-
-	return nullstmt;
+	aThrowError(1,stack[0]->ln);
+	//return nullstmt;
 }
 
 vector<Statement*> parseStatements(vector<Token*> stack) {

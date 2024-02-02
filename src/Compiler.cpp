@@ -1,15 +1,13 @@
 #include "Compiler.h"
 
 void Compiler::compile(vector<Statement*> tree, string base) {
+	rr = RegisterRegister();
 	File = ofstream(base+ "\\test.asm");
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.data' data readable writeable\n";
-
 	//DATA
 	File << "filler db 4";
-
+	//~DATA
 	File << "\nsection '.text' code readable executable\n\n\n";
-
-	//NASM//"section .text\n\textern GetStdHandle\n\textern WriteFile\n\textern ExitProcess\n\tglobal main\n";
 
 	for (Statement* st : tree) {
 		switch (st->getType()) {
@@ -33,7 +31,6 @@ void Compiler::compile(vector<Statement*> tree, string base) {
 	}
 
 	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \msvcrt, 'MSVCRT.DLL'\nimport kernel,\exit,'ExitProcess'\nimport msvcrt,\printf, 'printf'";
-
 	File.close();
 }
 
@@ -52,7 +49,7 @@ void Compiler::compile(Statement* b, Func* fn) {
 	}
 	case DEFINITION: {
 		Definition* d = (Definition*)b;
-		unsigned int sz = getSize(d->value);// compile("mov eax,{0}\n", d->value, fn);
+		unsigned int sz = 4;//getSize(d->value);
 
 		if (sz == 4)
 			compile(push4, d->value, fn);
@@ -133,29 +130,83 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 		switch (mo->op) {
 		case PLUS: {
 
-			reg++;
-			compile(format("mov {1}, {0}\n","{0}", regs4[reg]), mo->operands[0], fn);
+
+			string* reg = rr.alloc(4);
+			compile("mov " + *reg + ", {0}\n", mo->operands[0], fn);
 
 			for (size_t i = 1; i < mo->operands.size(); i++)
 			{
-				compile(format("add {1}, {0}\n", "{0}", regs4[reg]), mo->operands[i], fn);
+				compile("add " + *reg + ", {0}\n", mo->operands[i], fn);
 			}
-			
-			File << vformat(f, make_format_args(regs4[reg]));
-			reg--;
+
+			for (size_t i = 0; i < mo->invoperands.size(); i++)
+			{
+				compile("sub " + *reg + ", {0}\n", mo->invoperands[i], fn);
+			}
+
+			File << vformat(f, make_format_args(*reg));
+			rr.free();
 
 			break;
 		}
-		default: {
-			cout << "GG compiler.cpp";
+		case MULTIPLY: {
+
+			string* reg = rr.alloc(4);
+			compile("mov " + *reg + ", {0}\n", mo->operands[0], fn);
+
+			for (size_t i = 1; i < mo->operands.size(); i++)
+			{
+				compile("IMUL " + *reg + ", {0}\n", mo->operands[i], fn);
+			}
+
+			for (size_t i = 0; i < mo->invoperands.size(); i++)
+			{
+				File << pushebx;
+				compile("mov ebx, {0}\n", mo->invoperands[i], fn);
+
+				File << pushedx;
+				File << "mov edx, 0" << endl;
+
+				File << pusheax;
+				File << "mov eax, " << *reg << endl;
+
+				File << "idiv ebx" << endl;
+
+				File << "mov " << *reg << ", eax" << endl;
+
+				if (rr.getRegIdx() != 0) File << popeax;
+				else File << pop;
+				if (rr.getRegIdx() != 2) File << popedx;
+				else File << pop;
+				File << popebx;
+
+			}
+
+			File << vformat(f, make_format_args(*reg));
+			rr.free();
+
 			break;
 		}
+
 		}
 
 		break;
 	}
 	case UN_OPERATION: {
+		UnaryOperation* uo = (UnaryOperation*)b;
+
+		string* reg = rr.alloc(4);
+
+		switch (uo->op)
+		{
+		case NEGATIVE: {
+			compile("mov " + *reg + ",{0}\n", uo->right, fn);
+			File << "neg " << *reg << endl;
+			File << vformat(f, make_format_args(*reg));
+		}
+		}
 		break;
+		rr.free();
 	}
 	default: {
 		cout << "CC compiler.cpp";

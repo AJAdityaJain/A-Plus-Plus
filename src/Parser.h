@@ -19,9 +19,6 @@ struct Statement {
 	}
 
 };
-static Statement* nullstmt = new Statement();
-
-
 
 void deallocstmt(Statement* statement);
 
@@ -135,7 +132,7 @@ struct Identifier : Statement
 		return ID_STMT;
 	}
 
-	Identifier(IdentifierToken val = -1) : value(val) {}
+	Identifier(int val = -1) : value(IdentifierToken(val,-1)) {}
 	void print() {
 		cout << value.value;
 	}
@@ -188,7 +185,6 @@ struct Func : Statement {
 
 
 	vector<Variable> varsStack;
-	
 	vector<int> scopesStack;
 
 
@@ -228,7 +224,7 @@ struct Definition : Statement {
 
 		deallocstmt(value);
 	}
-	Definition(IdentifierToken nam = -1, Statement* val = nullptr) : name(nam){
+	Definition(IdentifierToken nam = IdentifierToken (-1,- 1), Statement* val = nullptr) : name(nam) {
 		value = val;
 	}
 
@@ -351,6 +347,7 @@ struct ElseStatement : Statement {
 struct MultipleOperation : Statement {
 
 	vector<Statement*> operands;
+	vector<Statement*> invoperands;
 	//Statement* right;
 	MultipleOperatorType op;
 
@@ -359,17 +356,26 @@ struct MultipleOperation : Statement {
 	}
 
 	~MultipleOperation() {
-		for (Statement* operand :operands)
+		for (Statement* operand : operands)
 		{
 			deallocstmt(operand);
 
 		}
 		operands.clear();
 		operands.shrink_to_fit();
+
+		for (Statement* operand : invoperands)
+		{
+			deallocstmt(operand);
+
+		}
+		invoperands.clear();
+		invoperands.shrink_to_fit();
 	}
 
-	MultipleOperation(MultipleOperatorType op, vector<Statement*> operands) {
+	MultipleOperation(MultipleOperatorType op, vector<Statement*> operands, vector<Statement*> invoperands) {
 		this->operands = operands;
+		this->invoperands = invoperands;
 		this->op = op;
 	}
 

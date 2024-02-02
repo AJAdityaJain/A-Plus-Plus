@@ -2,23 +2,21 @@
 
 #include <string>
 #include <vector>
-#include <iostream>
 #include <map>
+
+#include "AError.h"
 #include "Enums.h"
 
-using namespace std;
+///using namespace std;
 
 
 struct Token {
+	unsigned int ln;
 	virtual TokenType getType() {
 		return NONE;
 	}
-	virtual void print(){
-		cout << "..." << endl;
-	}
-	Token() {}
+	Token(unsigned int ln) :ln(ln) {};
 };
-static Token* null = new Token();
 
 
 struct AssignToken : Token {
@@ -28,7 +26,7 @@ struct AssignToken : Token {
 		return ASSIGN;
 	}
 
-	AssignToken(AssignmentType value) {
+	AssignToken(AssignmentType value, unsigned int ln) :Token(ln) {
 		this->value = value;
 	}
 };
@@ -41,15 +39,15 @@ struct OperatorToken : Token {
 		return OPERATOR;
 	}
 
-	OperatorToken(UnaryOperatorType u, MultipleOperatorType bi) {
+	OperatorToken(UnaryOperatorType u, MultipleOperatorType bi, unsigned int ln) :Token(ln) {
 		uValue = u;
 		biValue = bi;
 	}
-	OperatorToken(MultipleOperatorType value) {
+	OperatorToken(MultipleOperatorType value, unsigned int ln) :Token(ln) {
 		biValue = value;
 		uValue = NONE_UN_OPERATOR;
 	}
-	OperatorToken(UnaryOperatorType value) {
+	OperatorToken(UnaryOperatorType value, unsigned int ln) :Token(ln) {
 		uValue = value;
 		biValue = NONE_BI_OPERATOR;
 	}
@@ -63,7 +61,7 @@ struct KeyWordToken : Token {
 		return value;
 	}
 
-	KeyWordToken(TokenType value) {
+	KeyWordToken(TokenType value, unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -74,10 +72,7 @@ struct StringToken : Token {
 	TokenType getType()override {
 		return STRING;
 	}
-	void print() override {
-		cout << value << endl;
-	}
-	StringToken(string value){
+	StringToken(string value,unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -87,14 +82,7 @@ struct BitToken : Token {
 	TokenType getType()override {
 		return BIT;
 	}
-	void print() override {
-		if(value)
-			cout << "True" << endl;
-		else
-			cout << "False" << endl;
-	}
-
-	BitToken(bool value){
+	BitToken(bool value,unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -105,11 +93,8 @@ struct IntToken : Token {
 	TokenType getType()override {
 		return INT;
 	}
-	void print() override {
-		cout << value << endl;
-	}
 
-	IntToken(int value){
+	IntToken(int value,unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -119,11 +104,8 @@ struct FloatToken : Token {
 	TokenType getType()override {
 		return FLOAT;
 	}
-	void print() override {
-		cout << value << endl;
-	}
 
-	FloatToken(float value){
+	FloatToken(float value,unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -134,11 +116,8 @@ struct DoubleToken : Token {
 	TokenType getType()override {
 		return DOUBLE;
 	}
-	void print() override {
-		cout << value << endl;
-	}
 
-	DoubleToken(double value){
+	DoubleToken(double value,unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -152,13 +131,27 @@ struct IdentifierToken : Token {
 		return ID;
 	}
 
-	IdentifierToken(unsigned int value){
+	IdentifierToken(unsigned int value,unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
 
 
-//vector<Token*> tokenize(vector<string> lines);
-void tokenize(vector<string> lines, vector<Token*>& tokens);
-void printToken(Token* t);
-int isNumeric(const std::string& str);
+struct Lexer {
+	vector<Token*> tokens;
+
+	~Lexer() {
+		clean();
+	}
+
+	void clean() {
+		for (Token* t: tokens) {
+			delete t;
+		}
+		tokens.clear();
+		tokens.shrink_to_fit();
+	}
+
+	void tokenize(vector<string> lines);
+	int isNumeric(const std::string& str);
+};

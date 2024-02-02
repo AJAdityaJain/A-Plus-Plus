@@ -91,11 +91,11 @@ enum MultipleOperatorType {
 	GREATER_THAN_EQUAL,
 	SMALLER_THAN_EQUAL,
 
-	PLUS,
 	MINUS,
+	PLUS,
 
-	MULTIPLY,
 	DIVIDE,
+	MULTIPLY,
 	MODULO,
 };
 

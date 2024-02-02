@@ -1,11 +1,12 @@
 #include "Lexer.h"
 
-void tokenize(vector<string> lines, vector<Token*>& tokens )
+void Lexer::tokenize(vector<string> lines)
 {
 	map<string, unsigned int> idMap;
 	string tempString;
 
 	unsigned int idx = 0;
+	unsigned int lineIdx = 0;
 
 	bool cont = false;
 
@@ -32,39 +33,47 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 			else if (inStr && c == strStart) {
 				inStr = false;
 				strStart = ' ';
-				tokens.push_back(new StringToken{ tempString.substr(1,tempString.length()-2)});
+				tokens.push_back(new StringToken{ 
+					tempString.substr(1,tempString.length()-2),lineIdx
+					});
 				tempString = "";
 				continue;
 			}
 
 
 			if (!inStr && !inLiteral) {
-				if (c == '(')tokens.push_back(new KeyWordToken{ PARENTHESIS_OPEN });
-				else if (c == ')')tokens.push_back(new KeyWordToken{ PARENTHESIS_CLOSE });
-				else if (c == '{')tokens.push_back(new KeyWordToken{ CURLY_OPEN });
-				else if (c == '}')tokens.push_back(new KeyWordToken{ CURLY_CLOSE });
-				else if (c == '[')tokens.push_back(new KeyWordToken{ BRACKET_OPEN });
-				else if (c == ']')tokens.push_back(new KeyWordToken{ BRACKET_CLOSE });
-				else if (c == ';')tokens.push_back(new KeyWordToken{ LINE_END });
-				else if (c == ':')tokens.push_back(new KeyWordToken{ COLON});
-				else if (c == ',')tokens.push_back(new KeyWordToken{ COMMA });
+				if (c == '(')tokens.push_back(new KeyWordToken{ PARENTHESIS_OPEN ,lineIdx });
+				else if (c == ')')tokens.push_back(new KeyWordToken{ PARENTHESIS_CLOSE ,lineIdx });
+				else if (c == '{')tokens.push_back(new KeyWordToken{ CURLY_OPEN ,lineIdx });
+				else if (c == '}')tokens.push_back(new KeyWordToken{ CURLY_CLOSE ,lineIdx });
+				else if (c == '[')tokens.push_back(new KeyWordToken{ BRACKET_OPEN ,lineIdx });
+				else if (c == ']')tokens.push_back(new KeyWordToken{ BRACKET_CLOSE ,lineIdx });
+				else if (c == ';')tokens.push_back(new KeyWordToken{ LINE_END ,lineIdx });
+				else if (c == ':')tokens.push_back(new KeyWordToken{ COLON,lineIdx });
+				else if (c == ',')tokens.push_back(new KeyWordToken{ COMMA ,lineIdx });
 
-				else if (c == '=')tokens.push_back(new AssignToken{ EQUALS });
-				else if (c == '!')tokens.push_back(new OperatorToken{ NOT });
-				else if (c == '+')tokens.push_back(new OperatorToken{ POSITIVE, PLUS });
-				else if (c == '-')tokens.push_back(new OperatorToken{ NEGATIVE, MINUS });
-				else if (c == '*')tokens.push_back(new OperatorToken{ MULTIPLY });
-				else if (c == '/')tokens.push_back(new OperatorToken{ DIVIDE });
-				else if (c == '%')tokens.push_back(new OperatorToken{ MODULO });
-				else if (c == '>')tokens.push_back(new OperatorToken{ GREATER_THAN });
-				else if (c == '<')tokens.push_back(new OperatorToken{ SMALLER_THAN });
+				else if (c == '=')tokens.push_back(new AssignToken{ EQUALS ,lineIdx });
+				else if (c == '!')tokens.push_back(new OperatorToken{ NOT ,lineIdx });
+				else if (c == '+')tokens.push_back(new OperatorToken{ POSITIVE, PLUS ,lineIdx });
+				else if (c == '-')tokens.push_back(new OperatorToken{ NEGATIVE, MINUS ,lineIdx });
+				else if (c == '*')tokens.push_back(new OperatorToken{ MULTIPLY ,lineIdx });
+				else if (c == '/')tokens.push_back(new OperatorToken{ DIVIDE ,lineIdx });
+				else if (c == '%')tokens.push_back(new OperatorToken{ MODULO ,lineIdx });
+				else if (c == '>')tokens.push_back(new OperatorToken{ GREATER_THAN ,lineIdx });
+				else if (c == '<')tokens.push_back(new OperatorToken{ SMALLER_THAN ,lineIdx });
 
-				else if (c == '&')tokens.push_back(new OperatorToken{ BITWISE_AND });
-				else if (c == '|')tokens.push_back(new OperatorToken{ BITWISE_OR });
-				else if (c == '~')tokens.push_back(new OperatorToken{ BITWISE_NOT });
+				else if (c == '&')tokens.push_back(new OperatorToken{ BITWISE_AND ,lineIdx });
+				else if (c == '|')tokens.push_back(new OperatorToken{ BITWISE_OR ,lineIdx });
+				else if (c == '~')tokens.push_back(new OperatorToken{ BITWISE_NOT ,lineIdx });
 
 
-				else if (c == ' ' || c == '\n' || c == '\r' || c == '\t')tempString.pop_back();
+				else if (c == ' ' || c == '\n' || c == '\r' || c == '\t') {
+					if (c == '\n') {
+						lineIdx++;
+
+					}
+					tempString.pop_back();
+				}
 				else { inLiteral = true; cont = true; }
 
 				if (!inLiteral && tokens.size() > 1 && i < line.size()-1) {
@@ -72,40 +81,40 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					if (line[i+1] == '=') {
 						if (b->getType() == ASSIGN) {
 							tokens.pop_back();
-							tokens.push_back(new OperatorToken(COMPARISON));
+							tokens.push_back(new OperatorToken(COMPARISON, lineIdx));
 							i++;
 						}
 						if (b->getType() == OPERATOR) {
-							Token* replace = null;
+							Token* replace;
 							switch (((OperatorToken*)b)->uValue) {
 							case NOT:
-								replace = new OperatorToken(NOT_EQUAL);
+								replace = new OperatorToken(NOT_EQUAL, lineIdx);
 								break;
 							}
 							switch (((OperatorToken*)b)->biValue) {
 							case PLUS:
-								replace = new AssignToken(PLUS_EQUAL);
+								replace = new AssignToken(PLUS_EQUAL, lineIdx);
 								break;
 							case MINUS:
-								replace = new AssignToken(MINUS_EQUAL);
+								replace = new AssignToken(MINUS_EQUAL, lineIdx);
 								break;
 							case MULTIPLY:
-								replace = new AssignToken(MULTIPLY_EQUAL);
+								replace = new AssignToken(MULTIPLY_EQUAL, lineIdx);
 								break;
 							case DIVIDE:
-								replace = new AssignToken(DIVIDE_EQUAL);
+								replace = new AssignToken(DIVIDE_EQUAL, lineIdx);
 								break;
 							case GREATER_THAN:
-								replace = new OperatorToken(GREATER_THAN_EQUAL);
+								replace = new OperatorToken(GREATER_THAN_EQUAL, lineIdx);
 								break;
 							case SMALLER_THAN:
-								replace = new OperatorToken(SMALLER_THAN_EQUAL);
+								replace = new OperatorToken(SMALLER_THAN_EQUAL, lineIdx);
 								break;
 							case BITWISE_AND:
-								replace = new AssignToken(BITWISE_AND_EQUAL);
+								replace = new AssignToken(BITWISE_AND_EQUAL, lineIdx);
 								break;
 							case BITWISE_OR:
-								replace = new AssignToken(BITWISE_OR_EQUAL);
+								replace = new AssignToken(BITWISE_OR_EQUAL, lineIdx);
 								break;
 							}
 							tokens.pop_back();
@@ -122,17 +131,17 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 					string sub = tempString.substr(0, tempString.size() - 1);
 					i--;
 
-						 if(sub.compare("let") == 0)		tokens.push_back(new KeyWordToken{ LET });
-					else if (sub.compare("func") == 0)		tokens.push_back(new KeyWordToken{ FUNC});
-					else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF });
-					else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE });
-					else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE });
-					else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN });
-					else if (sub.compare("and") == 0)		tokens.push_back(new OperatorToken{ AND });
-					else if (sub.compare("or") == 0)		tokens.push_back(new OperatorToken{ OR });
-					else if (sub.compare("xor") == 0)		tokens.push_back(new OperatorToken{ XOR});
-					else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true });
-					else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false });
+						 if(sub.compare("let") == 0)		tokens.push_back(new KeyWordToken{ LET ,lineIdx });
+						 else if (sub.compare("func") == 0)		tokens.push_back(new KeyWordToken{ FUNC,lineIdx });
+						 else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF ,lineIdx });
+						 else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE ,lineIdx });
+						 else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE ,lineIdx });
+						 else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN ,lineIdx });
+						 else if (sub.compare("and") == 0)		tokens.push_back(new OperatorToken{ AND ,lineIdx });
+						 else if (sub.compare("or") == 0)		tokens.push_back(new OperatorToken{ OR ,lineIdx });
+						 else if (sub.compare("xor") == 0)		tokens.push_back(new OperatorToken{ XOR,lineIdx });
+						 else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true ,lineIdx });
+						 else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false ,lineIdx });
 
 					else {
 						int typ = isNumeric(sub);
@@ -144,21 +153,21 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 										t = true;
 										break;
 									}
-							if (t)tokens.push_back(new KeyWordToken{ NONE });
+							if (t)aThrowError(3, lineIdx);
 							else { 
 								if (idMap.count(sub) > 0) {
-									tokens.push_back(new IdentifierToken{ idMap[sub] });
+									tokens.push_back(new IdentifierToken{ idMap[sub] ,lineIdx });
 								}
 								else {
 									idMap.insert({ sub, idx });
-									tokens.push_back(new IdentifierToken{ idx });
+									tokens.push_back(new IdentifierToken{ idx ,lineIdx });
 									idx++;
 								}
 							}
 						}
-						else if (typ == 1)tokens.push_back(new IntToken{ stoi(sub) });
-						else if (typ == 2)tokens.push_back(new FloatToken{ stof(sub) });
-						else if (typ == 3)tokens.push_back(new DoubleToken{ stod(sub) });
+						else if (typ == 1)tokens.push_back(new IntToken{ stoi(sub) ,lineIdx });
+						else if (typ == 2)tokens.push_back(new FloatToken{ stof(sub) ,lineIdx });
+						else if (typ == 3)tokens.push_back(new DoubleToken{ stod(sub) ,lineIdx });
 
 					}
 					tempString = "";
@@ -166,92 +175,11 @@ void tokenize(vector<string> lines, vector<Token*>& tokens )
 			}
 		}
 	}
+
 }
 
-void printToken(Token* t) {
-	switch (t->getType())
-	{
-	case BIT:
-		cout << "BIT";
-		break;
-	case INT:
-		cout << "INT";
-		break;
-	case FLOAT:
-		cout << "FLOAT";
-		break;
-	case DOUBLE:
-		cout << "DOUBLE";
-		break;
-	case STRING:
-		cout << "STR";
-		break;
-	case ID:
-		cout << "ID";
-		break;
-	case LINE_END:
-		cout << "end";
-		break;
-	case NONE:
-		cout << "???";
-		break;
-	case LET:
-		cout << "LET";
-		break;
-	case IF:
-		cout << "if";
-		break;
-	case COLON:
-		cout << " : ";
-		break;
-	case ELSE:
-		cout << "else";
-		break;
-	case WHILE:
-		cout << "while";
-		break;
-	case RETURN:
-		cout << "ret";
-		break;
-	case BRACKET_OPEN:
-		cout << "[";
-		break;
-	case BRACKET_CLOSE:
-		cout << "]";
-		break;
-	case PARENTHESIS_OPEN:
-		cout << "(";
-		break;
-	case PARENTHESIS_CLOSE:
-		cout << ")";
-		break;
-	case CURLY_OPEN:
-		cout << "{";
-		break;
-	case CURLY_CLOSE:
-		cout << "}";
-		break;
-	case ASSIGN: {
-		AssignToken at = *(AssignToken*)t;
-		cout << at.value;
-	}
-		break;
-	case COMMA:
-		cout << " , ";
-		break;
-	case OPERATOR: {
-		cout << " op ";
 
-	}
-		break;
-	default:
-		cout << "BUGGED LEXER";
-		break;
-	}
-
-	cout << " ";
-}
-int isNumeric(const std::string& str) {
+int Lexer::isNumeric(const std::string& str) {
 	if (str.empty()) {
 		return false;  // Empty string is not numeric
 	}
