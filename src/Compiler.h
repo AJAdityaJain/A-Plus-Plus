@@ -6,81 +6,87 @@
 
 #include "Parser.h"
 
-//struct CompileTimeVar {
-//	unsigned int var;
-//	unsigned int size;
-//};
+static  ofstream File;
 
 
 struct RegisterRegister {
 
 	string* regs1 = new string[]{
-		"al", "bl",
-		"cl", "dl",
+		"al", "cl",
+		"dl", "r8b" ,
+		"r9b" ,"r10b",
+		"r11b","bl",
 		"sil", "dil",
-		"r8b" , "r9b" ,
-		"r10b", "r11b",
 		"r12b", "r13b",
-		"r14b", "r15b"
+		"r14b", "r15b" 
 	};
 
 	string* regs2 = new string[]{
-		"ax", "bx",
-		"cx", "dx",
+		"ax", "cx",
+		"dx", "r8w" ,
+		"r9w" ,"r10w",
+		"r11w","bx",
 		"si", "di",
-		"r8w" , "r9w" ,
-		"r10w", "r11w",
 		"r12w", "r13w",
 		"r14w", "r15w"
 	};
 
 	string* regs4 = new string[]{
-		"eax", "ebx",
-		"ecx", "edx",
+		"eax", "ecx",
+		"edx", "r8d" ,
+		"r9d" ,"r10d",
+		"r11d","ebx",
 		"esi", "edi",
-		"r8d" , "r9d" ,
-		"r10d", "r11d",
 		"r12d", "r13d",
 		"r14d", "r15d"
 	};
 
 	string* regs8 = new string[]{
-		"rax", "rbx",
-		"rcx", "rdx",
+		"rax", "rcx",
+		"rdx","r8" ,
+		"r9" ,"r10", 
+		"r11","rbx",
 		"rsi", "rdi",
-		"r8" , "r9" ,
-		"r10", "r11",
 		"r12", "r13",
 		"r14", "r15"
 	};
 
 	int reg = -1;
 
-	int getRegIdx() {
+	int getRegIdx() const {
 		return reg;
 	}
+	void emptyReg() const {
 
-	string* alloc(int sz) {
+		File << "xor " << regs8[reg] << "," << regs8[reg] << endl;
+	}
+
+	string alloc(int sz) {
 		reg++;
-		if (reg > regs8->size()) aThrowError(6,-1);
+		if (reg >= 8) {
+			if (reg > regs8->size()) aThrowError(6, -1);
+			File << "push " << regs8[reg] << endl;
+
+		}
+		emptyReg();
 		switch (sz ) {
-		case 1:return &regs1[reg];
-		case 2:return &regs2[reg];
-		case 4:return &regs4[reg];
-		case 8:return &regs8[reg];
+		case 1:return regs1[reg];
+		case 2:return regs2[reg];
+		case 4:return regs4[reg];
+		case 8:return regs8[reg];
 		}
 
 		aThrowError(5,-1);
 	}
 
 	void free() {
+		if (reg >= 8) File << "pop " << regs8[reg] << endl;
 		reg--;
 	}
 
 };
 
 struct Compiler {
-	ofstream File;
 	const char* pushedx = "sub rsp, 4\n\tmov dword[rsp], edx\n";
 	const char* pusheax = "sub rsp, 4\n\tmov dword[rsp], eax\n";
 	const char* pushebx = "sub rsp, 4\n\tmov dword[rsp], ebx\n";
@@ -94,16 +100,11 @@ struct Compiler {
 	const char* push4 = "sub rsp, 4\n\tmov dword[rsp], {0}\n";
 	const char* pop4 = "mov {0}, dword[rsp]\nadd rsp, 4\n";
 	RegisterRegister rr;
+	unsigned int operationLabelIdx = 0;
 	
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		File << "push rbx" << endl;
-		File << "push rsi" << endl;
-		File << "push rdi" << endl;
-		File << "push r12" << endl;
-		File << "push r13" << endl;
-		File << "push r14" << endl;
-		File << "push r15" << endl;
 		File << "push rbp" << endl;
 		File << "mov rbp, rsp" << endl << endl;
 	}
@@ -116,12 +117,6 @@ struct Compiler {
 		fn->scopesStack.pop_back();
 		File << endl << "mov rsp, rbp" << endl;
 		File << "pop rbp;" << endl;
-		File << "pop r15" << endl;
-		File << "pop r14" << endl;
-		File << "pop r13" << endl;
-		File << "pop r12" << endl;
-		File << "pop rdi" << endl;
-		File << "pop rsi" << endl;
 		File << "pop rbx" << endl;
 	}
 

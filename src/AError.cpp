@@ -8,7 +8,7 @@ void aThrowError(char code, unsigned int line) {
 	{
 	case 0: cout << "Unexpected token found in line " << line; break;
 	case 1: cout << "Unidentifiable statement found in line " << line; break;
-	case 2: cout << "Fatal error. Statement with no content"; break;
+	case 2: cout << "Fatal error. Statement with unrecognizable information"; break;
 	case 3: cout << "Unknown literal found in line " << line; break;
 	case 4: cout << "No closure bracket found in the expression at line " << line; break;
 	case 5: cout << "Fatal error. Variable width exceeds stack size"; break;

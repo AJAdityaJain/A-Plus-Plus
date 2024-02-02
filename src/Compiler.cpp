@@ -23,7 +23,7 @@ void Compiler::compile(vector<Statement*> tree, string base) {
 				}
 				epilogue(fn);
 
-				File << "\n\ninvoke  exit, 420"<<endl;
+				File << "\n\ninvoke  exit, rax"<<endl;
 			}
 			break;
 		}
@@ -67,7 +67,7 @@ void Compiler::compile(Statement* b, Func* fn) {
 
 		for (Variable v : fn->varsStack)
 			if (v.id == a->name->value.value) {
-				compile(format("mov [rbp - {1}], {0}\n", "{0}", v.off), a->value, fn);
+				compile("mov [rbp - "+to_string(v.off) + "], {0}\n", a->value, fn);
 				break;
 			}
 		break;
@@ -119,7 +119,7 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 		for (Variable v : fn->varsStack)
 			if (v.id == ((Identifier*)b)->value.value) {
 				if (v.size == 4) {
-					File << format("mov eax, dword[rbp - {0}]\n", v.off);
+					File << "mov eax, dword[rbp - "+to_string(v.off) + "]\n";
 					File << vformat(f, make_format_args("eax"));
 				}
 			}
@@ -131,32 +131,32 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 		case PLUS: {
 
 
-			string* reg = rr.alloc(4);
-			compile("mov " + *reg + ", {0}\n", mo->operands[0], fn);
+			string reg = rr.alloc(4);
+			compile("mov " + reg + ", {0}\n", mo->operands[0], fn);
 
 			for (size_t i = 1; i < mo->operands.size(); i++)
 			{
-				compile("add " + *reg + ", {0}\n", mo->operands[i], fn);
+				compile("add " + reg + ", {0}\n", mo->operands[i], fn);
 			}
 
 			for (size_t i = 0; i < mo->invoperands.size(); i++)
 			{
-				compile("sub " + *reg + ", {0}\n", mo->invoperands[i], fn);
+				compile("sub " + reg + ", {0}\n", mo->invoperands[i], fn);
 			}
 
-			File << vformat(f, make_format_args(*reg));
+			File << vformat(f, make_format_args(reg));
 			rr.free();
 
 			break;
 		}
 		case MULTIPLY: {
 
-			string* reg = rr.alloc(4);
-			compile("mov " + *reg + ", {0}\n", mo->operands[0], fn);
+			string reg = rr.alloc(4);
+			compile("mov " + reg + ", {0}\n", mo->operands[0], fn);
 
 			for (size_t i = 1; i < mo->operands.size(); i++)
 			{
-				compile("IMUL " + *reg + ", {0}\n", mo->operands[i], fn);
+				compile("IMUL " + reg + ", {0}\n", mo->operands[i], fn);
 			}
 
 			for (size_t i = 0; i < mo->invoperands.size(); i++)
@@ -168,11 +168,11 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 				File << "mov edx, 0" << endl;
 
 				File << pusheax;
-				File << "mov eax, " << *reg << endl;
+				File << "mov eax, " << reg << endl;
 
 				File << "idiv ebx" << endl;
 
-				File << "mov " << *reg << ", eax" << endl;
+				File << "mov " << reg << ", eax" << endl;
 
 				if (rr.getRegIdx() != 0) File << popeax;
 				else File << pop;
@@ -182,12 +182,72 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 
 			}
 
-			File << vformat(f, make_format_args(*reg));
+			File << vformat(f, make_format_args(reg));
 			rr.free();
 
 			break;
 		}
+		case OR: {
+			unsigned int lidx = operationLabelIdx;
+			operationLabelIdx++;
 
+			string reg = rr.alloc(1);
+
+			for (Statement* s : mo->operands)
+				compile(
+					"mov "+reg+",{0}\ntest " + reg + ", " + reg + "\njnz LABOP_S" + to_string(lidx) + "\n", 
+					s, 
+					fn
+				);
+
+
+			File << "jmp LABOP_E" << lidx << endl << "LABOP_S" << lidx << ":" << endl << "\tmov " << reg << ",1" << endl << "LABOP_E" << lidx << ":" << endl;
+
+			File << vformat(f, make_format_args(reg));
+
+			rr.free();
+
+			break;
+		}
+		case AND: {
+			unsigned int lidx = operationLabelIdx;
+			operationLabelIdx++;
+
+			string reg = rr.alloc(1);
+
+			for (Statement* s : mo->operands)
+				compile(
+					"mov " + reg + ",{0}\ntest " + reg + ", " + reg + "\njz LABOP_S" + to_string(lidx) + "\n",
+					s,
+					fn
+				);
+
+
+			File << "jmp LABOP_E" << lidx << endl << "LABOP_S" << lidx << ":" << endl << "\tmov " << reg << ",0" << endl << "LABOP_E" << lidx << ":" << endl;
+
+			File << vformat(f, make_format_args(reg));
+
+			rr.free();
+
+			break;
+		}
+		case XOR: {
+
+			string reg = rr.alloc(1);
+
+			compile("mov " + reg + ", {0}\n", mo->operands[0], fn);
+
+			for (size_t i = 1; i < mo->operands.size(); i++)
+			{
+				compile("xor " + reg + ", {0}\n", mo->operands[i], fn);
+			}
+
+
+			File << vformat(f, make_format_args(reg));
+			rr.free();
+
+			break;
+		}
 		}
 
 		break;
@@ -195,17 +255,23 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 	case UN_OPERATION: {
 		UnaryOperation* uo = (UnaryOperation*)b;
 
-		string* reg = rr.alloc(4);
-
 		switch (uo->op)
 		{
+		case NOT: {
+			string reg = rr.alloc(1);
+			compile("mov " + reg + ",{0}\n", uo->right, fn);
+			File << "xor " << reg << ", 1" << endl;
+			File << vformat(f, make_format_args(reg));
+			break;
+		}
 		case NEGATIVE: {
-			compile("mov " + *reg + ",{0}\n", uo->right, fn);
-			File << "neg " << *reg << endl;
-			File << vformat(f, make_format_args(*reg));
+			string reg = rr.alloc(4);
+			compile("mov " + reg + ",{0}\n", uo->right, fn);
+			File << "neg " << reg << endl;
+			File << vformat(f, make_format_args(reg));
+			break;
 		}
 		}
-		break;
 		rr.free();
 	}
 	default: {

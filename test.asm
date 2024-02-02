@@ -10,32 +10,25 @@ section '.text' code readable executable
 
 start:
 push rbx
-push rsi
-push rdi
-push r12
-push r13
-push r14
-push r15
 push rbp
 mov rbp, rsp
 
-mov eax,1
-neg eax
 sub rsp, 4
-	mov dword[rsp], eax
+	mov dword[rsp], 0
+xor rax,rax
+xor rcx,rcx
+mov cl, 1
+xor cl, 1
+mov al,cl
+xor al, 1
+mov [rbp - 4], al
 
 mov rsp, rbp
 pop rbp;
-pop r15
-pop r14
-pop r13
-pop r12
-pop rdi
-pop rsi
 pop rbx
 
 
-invoke  exit, 420
+invoke  exit, rax
 
 
 
