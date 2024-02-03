@@ -14,16 +14,27 @@ push rbp
 mov rbp, rsp
 
 sub rsp, 4
-	mov dword[rsp], 97
-mov [rbp - 4], 1
-xor rax,rax
-mov eax, 1
-add eax, 24
-add eax, 6
-add eax, 7
-mov [rbp - 4], eax
+	mov dword[rsp], 11
 sub rsp, 4
-	mov dword[rsp], 23
+	mov dword[rsp], 22
+sub rsp, 4
+	mov dword[rsp], 44
+xor rax,rax
+mov eax, dword[rbp - 4]
+
+add eax, dword[rbp - 8]
+
+add eax, dword[rbp - 12]
+
+sub rsp, 4
+	mov dword[rsp], eax
+xor rax,rax
+mov eax, dword[rbp - 4]
+sub rsp, 4
+	mov dword[rsp], eax
+xor rax,rax
+mov eax, dword[rbp - 16]
+mov [rbp - 20], eax
 
 mov rsp, rbp
 pop rbp;

@@ -54,35 +54,35 @@ void Compiler::compile(Statement* b, Func* fn) {
 
 	case ASSIGNMENT: {
 		Assignment* a = (Assignment*)b;
-		unsigned int sz = a->value->getSize();
+		unsigned int sz = getSize(a->value,fn);
 
 		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i].value.value == a->name.value && fn->varsStack[i].ref.size == sz) {
+			if (fn->varsStack[i]->name.value == a->name.value && fn->varsStack[i]->size == sz) {
 
-				compile("mov [rbp - " + to_string(fn->varsStack[i].ref.off) + "], {0}\n", a->value, fn);
+				compile("mov [rbp - " + to_string(fn->varsStack[i]->off) + "], {0}\n", a->value, fn,true);
 
 				return;
 			}
 
-
+ 
 		if (sz == 1)
-			compile(push1, a->value, fn);
+			compile(push1, a->value, fn, true);
 		if (sz == 4)
-			compile(push4, a->value, fn);
+			compile(push4, a->value, fn, true);
 
 		fn->scopesStack.back()++;
 		if (fn->varsStack.size() == 0)
-			fn->varsStack.push_back(Identifier(a->name, { sz, sz }));
+			fn->varsStack.push_back(new Variable( sz, sz,a->name));
 		else
-			fn->varsStack.push_back(Identifier(a->name, { fn->varsStack.back().ref.off + sz, sz }));
+			fn->varsStack.push_back(new Variable(fn->varsStack.back()->off + sz, sz,a->name ));
 
 
 		return;
 	}
 
 	}
-
-	cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA compiler.cpp";
+	
+	std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA compiler.cpp";
 	return;
 
 }
@@ -96,7 +96,7 @@ void Compiler::compile(Statement* b, Func* fn) {
 
 
 
-void Compiler::compile(string f, Statement* b, Func* fn) {
+void Compiler::compile(string f, Statement* b, Func* fn, bool hasptr) {
 	switch (b->getType())
 	{
 	case NONE_STMT: {
@@ -118,13 +118,21 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 	case BIT_STMT: {
 		break;
 	}
-	case ID_STMT: {
-		Identifier* id = (Identifier*)b;
+	case REFERENCE: {
+		Reference* id = (Reference*)b;
 		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i].value.value == id->value.value) {
-				if (fn->varsStack[i].ref.size == 4) {
-					File << "mov eax, dword[rbp - "+to_string(fn->varsStack[i].ref.off) + "]\n";
-					File << vformat(f, make_format_args("eax"));
+			if (fn->varsStack[i]->name .value == id->value.value) {
+				if (fn->varsStack[i]->size == 4) {
+					if (hasptr) {
+						string reg = rr.alloc(4);
+
+						File << "mov " + reg + ", dword[rbp - " + to_string(fn->varsStack[i]->off) + "]\n";
+						File << vformat(f, make_format_args(reg));
+
+						rr.free();
+					}
+					else
+						File << vformat(f, make_format_args("dword[rbp - " + to_string(fn->varsStack[i]->off) + "]\n"));
 				}
 			}
 		break;
@@ -280,7 +288,7 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 		break;
 	}
 	default: {
-		cout << "CC compiler.cpp";
+		std::cout << "CC compiler.cpp";
 	}
 	}
 

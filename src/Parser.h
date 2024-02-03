@@ -4,9 +4,16 @@
 
 using namespace std;
 
-struct Reference {
+struct Variable {
 	unsigned int off;
 	unsigned int size;
+	IdentifierToken name;
+
+	Variable(unsigned int off, unsigned int size, IdentifierToken name) {
+		this->off = off;
+		this->size = size;
+		this->name = name;
+	}
 };
 
 struct Statement {
@@ -19,11 +26,7 @@ struct Statement {
 
 };
 
-struct Value : Statement {
-	virtual int getSize() {
-		return VOID_SIZE;
-	}
-};
+struct Value : Statement {};
 
 void deallocstmt(Statement* statement);
 
@@ -66,9 +69,7 @@ struct Int : Value
 	void print()override {
 		cout << value.value;	
 	}
-	int getSize()override {
-		return INT_SIZE;
-	}
+
 };
 struct Float :Value
 {
@@ -81,9 +82,6 @@ struct Float :Value
 	Float(FloatToken val):value(val) {}
 	void print()override {
 		cout << value.value;
-	}
-	int getSize()override {
-		return FLOAT_SIZE;
 	}
 };
 
@@ -99,9 +97,6 @@ struct Double : Value
 	void print()override {
 		cout << value.value << "d";
 	}
-	int getSize()override {
-		return DOUBLE_SIZE;
-	}
 };
 
 struct Bit : Value
@@ -115,9 +110,6 @@ struct Bit : Value
 	Bit(BitToken val) : value(val) {}
 	void print()override {
 		cout << value.value;
-	}
-	int getSize()override {
-		return BIT_SIZE;
 	}
 };
 
@@ -136,34 +128,25 @@ struct String : Value
 	void print()override {
 		cout << value.value;
 	}
-	int getSize()override {
-		return STRING_SIZE;
-	}
 };
 
 
 
-struct Identifier : Value
+struct Reference : Value
 {
 
 	IdentifierToken value;
-	Reference ref;
 
 	StatementType getType()override {
-		return ID_STMT;
+		return REFERENCE;
 	}
 
-	Identifier(IdentifierToken val, Reference ref) {
+	Reference(IdentifierToken val) {
 		this->value = val;
-		this->ref = ref;
 	}
 	void print() {
 		cout << value.value;
 	}
-	int getSize()override {
-		return ref.size;
-	}
-
 
 };
 
@@ -180,7 +163,7 @@ struct Func : Statement {
 	CodeBlock* body;
 
 
-	vector<Identifier> varsStack;
+	vector<Variable*> varsStack;
 	vector<int> scopesStack;
 
 
@@ -361,21 +344,6 @@ struct MultipleOperation : Value {
 		cout << ")";
 	}
 
-	int getSize()override {
-		if (op == OR || op == AND || op == COMPARISON || op == NOT_EQUAL || op == GREATER_THAN || op == SMALLER_THAN || op == GREATER_THAN_EQUAL || op == SMALLER_THAN_EQUAL) return BIT_SIZE;
-
-		int sz = 0;
-
-		for (size_t i = 0; i < operands.size(); i++)
-			if (operands[i]->getSize() > sz)
-				sz = operands[i]->getSize();
-
-		for (size_t i = 0; i < invoperands.size(); i++)
-			if (invoperands[i]->getSize() > sz)
-				sz = invoperands[i]->getSize();
-		return sz;
-	};
-
 };
 
 struct UnaryOperation : Value {
@@ -401,17 +369,8 @@ struct UnaryOperation : Value {
 		right->print();
 	}
 
-	int getSize()override {
-		switch (op) {
-		case NEGATIVE:return right->getSize();
-		case POSITIVE:return right->getSize();
-		case NOT:return BIT_SIZE;
-		case BITWISE_NOT:return right->getSize();
-		}
-
-		aThrowError(2, -1);
-	};
 };
+
 
 Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
 

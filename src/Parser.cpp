@@ -29,8 +29,8 @@ void deallocstmt(Statement * statement){
 			delete (String*)statement;
 			break;
 		}
-		case ID_STMT: {
-			delete (Identifier*)statement;
+		case REFERENCE: {
+			delete (Reference*)statement;
 			break;
 		}
 		case FUNC_DEFINITION: {
@@ -87,7 +87,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	if (size == 1) {
 		switch (st0) {
-		case ID:return new Identifier(((IdentifierToken*)stack[0])->value, {});
+		case ID:return new Reference(((IdentifierToken*)stack[0])->value);
 		case INT:return new Int(*((IntToken*)stack[0]));
 		case FLOAT:	return new Float(*((FloatToken*)stack[0]));
 		case DOUBLE:return new Double(*((DoubleToken*)stack[0]));

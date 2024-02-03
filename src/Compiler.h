@@ -102,7 +102,7 @@ struct Compiler {
 	const char* pop4 = "mov {0}, dword[rsp]\nadd rsp, 4\n";
 	RegisterRegister rr;
 	unsigned int operationLabelIdx = 0;
-	
+
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		File << "push rbx" << endl;
@@ -126,6 +126,71 @@ struct Compiler {
 	void compile(vector<Statement*> tree, string s);
 
 	void compile(Statement* b, Func* fn);
-	void compile(string f, Statement* b, Func* fn);
+	void compile(string f, Statement* b, Func* fn, bool hasptr = false);
 
+	int getSize(Value* v, Func* fn) {
+		switch (v->getType())
+		{
+		case REFERENCE: {
+			for (size_t i = 0; i < fn->varsStack.size(); i++)
+			{
+				if (fn->varsStack[i]->name.value == ((Reference*)v)->value.value) {
+					return fn->varsStack[i]->size;
+				}
+			}
+			break;
+		}
+
+		case MULTI_OPERATION: {
+			MultipleOperation* mop = (MultipleOperation*)v;
+			if (mop->op == OR || mop->op == AND || mop->op == COMPARISON || mop->op == NOT_EQUAL || mop->op == GREATER_THAN || mop->op == SMALLER_THAN || mop->op == GREATER_THAN_EQUAL || mop->op == SMALLER_THAN_EQUAL) return BIT_SIZE;
+
+			int sz = 0;
+
+			for (size_t i = 0; i < mop->operands.size(); i++) {
+				int osz = getSize(mop->operands[i], fn);
+				if (osz > sz)
+					sz = osz;
+			}
+
+			for (size_t i = 0; i < mop->invoperands.size(); i++) {
+				int osz = getSize(mop->invoperands[i], fn);
+				if (osz > sz)
+					sz = osz;
+			}
+
+			return sz;
+
+		}
+		case UN_OPERATION: {
+			UnaryOperation* uop = (UnaryOperation*)v;
+			switch (uop->op) {
+			case NEGATIVE:return getSize(uop->right,fn);
+			case POSITIVE:return getSize(uop->right, fn);
+			case NOT:return BIT_SIZE;
+			case BITWISE_NOT:return getSize(uop->right, fn);
+			}
+
+			break;
+		}
+		case INT_STMT: {
+			return INT_SIZE;
+		}
+		case FLOAT_STMT: {
+			return FLOAT_SIZE;
+		}
+		case DOUBLE_STMT: {
+			return DOUBLE_SIZE;
+		}
+		case STRING_STMT: {
+			return STRING_SIZE;
+		}
+		case BIT_STMT: {
+			return BIT_SIZE;
+		}
+					 aThrowError(2, -1);
+		}
+
+
+	}
 };
