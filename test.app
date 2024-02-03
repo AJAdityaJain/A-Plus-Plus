@@ -1,5 +1,5 @@
 func main(){
-	let a = 0;
-	a = !(1 xor 1); 	
+	let a = 97;
+	a = !1
 
 }

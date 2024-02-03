@@ -97,6 +97,7 @@ struct Compiler {
 	const char* popebx = "mov ebx, dword[rsp]\nadd rsp, 4\n";
 
 
+	const char* push1 = "sub rsp, 1\n\tmov byte[rsp], {0}\n";
 	const char* push4 = "sub rsp, 4\n\tmov dword[rsp], {0}\n";
 	const char* pop4 = "mov {0}, dword[rsp]\nadd rsp, 4\n";
 	RegisterRegister rr;
@@ -127,14 +128,4 @@ struct Compiler {
 	void compile(Statement* b, Func* fn);
 	void compile(string f, Statement* b, Func* fn);
 
-	int getSize(Statement* b) {
-		switch (b->getType()) {
-		case INT_STMT: return 4;
-		case FLOAT_STMT: return 4;
-		case STRING_STMT: return 8;
-		case DOUBLE_STMT: return 8;
-		case BIT_STMT: return 1;
-		default: return 0;
-		}
-	}
 };

@@ -5,7 +5,7 @@ void Compiler::compile(vector<Statement*> tree, string base) {
 	File = ofstream(base+ "\\test.asm");
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.data' data readable writeable\n";
 	//DATA
-	File << "filler db 4";
+	File << "version db '0.3.1'";
 	//~DATA
 	File << "\nsection '.text' code readable executable\n\n\n";
 
@@ -35,6 +35,19 @@ void Compiler::compile(vector<Statement*> tree, string base) {
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 void Compiler::compile(Statement* b, Func* fn) {
 	switch (b->getType())
 	{
@@ -49,25 +62,28 @@ void Compiler::compile(Statement* b, Func* fn) {
 	}
 	case DEFINITION: {
 		Definition* d = (Definition*)b;
-		unsigned int sz = 4;//getSize(d->value);
+		
+		unsigned int sz = d->value->getSize();//getSize(d->value);
 
+		if (sz == 1)
+			compile(push1, d->value, fn);
 		if (sz == 4)
 			compile(push4, d->value, fn);
 
 		fn->scopesStack.back()++;
 		if (fn->varsStack.size() == 0)
-			fn->varsStack.push_back(Variable({ d->name.value,sz,sz }));
+			fn->varsStack.push_back(Identifier(d->name, { sz, sz }));
 		else
-			fn->varsStack.push_back(Variable({ d->name.value,fn->varsStack.back().off + sz,sz }));
-	
+			fn->varsStack.push_back(Identifier(d->name, { fn->varsStack.back().ref.off + sz, sz }));
+
 		break;
 	}
 	case ASSIGNMENT: {
 		Assignment* a = (Assignment*)b;
 
-		for (Variable v : fn->varsStack)
-			if (v.id == a->name->value.value) {
-				compile("mov [rbp - "+to_string(v.off) + "], {0}\n", a->value, fn);
+		for(int  i = 0; i < fn->varsStack.size(); i++)
+			if (fn->varsStack[i].value.value == a->name.value) {
+				compile("mov [rbp - "+to_string(fn->varsStack[i].ref.off) + "], {0}\n", a->value, fn);
 				break;
 			}
 		break;
@@ -90,6 +106,14 @@ void Compiler::compile(Statement* b, Func* fn) {
 	}
 
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -116,10 +140,11 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 		break;
 	}
 	case ID_STMT: {
-		for (Variable v : fn->varsStack)
-			if (v.id == ((Identifier*)b)->value.value) {
-				if (v.size == 4) {
-					File << "mov eax, dword[rbp - "+to_string(v.off) + "]\n";
+		Identifier* id = (Identifier*)b;
+		for (int i = 0; i < fn->varsStack.size(); i++)
+			if (fn->varsStack[i].value.value == id->value.value) {
+				if (fn->varsStack[i].ref.size == 4) {
+					File << "mov eax, dword[rbp - "+to_string(fn->varsStack[i].ref.off) + "]\n";
 					File << vformat(f, make_format_args("eax"));
 				}
 			}
@@ -273,6 +298,7 @@ void Compiler::compile(string f, Statement* b, Func* fn) {
 		}
 		}
 		rr.free();
+		break;
 	}
 	default: {
 		cout << "CC compiler.cpp";

@@ -105,3 +105,12 @@ enum InBuiltIds {
 	PRINT
 
 };
+
+enum Sizes {
+	VOID_SIZE = 0,
+	BIT_SIZE = 1,
+	INT_SIZE = 4,
+	FLOAT_SIZE = 4,
+	DOUBLE_SIZE = 8,
+	STRING_SIZE = 8,
+};

@@ -131,7 +131,7 @@ struct IdentifierToken : Token {
 		return ID;
 	}
 
-	IdentifierToken(unsigned int value,unsigned int ln):Token(ln){
+	IdentifierToken(unsigned int value=-1,unsigned int ln=-1):Token(ln){
 		this->value = value;
 	}
 };

@@ -4,8 +4,7 @@
 
 using namespace std;
 
-struct Variable {
-	unsigned int id;
+struct Reference {
 	unsigned int off;
 	unsigned int size;
 };
@@ -18,6 +17,12 @@ struct Statement {
 		cout << "STMT_FAIL" << endl;
 	}
 
+};
+
+struct Value : Statement {
+	virtual int getSize() {
+		return VOID_SIZE;
+	}
 };
 
 void deallocstmt(Statement* statement);
@@ -50,7 +55,7 @@ struct CodeBlock : Statement {
 
 
 
-struct Int : Statement
+struct Int : Value
 {
 	IntToken value;
 
@@ -61,8 +66,11 @@ struct Int : Statement
 	void print()override {
 		cout << value.value;	
 	}
+	int getSize()override {
+		return INT_SIZE;
+	}
 };
-struct Float :Statement
+struct Float :Value
 {
 	FloatToken value;
 
@@ -74,9 +82,12 @@ struct Float :Statement
 	void print()override {
 		cout << value.value;
 	}
+	int getSize()override {
+		return FLOAT_SIZE;
+	}
 };
 
-struct Double : Statement
+struct Double : Value
 {
 	DoubleToken value;
 
@@ -88,9 +99,12 @@ struct Double : Statement
 	void print()override {
 		cout << value.value << "d";
 	}
+	int getSize()override {
+		return DOUBLE_SIZE;
+	}
 };
 
-struct Bit : Statement
+struct Bit : Value
 {
 	BitToken value;
 
@@ -102,11 +116,14 @@ struct Bit : Statement
 	void print()override {
 		cout << value.value;
 	}
+	int getSize()override {
+		return BIT_SIZE;
+	}
 };
 
 
 
-struct String : Statement
+struct String : Value
 {
 
 	StringToken value;
@@ -119,58 +136,37 @@ struct String : Statement
 	void print()override {
 		cout << value.value;
 	}
+	int getSize()override {
+		return STRING_SIZE;
+	}
 };
 
 
 
-struct Identifier : Statement
+struct Identifier : Value
 {
 
 	IdentifierToken value;
+	Reference ref;
 
 	StatementType getType()override {
 		return ID_STMT;
 	}
 
-	Identifier(int val = -1) : value(IdentifierToken(val,-1)) {}
+	Identifier(IdentifierToken val, Reference ref) {
+		this->value = val;
+		this->ref = ref;
+	}
 	void print() {
 		cout << value.value;
 	}
+	int getSize()override {
+		return ref.size;
+	}
 
 
 };
 
-struct CallingFunc : Statement
-{
-	IdentifierToken name;
-	vector<Statement*> params;
-
-	StatementType getType()override {
-		return CALL;
-	}
-
-	~CallingFunc(){
-		for (Statement* p : params)
-			deallocstmt(p);
-		params.clear();
-		params.shrink_to_fit();
-	}
-
-	CallingFunc(IdentifierToken val) : name(val) {}
-	CallingFunc(IdentifierToken val, vector<Statement*> params) : name(val) {
-		this->params = params;
-	}
-
-	void print() {
-
-		cout << name.value << "(";
-		for (Statement* v : params) {
-			v->print();
-			cout << " ";
-		}
-		cout << ")" ;
-	}
-};
 
 
 
@@ -184,7 +180,7 @@ struct Func : Statement {
 	CodeBlock* body;
 
 
-	vector<Variable> varsStack;
+	vector<Identifier> varsStack;
 	vector<int> scopesStack;
 
 
@@ -214,7 +210,7 @@ struct Func : Statement {
 
 struct Definition : Statement {
 	IdentifierToken name;
-	Statement* value;
+	Value* value;
 
 	StatementType getType()override {
 		return DEFINITION;
@@ -224,7 +220,7 @@ struct Definition : Statement {
 
 		deallocstmt(value);
 	}
-	Definition(IdentifierToken nam = IdentifierToken (-1,- 1), Statement* val = nullptr) : name(nam) {
+	Definition(IdentifierToken nam = IdentifierToken (-1,- 1), Value* val = nullptr) : name(nam) {
 		value = val;
 	}
 
@@ -237,8 +233,8 @@ struct Definition : Statement {
 };
 struct Assignment : Statement {
 	
-	Identifier* name;
-	Statement* value;
+	IdentifierToken name;
+	Value* value;
 
 
 	StatementType getType()override {
@@ -246,17 +242,16 @@ struct Assignment : Statement {
 	}
 
 	~Assignment() {
-		deallocstmt(name);
 		deallocstmt(value);
 	}
 
-	Assignment(Identifier* nam, Statement* val) {
+	Assignment(IdentifierToken nam, Value* val) {
 		name = nam;
 		value = val;
 	}
 
 	void print()override {
-		cout << "Reassigning " << name->value.value;
+		cout << "Reassigning " << name.value;
 		cout << " to ";
 		value->print();
 		cout << endl;
@@ -265,7 +260,7 @@ struct Assignment : Statement {
 };
 
 struct WhileStatement : Statement {
-	Statement* condition;
+	Value* condition;
 	Statement* whileBlock;
 
 
@@ -278,7 +273,7 @@ struct WhileStatement : Statement {
 		deallocstmt(whileBlock);
 	}
 
-	WhileStatement(Statement* con, Statement* whileb) {
+	WhileStatement(Value* con, Statement* whileb) {
 		condition = con;
 		whileBlock = whileb;
 	}
@@ -293,7 +288,7 @@ struct WhileStatement : Statement {
 };
 
 struct IfStatement : Statement {
-	Statement* condition;
+	Value* condition;
 	Statement* ifBlock;
 
 
@@ -306,7 +301,7 @@ struct IfStatement : Statement {
 		deallocstmt(ifBlock);
 	}
 
-	IfStatement(Statement* con, Statement* ifb) {
+	IfStatement(Value* con, Statement* ifb) {
 		condition = con;
 		ifBlock = ifb;
 	}
@@ -344,10 +339,10 @@ struct ElseStatement : Statement {
 
 
 
-struct MultipleOperation : Statement {
+struct MultipleOperation : Value {
 
-	vector<Statement*> operands;
-	vector<Statement*> invoperands;
+	vector<Value*> operands;
+	vector<Value*> invoperands;
 	//Statement* right;
 	MultipleOperatorType op;
 
@@ -373,7 +368,7 @@ struct MultipleOperation : Statement {
 		invoperands.shrink_to_fit();
 	}
 
-	MultipleOperation(MultipleOperatorType op, vector<Statement*> operands, vector<Statement*> invoperands) {
+	MultipleOperation(MultipleOperatorType op, vector<Value*> operands, vector<Value*> invoperands) {
 		this->operands = operands;
 		this->invoperands = invoperands;
 		this->op = op;
@@ -390,10 +385,10 @@ struct MultipleOperation : Statement {
 	}
 };
 
-struct UnaryOperation : Statement {
+struct UnaryOperation : Value {
 
 	UnaryOperatorType op;
-	Statement* right;
+	Value* right;
 
 	StatementType getType()override {
 		return UN_OPERATION;
@@ -403,7 +398,7 @@ struct UnaryOperation : Statement {
 		deallocstmt(right);
 	}
 
-	UnaryOperation(UnaryOperatorType op, Statement* right) {
+	UnaryOperation(UnaryOperatorType op, Value* right) {
 		this->right = right;
 		this->op = op;
 	}
@@ -412,8 +407,18 @@ struct UnaryOperation : Statement {
 		cout << (op) << " ";
 		right->print();
 	}
-};
 
+	int getSize()override {
+		switch (op) {
+		case NEGATIVE:return right->getSize();
+		case POSITIVE:return right->getSize();
+		case NOT:return BIT_SIZE;
+		case BITWISE_NOT:return right->getSize();
+		}
+
+		aThrowError(2, -1);
+	};
+};
 
 Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
 
