@@ -131,8 +131,7 @@ void Lexer::tokenize(vector<string> lines)
 					string sub = tempString.substr(0, tempString.size() - 1);
 					i--;
 
-						 if(sub.compare("let") == 0)		tokens.push_back(new KeyWordToken{ LET ,lineIdx });
-						 else if (sub.compare("func") == 0)		tokens.push_back(new KeyWordToken{ FUNC,lineIdx });
+						 if (sub.compare("func") == 0)		tokens.push_back(new KeyWordToken{ FUNC,lineIdx });
 						 else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF ,lineIdx });
 						 else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE ,lineIdx });
 						 else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE ,lineIdx });

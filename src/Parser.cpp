@@ -37,10 +37,6 @@ void deallocstmt(Statement * statement){
 			delete (Func*)statement;
 			break;
 		}
-		case DEFINITION: {
-			delete (Definition*)statement;
-			break;
-		}
 		case ASSIGNMENT: {
 			delete (Assignment*)statement;
 			break;
@@ -135,17 +131,6 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		return new Func(*(IdentifierToken*)stack[1], params, body);
 		
 	}
-
-	///Variable Definition
-	if (size >= 4 && st0 == LET && st1 == ID && stack[2]->getType() == ASSIGN) {
-		if (((AssignToken*)stack[2])->value == EQUALS) {
-			return new Definition(
-					*(IdentifierToken*)stack[1],
-					(Value*)parseStatement(vector<Token*>(stack.begin() + 3, stack.end()))
-				);
-		}
-	}
-
 
 
 	/// Variable Assignment

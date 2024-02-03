@@ -15,6 +15,15 @@ mov rbp, rsp
 
 sub rsp, 4
 	mov dword[rsp], 97
+mov [rbp - 4], 1
+xor rax,rax
+mov eax, 1
+add eax, 24
+add eax, 6
+add eax, 7
+mov [rbp - 4], eax
+sub rsp, 4
+	mov dword[rsp], 23
 
 mov rsp, rbp
 pop rbp;

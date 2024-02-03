@@ -208,29 +208,6 @@ struct Func : Statement {
 };
 
 
-struct Definition : Statement {
-	IdentifierToken name;
-	Value* value;
-
-	StatementType getType()override {
-		return DEFINITION;
-	}
-
-	~Definition() {
-
-		deallocstmt(value);
-	}
-	Definition(IdentifierToken nam = IdentifierToken (-1,- 1), Value* val = nullptr) : name(nam) {
-		value = val;
-	}
-
-	void print() override {
-		cout << "Defining " << name.value;
-		cout << " as ";
-		value->print();
-		cout << endl;
-	}
-};
 struct Assignment : Statement {
 	
 	IdentifierToken name;
@@ -383,6 +360,22 @@ struct MultipleOperation : Value {
 		}
 		cout << ")";
 	}
+
+	int getSize()override {
+		if (op == OR || op == AND || op == COMPARISON || op == NOT_EQUAL || op == GREATER_THAN || op == SMALLER_THAN || op == GREATER_THAN_EQUAL || op == SMALLER_THAN_EQUAL) return BIT_SIZE;
+
+		int sz = 0;
+
+		for (size_t i = 0; i < operands.size(); i++)
+			if (operands[i]->getSize() > sz)
+				sz = operands[i]->getSize();
+
+		for (size_t i = 0; i < invoperands.size(); i++)
+			if (invoperands[i]->getSize() > sz)
+				sz = invoperands[i]->getSize();
+		return sz;
+	};
+
 };
 
 struct UnaryOperation : Value {

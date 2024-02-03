@@ -9,7 +9,6 @@ enum TokenType {
 
 	ID,
 
-	LET,
 	FUNC,
 	IF,
 	ELSE,
@@ -42,7 +41,6 @@ enum StatementType {
 
 	CALL,
 	FUNC_DEFINITION,
-	DEFINITION,
 	ASSIGNMENT,
 	WHILE_STMT,
 	IF_STMT,

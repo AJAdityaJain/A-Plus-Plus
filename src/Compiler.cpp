@@ -51,62 +51,41 @@ void Compiler::compile(vector<Statement*> tree, string base) {
 void Compiler::compile(Statement* b, Func* fn) {
 	switch (b->getType())
 	{
-	case NONE_STMT: {
-		break;
-	}
-	case CALL: {
-		break;
-	}
-	case FUNC_DEFINITION: {
-		break;
-	}
-	case DEFINITION: {
-		Definition* d = (Definition*)b;
-		
-		unsigned int sz = d->value->getSize();//getSize(d->value);
+
+	case ASSIGNMENT: {
+		Assignment* a = (Assignment*)b;
+		unsigned int sz = a->value->getSize();
+
+		for (int i = 0; i < fn->varsStack.size(); i++)
+			if (fn->varsStack[i].value.value == a->name.value && fn->varsStack[i].ref.size == sz) {
+
+				compile("mov [rbp - " + to_string(fn->varsStack[i].ref.off) + "], {0}\n", a->value, fn);
+
+				return;
+			}
+
 
 		if (sz == 1)
-			compile(push1, d->value, fn);
+			compile(push1, a->value, fn);
 		if (sz == 4)
-			compile(push4, d->value, fn);
+			compile(push4, a->value, fn);
 
 		fn->scopesStack.back()++;
 		if (fn->varsStack.size() == 0)
-			fn->varsStack.push_back(Identifier(d->name, { sz, sz }));
+			fn->varsStack.push_back(Identifier(a->name, { sz, sz }));
 		else
-			fn->varsStack.push_back(Identifier(d->name, { fn->varsStack.back().ref.off + sz, sz }));
+			fn->varsStack.push_back(Identifier(a->name, { fn->varsStack.back().ref.off + sz, sz }));
 
-		break;
-	}
-	case ASSIGNMENT: {
-		Assignment* a = (Assignment*)b;
 
-		for(int  i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i].value.value == a->name.value) {
-				compile("mov [rbp - "+to_string(fn->varsStack[i].ref.off) + "], {0}\n", a->value, fn);
-				break;
-			}
-		break;
+		return;
 	}
-	case WHILE_STMT: {
-		break;
+
 	}
-	case IF_STMT: {
-		break;
-	}
-	case ELSE_STMT: {
-		break;
-	}
-	case SCOPE: {
-		break;
-	}
-	default: {
-		cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA compiler.cpp";
-	}
-	}
+
+	cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA compiler.cpp";
+	return;
 
 }
-
 
 
 
