@@ -145,6 +145,11 @@ struct RegisterRegister {
 		reg++;
 		if (reg > 13) aThrowError(6, -1);
 		emptyReg();
+		return realloc(sz);
+	}
+
+	Register realloc(AsmSize sz) const {
+
 		switch (sz) {
 		case BIT_SIZE: {
 			Register r = regs1[reg];
@@ -188,6 +193,15 @@ struct RegisterRegister {
 		case SHORT_SIZE: return regs2[0];
 		case INT_SIZE: return regs4[0];
 		case PTR_SIZE: return regs8[0];
+		}
+		aThrowError(5, -1);
+	}	
+	Register D(AsmSize sz) const {
+		switch (sz) {
+		case BIT_SIZE: return regs1[2];
+		case SHORT_SIZE: return regs2[2];
+		case INT_SIZE: return regs4[2];
+		case PTR_SIZE: return regs8[2];
 		}
 		aThrowError(5, -1);
 	}
@@ -260,7 +274,7 @@ struct Compiler {
 
 	CompilationToken compileValue(Value* v, Func* fn);
 
-	AsmSize getSize(Value* v, Func* fn) {
+	AsmSize getSize(Value* v, Func* fn,bool inp) {
 		switch (v->getType())
 		{
 		case REFERENCE: {
@@ -275,18 +289,28 @@ struct Compiler {
 
 		case MULTI_OPERATION: {
 			MultipleOperation* mop = (MultipleOperation*)v;
-			if (mop->op == OR || mop->op == AND || mop->op == COMPARISON || mop->op == NOT_EQUAL || mop->op == GREATER_THAN || mop->op == SMALLER_THAN || mop->op == GREATER_THAN_EQUAL || mop->op == SMALLER_THAN_EQUAL) return BIT_SIZE;
+			if (mop->op == OR || mop->op == AND) return BIT_SIZE;
+			if(!inp)
+				if (
+					mop->op == COMPARISON || 
+					mop->op == NOT_EQUAL || 
+					mop->op == GREATER_THAN || 
+					mop->op == SMALLER_THAN || 
+					mop->op == GREATER_THAN_EQUAL || 
+					mop->op == SMALLER_THAN_EQUAL
+					) 
+					return BIT_SIZE;
 
 			AsmSize sz = VOID_SIZE;
 
 			for (size_t i = 0; i < mop->operands.size(); i++) {
-				AsmSize osz = getSize(mop->operands[i], fn);
+				AsmSize osz = getSize(mop->operands[i], fn, inp);
 				if (osz > sz)
 					sz = osz;
 			}
 
 			for (size_t i = 0; i < mop->invoperands.size(); i++) {
-				AsmSize osz = getSize(mop->invoperands[i], fn);
+				AsmSize osz = getSize(mop->invoperands[i], fn,inp);
 				if (osz > sz)
 					sz = osz;
 			}
@@ -297,10 +321,10 @@ struct Compiler {
 		case UN_OPERATION: {
 			UnaryOperation* uop = (UnaryOperation*)v;
 			switch (uop->op) {
-			case NEGATIVE:return getSize(uop->right,fn);
-			case POSITIVE:return getSize(uop->right, fn);
+			case NEGATIVE:return getSize(uop->right,fn, inp);
+			case POSITIVE:return getSize(uop->right, fn, inp);
 			case NOT:return BIT_SIZE;
-			case BITWISE_NOT:return getSize(uop->right, fn);
+			case BITWISE_NOT:return getSize(uop->right, fn,inp);
 			}
 
 			break;

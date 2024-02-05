@@ -119,16 +119,32 @@ enum AsmSize {
 };
 
 enum INSTRUCTION {
+	CDQ0,
+
+	NEG1,
+	IDIV1,
+
+	JZ1,
+	JNZ1,
+	JMP1,
+
+	SETE1,
+	SETNE1,
+	SETG1,
+	SETGE1,
+	SETL1,
+	SETLE1,
+
 	MOV2,
+
 	ADD2,
 	SUB2,
 	IMUL2,
-	XOR2,
-	IDIV1,
-	CDQ0,
-	NEG1,
+	
 	TEST2,
-	JNZ1,
-	JMP1,
-	JZ1,
+	CMP2,
+	
+	AND2,
+	OR2,
+	XOR2,
 };

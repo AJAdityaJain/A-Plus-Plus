@@ -11,9 +11,17 @@ push rbp
 mov rbp, rsp
 
 xor rax,rax
-mov eax, 45
-xor eax, 42
-xor eax, 23
+mov eax, 53
+xor rcx,rcx
+mov ecx, 2324
+cdq
+idiv ecx
+mov eax, edx
+xor rcx,rcx
+mov ecx, 876
+cdq
+idiv ecx
+mov eax, edx
 mov dword[rsp-4], eax
 sub rsp, 4
 
