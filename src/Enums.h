@@ -42,7 +42,7 @@ enum StatementType {
 	PTR,
 	_TOKEN,
 
-	CALL,
+	//CALL,
 	FUNC_DEFINITION,
 	ASSIGNMENT,
 	WHILE_STMT,
@@ -147,4 +147,10 @@ enum INSTRUCTION {
 	AND2,
 	OR2,
 	XOR2,
+};
+enum CompilationTokenType {
+	_NONE,
+	_PTR,
+	_REGISTER
+
 };

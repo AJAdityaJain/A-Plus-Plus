@@ -1,6 +1,6 @@
 #include "Compiler.h"
 
-void Compiler::compile(vector<Statement*> tree, string loc) {
+void Compiler::compile(vector<Statement*> tree, char* loc) {
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
@@ -12,12 +12,9 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 			if (fn->name.value == MAIN) {
 				File << "start:" << endl;
 
-				prologue(fn);
-				for (Statement* st : fn->body->code)
-				{
-					compileStatement(st,fn);
-				}
-				epilogue(fn);
+				functionPrologue();
+				compileStatement(fn->body, fn);
+				functionEpilogue();
 
 				File << "\n\ninvoke  exit, rax"<<endl;
 			}
@@ -38,7 +35,47 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 void Compiler::compileStatement(Statement* b, Func* fn) {
 	switch (b->getType())
 	{
+	case SCOPE: {
+		prologue(fn);
 
+		CodeBlock* scope = (CodeBlock*)b;
+		for (size_t i = 0; i < scope->code.size(); i++)
+			compileStatement(scope->code[i], fn);
+
+		epilogue(fn);
+
+		return;
+	}
+	case WHILE_STMT: {
+		IfStatement* ifs = (IfStatement*)b;
+		string label = ".LABBRNCH" + to_string(dataLabelIdx);
+		dataLabelIdx++;
+		string label2 = ".LABBRNCH" + to_string(dataLabelIdx);
+		dataLabelIdx++;
+
+		File << label << ":" << endl;
+		compileInstruction(CMP2, ifs->condition, new Bit(true), fn);
+		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn);
+
+		compileStatement(ifs->ifBlock, fn);
+
+		compileInstruction(JMP1, new CompilationToken(label), nullptr, fn);
+
+		File << label2 << ":" << endl;
+		return;
+	}	
+	case IF_STMT: {
+		IfStatement* ifs = (IfStatement*)b;
+		string label = ".LABBRNCH" + to_string(dataLabelIdx);
+		dataLabelIdx++;
+		compileInstruction(CMP2, ifs->condition, new Bit(true), fn);
+		compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn);
+
+		compileStatement(ifs->ifBlock, fn);
+
+		File << label << ":" << endl;
+		return;
+	}
 	case ASSIGNMENT: {
 		Assignment* a = (Assignment*)b;
 		AsmSize sz = getSize(a->value, fn,false);
@@ -53,7 +90,9 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 		compileInstruction(MOV2, new Pointer("[rsp-"+to_string(sz) + "]", sz), a->value, fn, true);
 		compileInstruction(SUB2, rr.rsp, new Int(sz), fn);
 
+		rr.rspOff.back() += sz;
 		fn->scopesStack.back()++;
+
 		if (fn->varsStack.size() == 0)
 			fn->varsStack.push_back(new Variable(sz, sz, a->name));
 		else
@@ -65,7 +104,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 
 	}
 	
-	std::cout << "compiler.cpp";
+	aThrowError(2, -1);
 	return;
 
 }
@@ -144,22 +183,22 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 
 
 	CompilationToken o2 = compileValue(op2, fn);
-	if (o1isptr && o2.isPtr && i == MOV2) {
-		Reference* op2ptr = (Reference*)op2;
-		Register r = rr.alloc(getSize(op, fn, false));
-
-		File << "mov " << r.reg << ", " << o2.line << endl;
-
-		File << "mov " << o1.line << ", " << r.reg << endl;
-
-		rr.free(r);
-		return;
-	}
 
 	switch (i)
 	{
 	case MOV2: {
-		File << "mov " << o1.line << ", " << o2.line << endl;
+		if (o1isptr && o2.type == _PTR) {
+			Reference* op2ptr = (Reference*)op2;
+			Register r = rr.alloc(getSize(op, fn, false));
+
+			compileInstruction(MOV2, &r, &o2, fn);
+			compileInstruction(MOV2, &o1, &r, fn);
+			rr.free(r);
+			return;
+		}
+		else {
+			File << "mov " << o1.line << ", " << o2.line << endl;
+		}
 		break;
 	}
 	case ADD2: {
@@ -182,12 +221,20 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 		File << "and " << o1.line << ", " << o2.line << endl;
 		break;
 	}
-case OR2: {
+	case OR2: {
 		File << "or " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case CMP2: {
-		File << "cmp " << o1.line << ", " << o2.line << endl;
+		if (o1.type == _REGISTER || o2.type == _REGISTER) {
+			File << "cmp " << o1.line << ", " << o2.line << endl;
+		}
+		else {
+			Register r = rr.alloc(getSize(op, fn, false));
+			compileInstruction(MOV2, &r, &o1, fn);
+			compileInstruction(CMP2, &r, &o2, fn);
+			rr.free(r);
+		}
 		break;
 	}
 	case TEST2: {
@@ -204,12 +251,12 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 	switch (v->getType())
 	{
 	case _TOKEN: return { ((CompilationToken*)v)->line };
-	case PTR: return { ((Pointer*)v)->ptr ,true };
-	case REGISTER: return { ((Register*)v)->reg };
+	case PTR: return { ((Pointer*)v)->ptr , _PTR };
+	case REGISTER: return { ((Register*)v)->reg, _REGISTER };
 	case INT_STMT: return { to_string(((Int*)v)->value) };
 	case BIT_STMT: return{ to_string((((Bit*)v)->value) ? 1 : 0) };
 	case FLOAT_STMT: {
-		string label = "LABDAT" + to_string(dataLabelIdx);
+		string label = ".LABDAT" + to_string(dataLabelIdx);
 		operationLabelIdx++;
 		data << label << " dd " << ((Float*)v)->value << endl;
 		return { label };
@@ -220,7 +267,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 		for (int i = 0; i < fn->varsStack.size(); i++)
 			if (fn->varsStack[i]->name.value == id->value.value) {
 				Pointer p = Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size);
-				return { p.ptr, true };
+				return { p.ptr, _PTR};
 			}
 		break;
 	}
@@ -231,9 +278,9 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 		case NOT: {
 			Register reg = rr.alloc(BIT_SIZE);
 			compileInstruction(MOV2, &reg, uo->right, fn);
-			compileInstruction(XOR2, &reg, new Int(1), fn);
+			compileInstruction(XOR2, &reg, new Bit(true), fn);
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg,_REGISTER };
 		}
 
 		case NEGATIVE: {
@@ -241,7 +288,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			compileInstruction(MOV2, &reg, uo->right, fn);
 			compileInstruction(NEG1, &reg, nullptr, fn);
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg,_REGISTER };
 		}
 		}
 		break;
@@ -261,7 +308,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			for (size_t i = 0; i < mo->invoperands.size(); i++)
 				compileInstruction(SUB2, &reg, mo->invoperands[i], fn);
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg ,_REGISTER };
 		}
 		case MULTIPLY: {
 			Register reg = rr.alloc(sz);
@@ -301,7 +348,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				}
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg,_REGISTER };
 		}		
 		case MODULO: {
 			Register reg = rr.alloc(sz);
@@ -340,7 +387,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				}
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg,_REGISTER };
 		}
 
 		case OR: {
@@ -350,16 +397,16 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			for (Value* s : mo->operands) {
 				compileInstruction(MOV2, &reg, s, fn);
 				compileInstruction(TEST2, &reg, &reg, fn);
-				compileInstruction(JNZ1, new CompilationToken("LABOP_S" + to_string(lidx)), nullptr, fn);
+				compileInstruction(JNZ1, new CompilationToken(".LABOP_S" + to_string(lidx)), nullptr, fn);
 			}
 
-			compileInstruction(JMP1, new CompilationToken("LABOP_E" + to_string(lidx)), nullptr, fn);
-			File << "LABOP_S" << lidx << ":" << endl;
-			compileInstruction(MOV2, &reg, new Int(1), fn);
-			File << "LABOP_E" << lidx << ":" << endl;
+			compileInstruction(JMP1, new CompilationToken(".LABOP_E" + to_string(lidx)), nullptr, fn);
+			File << ".LABOP_S" << lidx << ":" << endl;
+			compileInstruction(MOV2, &reg, new Bit(true), fn);
+			File << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg,_REGISTER };
 		}
 		case AND: {
 			unsigned int lidx = operationLabelIdx;
@@ -368,16 +415,16 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			for (Value* s : mo->operands) {
 				compileInstruction(MOV2, &reg, s, fn);
 				compileInstruction(TEST2, &reg, &reg, fn);
-				compileInstruction(JZ1, new CompilationToken("LABOP_S" + to_string(lidx)), nullptr, fn);
+				compileInstruction(JZ1, new CompilationToken(".LABOP_S" + to_string(lidx)), nullptr, fn);
 			}
 
-			compileInstruction(JMP1, new CompilationToken("LABOP_E" + to_string(lidx)), nullptr, fn);
-			File << "LABOP_S" << lidx << ":" << endl;
-			compileInstruction(MOV2, &reg, new Int(0), fn);
-			File << "LABOP_E" << lidx << ":" << endl;
+			compileInstruction(JMP1, new CompilationToken(".LABOP_E" + to_string(lidx)), nullptr, fn);
+			File << ".LABOP_S" << lidx << ":" << endl;
+			compileInstruction(MOV2, &reg, new Bit(false), fn);
+			File << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg,_REGISTER };
 		}
 		case XOR: {
 			Register reg = rr.alloc(sz);
@@ -389,7 +436,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg ,_REGISTER };
 		}		
 		case BITWISE_AND: {
 			Register reg = rr.alloc(sz);
@@ -401,7 +448,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}		
 		case BITWISE_OR: {
 			Register reg = rr.alloc(sz);
@@ -413,7 +460,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		case COMPARISON: {
 			Register reg = rr.alloc(getSize(mo, fn, true));
@@ -424,7 +471,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				compileInstruction(SETE1, &reg, nullptr, fn);
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		case NOT_EQUAL: {
 			Register reg = rr.alloc(getSize(mo, fn, true));
@@ -435,7 +482,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				compileInstruction(SETNE1, &reg, nullptr, fn);
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		case GREATER_THAN: {
 			Register reg = rr.alloc(getSize(mo, fn, true));
@@ -446,7 +493,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				compileInstruction(SETGE1, &reg, nullptr, fn);
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		case GREATER_THAN_EQUAL: {
 			Register reg = rr.alloc(getSize(mo, fn, true));
@@ -457,7 +504,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				compileInstruction(SETGE1, &reg, nullptr, fn);
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		case SMALLER_THAN: {
 			Register reg = rr.alloc(getSize(mo, fn, true));
@@ -468,7 +515,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				compileInstruction(SETL1, &reg, nullptr, fn);
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		case SMALLER_THAN_EQUAL: {
 			Register reg = rr.alloc(getSize(mo, fn, true));
@@ -479,7 +526,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				compileInstruction(SETLE1, &reg, nullptr, fn);
 			}
 			rr.free(reg);
-			return { reg.reg };
+			return { reg.reg , _REGISTER};
 		}
 		}
 		break;

@@ -44,6 +44,22 @@ struct CodeBlock : Statement {
 		code.clear();
 		code.shrink_to_fit();
 	}
+
+	CodeBlock(vector<Statement*> code) {
+		this->code = code;
+	}
+	CodeBlock(Statement* line) {
+		if (line->getType() == SCOPE) {
+			this->code = ((CodeBlock*)line)->code;
+			delete line;
+		}
+		else {
+			this->code = vector<Statement*>();
+			this->code.push_back(line);
+		}
+
+	}
+
 	StatementType getType()override {
 		return SCOPE;
 	}
@@ -221,7 +237,7 @@ struct Assignment : Statement {
 
 struct WhileStatement : Statement {
 	Value* condition;
-	Statement* whileBlock;
+	CodeBlock* whileBlock;
 
 
 	StatementType getType()override {
@@ -233,7 +249,7 @@ struct WhileStatement : Statement {
 		deallocstmt(whileBlock);
 	}
 
-	WhileStatement(Value* con, Statement* whileb) {
+	WhileStatement(Value* con, CodeBlock* whileb) {
 		condition = con;
 		whileBlock = whileb;
 	}
@@ -249,7 +265,7 @@ struct WhileStatement : Statement {
 
 struct IfStatement : Statement {
 	Value* condition;
-	Statement* ifBlock;
+	CodeBlock* ifBlock;
 
 
 	StatementType getType()override {
@@ -261,7 +277,7 @@ struct IfStatement : Statement {
 		deallocstmt(ifBlock);
 	}
 
-	IfStatement(Value* con, Statement* ifb) {
+	IfStatement(Value* con, CodeBlock* ifb) {
 		condition = con;
 		ifBlock = ifb;
 	}
@@ -276,7 +292,7 @@ struct IfStatement : Statement {
 };
 
 struct ElseStatement : Statement {
-	Statement* elseBlock;
+	CodeBlock* elseBlock;
 
 	StatementType getType()override {
 		return ELSE_STMT;
@@ -286,7 +302,7 @@ struct ElseStatement : Statement {
 		deallocstmt(elseBlock);
 	}
 
-	ElseStatement(Statement* elseb) {
+	ElseStatement(CodeBlock* elseb) {
 		elseBlock = elseb;
 	}
 

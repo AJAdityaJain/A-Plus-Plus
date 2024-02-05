@@ -102,9 +102,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	///Scope Definition
 	if (size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
-		CodeBlock* block = new CodeBlock();
-
-		block->code = parseStatements(vector<Token*>(stack.begin() + 1, stack.end() - 1));
+		CodeBlock* block = new CodeBlock(parseStatements(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
 		return block;
 	}
 
@@ -122,8 +120,9 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 				params.push_back(*(IdentifierToken*)stack[i]);
 			} 
 
-			if (depth == 0 && t == CURLY_OPEN) {
+			if (t == CURLY_OPEN) {
 				bi = i;
+				break;
 			}
 		}
 
@@ -172,6 +171,9 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	///While
 	if (st0 == WHILE) {
+		Value* con;
+		CodeBlock* whileb;
+
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
@@ -180,18 +182,29 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 				case PARENTHESIS_CLOSE: depth--; break;
 				}
 				depth = abs(depth);
-				if (depth == 0) return new WhileStatement ((Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
-
+				if (depth == 0) {
+					con = (Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i));
+					whileb = new CodeBlock(parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+					break;
+				}
 			}
 		}
-		for (int i = 1; i < stack.size() - 1; i++)
-			if (stack[i]->getType() == COLON)
-				return new WhileStatement((Value*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+		else 
+			for (int i = 1; i < stack.size() - 1; i++)
+				if (stack[i]->getType() == COLON) {
+					con = (Value*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i));
+					whileb = new CodeBlock(parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+					break;
+				}
 
+		return new WhileStatement(con, whileb);
 	}
 
 	///If
 	if (st0 == IF) {
+		Value* con;
+		CodeBlock* ifb;
+
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
@@ -200,20 +213,29 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 				case PARENTHESIS_CLOSE: depth--; break;
 				}
 				depth = abs(depth);
-				if (depth == 0) return new IfStatement((Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
-
+				if (depth == 0) {
+					con = (Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.begin() + i));
+					ifb = new CodeBlock(parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+					break;
+				}
 
 			}
 		}
-		for (int i = 1; i < stack.size() - 1; i++)
-			if (stack[i]->getType() == COLON)
-				return new IfStatement((Value*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i)), parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+		else 
+			for (int i = 1; i < stack.size() - 1; i++)
+				if (stack[i]->getType() == COLON) {
+					con = (Value*)parseStatement(vector<Token*>(stack.begin() + 1, stack.begin() + i));
+					ifb = new CodeBlock(parseStatement(vector<Token*>(stack.begin() + i + 1, stack.end())));
+					break;
+				}
+		
 
+		return new IfStatement(con, ifb);
 	}
 
 	///Else
 	if (st0 == ELSE) {
-		return new ElseStatement(parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
+		return new ElseStatement(new CodeBlock(parseStatement(vector<Token*>(stack.begin() + 1, stack.end()))));
 	}
 
 	///Parenthesis
@@ -334,11 +356,11 @@ vector<Statement*> parseStatements(vector<Token*> stack) {
 	for (int i = 0; i < stack.size(); i++) {
 		TokenType sti = stack[i]->getType();
 
-		if(sti == CURLY_OPEN) depth++;
+		if (sti == CURLY_OPEN) depth++;
 		if (sti == CURLY_CLOSE) depth--;
 
 		if (sti == LINE_END && depth == 0)shouldParse = true;
-		
+
 		else {
 			subStack.push_back(stack[i]);
 			if (sti == CURLY_CLOSE && depth == 0)shouldParse = true;
@@ -347,7 +369,10 @@ vector<Statement*> parseStatements(vector<Token*> stack) {
 
 		if (shouldParse) {
 			shouldParse = false;
-			if(subStack.size() > 0)statements.push_back(parseStatement(subStack));
+			if (subStack.size() > 0) {
+				statements.push_back(parseStatement(subStack))
+					;
+			}
 			subStack.clear();
 		}
 	}

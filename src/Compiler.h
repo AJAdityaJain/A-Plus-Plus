@@ -69,17 +69,17 @@ struct Pointer : Value {
 
 struct CompilationToken:Value {
 	string line;
-	bool isPtr;
+	CompilationTokenType type;
 	StatementType getType()override {
 		return _TOKEN;
 	}
-	CompilationToken(string line, bool isPtr) {
+	CompilationToken(string line, CompilationTokenType type) {
 		this->line = line;
-		this->isPtr = isPtr;
+		this->type = type;
 	}
 	CompilationToken(string line) {
 		this->line = line;
-		this->isPtr = false;
+		this->type = _NONE;
 	}
 
 };
@@ -130,6 +130,7 @@ struct RegisterRegister {
 	};
 
 	Register* rsp = new Register("rsp",PTR_SIZE);
+	vector<int> rspOff = vector<int>();
 
 	int reg = -1;
 
@@ -245,11 +246,20 @@ struct Compiler {
 		rr = RegisterRegister();
 	}
 
-	void prologue(Func* fn) {
-		fn->scopesStack.push_back(0);
-		//File << "push rbx" << endl;
+	void functionPrologue() {
 		File << "push rbp" << endl;
 		File << "mov rbp, rsp" << endl << endl;
+
+	}
+
+	void functionEpilogue() {
+		File << endl << "mov rsp, rbp" << endl;
+		File << "pop rbp;" << endl;
+	}
+
+	void prologue(Func* fn) {
+		fn->scopesStack.push_back(0);
+		rr.rspOff.push_back(0);
 	}
 
 	void epilogue(Func* fn) {
@@ -258,14 +268,14 @@ struct Compiler {
 			fn->varsStack.pop_back();
 		}
 		fn->scopesStack.pop_back();
-		File << endl << "mov rsp, rbp" << endl;
-		File << "pop rbp;" << endl;
+		File << "add rsp,"<< rr.rspOff.back() << endl;
+		rr.rspOff.pop_back();
 		//File << "pop rbx" << endl;
 	}
 
 
 
-	void compile(vector<Statement*> tree, string base);
+	void compile(vector<Statement*> tree, char* base);
 
 	void compileStatement(Statement* b, Func* fn);
 
@@ -277,6 +287,12 @@ struct Compiler {
 	AsmSize getSize(Value* v, Func* fn,bool inp) {
 		switch (v->getType())
 		{
+		case REGISTER: {
+			return ((Register*)v)->size;
+		}
+		case PTR: {
+			return ((Pointer*)v)->size;
+		}
 		case REFERENCE: {
 			for (size_t i = 0; i < fn->varsStack.size(); i++)
 			{

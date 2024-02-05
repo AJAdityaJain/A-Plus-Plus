@@ -1,19 +1,27 @@
 ﻿#include "Compiler.h"
 
+void replaceFileExtension(char* path) {
+	if (path == nullptr) {
+		std::cerr << "Error: Null pointer." << std::endl;
+		return;
+	}
+	char* dotPosition = strrchr(path, '.');
+	if (dotPosition != nullptr) strcpy(dotPosition, ".asm");
+	else strcat(path, ".asm");
+}
+
 
 int main(int argc, char* argv[])
 {
-	cout << argc << ',' << * argv << endl << endl;
+	if (argc < 2)
+		return -1;
 
 
 	///READ FILE
-	cout << "READING" << endl << endl;
 	vector<string> programString;
-	ifstream AsmFile("C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus\\test.app");
+	ifstream AsmFile(argv[1]);
 	string tempString;
 	while (getline(AsmFile, tempString, ';')) {
-		//tempString.erase(tempString.begin(),find_if_not(tempString.begin(), tempString.end(),[](char c) { return isspace(c); }));
-		//tempString.erase(find_if_not(tempString.rbegin(), tempString.rend(),[](char c) { return isspace(c); }).base(),tempString.end());
 		programString.push_back(tempString+";\n");
 	}
 	AsmFile.close();
@@ -21,33 +29,24 @@ int main(int argc, char* argv[])
 	tempString.clear();
 	tempString.shrink_to_fit();
 
-	
 	///TOKENIZE
-	cout << "TOKENIZING" << endl << endl;
 	Lexer lexer = Lexer();
 	lexer.tokenize(programString);
-
 	programString.clear();
 	programString.shrink_to_fit();
 
-
-
 	///PARSE
-	cout << "PARSING" << endl << endl;
 	vector<Statement*> tree = parseStatements(lexer.tokens);
-	lexer.clean();
-	
-	for(Statement* s : tree) s->print();
+	lexer.clean();	
+	//for(Statement* s : tree) s->print();
 
-	cout << "COMPILING" << endl << endl;
-	
+	///COMPILE
+	replaceFileExtension(argv[1]);
 	Compiler compiler = Compiler();
-	compiler.compile(tree, "C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus\\test.asm");
+	compiler.compile(tree, argv[1]);
 
-
-	cout << "FREEING" << endl << endl;
+	///FREE
 	for (Statement* s : tree) deallocstmt(s);
-
 
 	return 0;
 }

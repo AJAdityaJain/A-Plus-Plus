@@ -10,20 +10,23 @@ start:
 push rbp
 mov rbp, rsp
 
-xor rax,rax
-mov eax, 53
-xor rcx,rcx
-mov ecx, 2324
-cdq
-idiv ecx
-mov eax, edx
-xor rcx,rcx
-mov ecx, 876
-cdq
-idiv ecx
-mov eax, edx
-mov dword[rsp-4], eax
+mov dword[rsp-4], 0
 sub rsp, 4
+.LABBRNCH0:
+xor rax,rax
+mov eax, dword[rbp - 4]
+cmp eax, 10
+setl al
+cmp al, 1
+jnz .LABBRNCH1
+xor rax,rax
+mov eax, dword[rbp - 4]
+add eax, 1
+mov dword[rbp - 4], eax
+add rsp,0
+jmp .LABBRNCH0
+.LABBRNCH1:
+add rsp,4
 
 mov rsp, rbp
 pop rbp;
