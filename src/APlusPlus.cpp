@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
 	cout << "COMPILING" << endl << endl;
 	
 	Compiler compiler = Compiler();
-	compiler.compile(tree,"C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus");
+	compiler.compile(tree, "C:\\Users\\agnee\\Code\\C++Proj\\APlusPlus\\test.asm");
 
 
 	cout << "FREEING" << endl << endl;

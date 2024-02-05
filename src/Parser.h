@@ -6,10 +6,10 @@ using namespace std;
 
 struct Variable {
 	unsigned int off;
-	unsigned int size;
+	AsmSize size;
 	IdentifierToken name;
 
-	Variable(unsigned int off, unsigned int size, IdentifierToken name) {
+	Variable(unsigned int off, AsmSize size, IdentifierToken name) {
 		this->off = off;
 		this->size = size;
 		this->name = name;
@@ -60,28 +60,28 @@ struct CodeBlock : Statement {
 
 struct Int : Value
 {
-	IntToken value;
+	int value;
 
 	StatementType getType()override {
 		return INT_STMT;
 	}
-	Int(IntToken val) : value(val) {}
+	Int(int val) : value(val) {}
 	void print()override {
-		cout << value.value;	
+		cout << value;	
 	}
 
 };
 struct Float :Value
 {
-	FloatToken value;
+	float value;
 
 	StatementType getType()override {
 		return FLOAT_STMT;
 	}
 
-	Float(FloatToken val):value(val) {}
+	Float(float val):value(val) {}
 	void print()override {
-		cout << value.value;
+		cout << value;
 	}
 };
 
@@ -101,15 +101,15 @@ struct Double : Value
 
 struct Bit : Value
 {
-	BitToken value;
+	bool value;
 
 	StatementType getType()override {
 		return BIT_STMT;
 	}
 
-	Bit(BitToken val) : value(val) {}
+	Bit(bool val) : value(val) {}
 	void print()override {
-		cout << value.value;
+		cout << value;
 	}
 };
 
@@ -118,15 +118,15 @@ struct Bit : Value
 struct String : Value
 {
 
-	StringToken value;
+	string value;
 
 	StatementType getType()override {
 		return STRING_STMT;
 	}
 
-	String(StringToken val) : value(val) {}
+	String(string val) : value(val) {}
 	void print()override {
-		cout << value.value;
+		cout << value;
 	}
 };
 
@@ -305,6 +305,7 @@ struct MultipleOperation : Value {
 	vector<Value*> invoperands;
 	//Statement* right;
 	MultipleOperatorType op;
+	AsmSize size = VOID_SIZE;
 
 	StatementType getType()override {
 		return MULTI_OPERATION;

@@ -88,11 +88,11 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	if (size == 1) {
 		switch (st0) {
 		case ID:return new Reference(((IdentifierToken*)stack[0])->value);
-		case INT:return new Int(*((IntToken*)stack[0]));
-		case FLOAT:	return new Float(*((FloatToken*)stack[0]));
+		case INT:return new Int(((IntToken*)stack[0])->value);
+		case FLOAT:	return new Float(((FloatToken*)stack[0])->value);
 		case DOUBLE:return new Double(*((DoubleToken*)stack[0]));
-		case BIT:return new Bit(*((BitToken*)stack[0]));
-		case STRING:return new String(*((StringToken*)stack[0]));
+		case BIT:return new Bit(((BitToken*)stack[0])->value);
+		case STRING:return new String(((StringToken*)stack[0])->value);
 		default:aThrowError(0,stack[0]->ln);
 		}
 
@@ -217,8 +217,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	}
 
 	///Parenthesis
-	if (size >= 3 && st0 == PARENTHESIS_OPEN) {
-		if (stb == PARENTHESIS_CLOSE) {
+	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
 				switch (stack[i]->getType()) {
@@ -229,8 +228,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			}
 			if (depth == 0)
 				return parseStatement(vector<Token*>(stack.begin() + 1, stack.end() - 1));
-		}
-		else aThrowError(4, stack[0]->ln);
+			else aThrowError(4, stack[0]->ln);
 	}
 
 
@@ -323,7 +321,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		return new UnaryOperation(uop,(Value*) parseStatement(vector<Token*>(stack.begin() + 1, stack.end())));
 	}
 	aThrowError(1,stack[0]->ln);
-	//return nullstmt;
+	return nullptr;
 }
 
 vector<Statement*> parseStatements(vector<Token*> stack) {

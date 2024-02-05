@@ -1,11 +1,5 @@
 func main(){
-	a = 11;
-	b= 22;
-	c = 44;
 
-	d = a+b+c;
+	a = 45 xor 42 xor 23;
 
-	e = a;
-
-	e = d;
 }

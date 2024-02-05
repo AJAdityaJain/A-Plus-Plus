@@ -1,55 +1,135 @@
 #pragma once 
 
 #include <fstream>
-#include <map>
 #include <format>
+#include <sstream>
 
 #include "Parser.h"
 
 static  ofstream File;
 
+struct Register : Value{
+	string reg;
+	AsmSize size;
+	int prec;
+	bool isVol;
+
+	//Register& operator & ();
+	Register(string reg, AsmSize size, bool isVol= true, int prec = 0) {
+		this->reg = reg;
+		this->size = size;
+		this->prec = prec;
+		this->isVol = isVol;
+	}
+	StatementType getType()override {
+		return REGISTER;
+	}
+	//string getmov() {
+	//	if(size == FLOAT_SIZE) return "movss";
+	//		
+	//	return "mov";
+	//}
+};
+
+struct Pointer : Value {
+	string ptr;
+	AsmSize size;
+	Pointer(string ptr,AsmSize size) {
+		string prefix = "";
+		switch (size)
+		{
+		case BIT_SIZE:
+			prefix = "byte";
+			break;
+		case SHORT_SIZE:
+			prefix = "word";
+			break;
+		case INT_SIZE:
+			prefix = "dword";
+			break;
+		case LONG_SIZE:
+			prefix = "qword";
+			break;
+		case FLOAT_SIZE:
+			prefix = "dword";
+			break;
+		//case DOUBLE_SIZE:
+		//	break;
+		default:
+			break;
+		}
+		this->ptr = prefix + ptr;
+		this->size = size;
+	}
+	StatementType getType()override {
+		return PTR;
+	}
+};
+
+
+struct CompilationToken:Value {
+	string line;
+	bool isPtr;
+	StatementType getType()override {
+		return _TOKEN;
+	}
+	CompilationToken(string line, bool isPtr) {
+		this->line = line;
+		this->isPtr = isPtr;
+	}
+	CompilationToken(string line) {
+		this->line = line;
+		this->isPtr = false;
+	}
+
+};
 
 struct RegisterRegister {
 
-	string* regs1 = new string[]{
-		"al", "cl",
-		"dl", "r8b" ,
-		"r9b" ,"r10b",
-		"r11b","bl",
-		"sil", "dil",
-		"r12b", "r13b",
-		"r14b", "r15b" 
+	Register regs1[14] = {
+
+		Register("al",BIT_SIZE,false), Register("cl",BIT_SIZE,false),
+		Register("dl",BIT_SIZE,false), Register("r8b",BIT_SIZE,false) ,
+		Register("r9b" ,BIT_SIZE,false),Register("r10b",BIT_SIZE,false),
+		Register("r11b",BIT_SIZE,false),Register("bl",BIT_SIZE),
+		Register("sil",BIT_SIZE), Register("dil",BIT_SIZE),
+		Register("r12b",BIT_SIZE), Register("r13b",BIT_SIZE),
+		Register("r14b",BIT_SIZE), Register("r15b",BIT_SIZE) 
 	};
 
-	string* regs2 = new string[]{
-		"ax", "cx",
-		"dx", "r8w" ,
-		"r9w" ,"r10w",
-		"r11w","bx",
-		"si", "di",
-		"r12w", "r13w",
-		"r14w", "r15w"
+	Register regs2[14] = {
+
+		Register("ax",SHORT_SIZE,false), Register("cx",SHORT_SIZE,false),
+		Register("dx",SHORT_SIZE,false), Register("r8w",SHORT_SIZE,false) ,
+		Register("r9w" ,SHORT_SIZE,false),Register("r10w",SHORT_SIZE,false),
+		Register("r11w",SHORT_SIZE,false),Register("bx",SHORT_SIZE),
+		Register("si",SHORT_SIZE), Register("di",SHORT_SIZE),
+		Register("r12w",SHORT_SIZE), Register("r13w",SHORT_SIZE),
+		Register("r14w",SHORT_SIZE), Register("r15w",SHORT_SIZE)
 	};
 
-	string* regs4 = new string[]{
-		"eax", "ecx",
-		"edx", "r8d" ,
-		"r9d" ,"r10d",
-		"r11d","ebx",
-		"esi", "edi",
-		"r12d", "r13d",
-		"r14d", "r15d"
+	Register regs4[14]=  {
+		Register("eax",INT_SIZE,false), Register("ecx",INT_SIZE,false),
+		Register("edx",INT_SIZE,false), Register("r8d",INT_SIZE,false) ,
+		Register("r9d" ,INT_SIZE,false),Register("r10d",INT_SIZE,false),
+		Register("r11d",INT_SIZE,false),Register("ebx",INT_SIZE),
+		Register("esi",INT_SIZE), Register("edi",INT_SIZE),
+		Register("r12d",INT_SIZE), Register("r13d",INT_SIZE),
+		Register("r14d",INT_SIZE), Register("r15d",INT_SIZE)
 	};
 
-	string* regs8 = new string[]{
-		"rax", "rcx",
-		"rdx","r8" ,
-		"r9" ,"r10", 
-		"r11","rbx",
-		"rsi", "rdi",
-		"r12", "r13",
-		"r14", "r15"
+	Register regs8[14] = {
+
+		Register("rax",LONG_SIZE,false), Register("rcx",LONG_SIZE,false),
+		Register("rdx",LONG_SIZE,false), Register("r8",LONG_SIZE,false) ,
+		Register("r9" ,LONG_SIZE,false),Register("r10",LONG_SIZE,false),
+		Register("r11",LONG_SIZE,false),Register("rbx",LONG_SIZE),
+		Register("rsi",LONG_SIZE), Register("rdi",LONG_SIZE),
+		Register("r12",LONG_SIZE), Register("r13",LONG_SIZE),
+		Register("r14",LONG_SIZE), Register("r15",LONG_SIZE)
 	};
+
+	Register* rsp = new Register("rsp",PTR_SIZE);
 
 	int reg = -1;
 
@@ -58,38 +138,74 @@ struct RegisterRegister {
 	}
 	void emptyReg() const {
 
-		File << "xor " << regs8[reg] << "," << regs8[reg] << endl;
+		File << "xor " << regs8[reg].reg << "," << regs8[reg].reg << endl;
 	}
 
-	string alloc(int sz) {
+	Register alloc(AsmSize sz) {
 		reg++;
-		if (reg >= 8) {
-			if (reg > regs8->size()) aThrowError(6, -1);
-			File << "push " << regs8[reg] << endl;
-
-		}
+		if (reg > 13) aThrowError(6, -1);
 		emptyReg();
-		switch (sz ) {
-		case 1:return regs1[reg];
-		case 2:return regs2[reg];
-		case 4:return regs4[reg];
-		case 8:return regs8[reg];
+		switch (sz) {
+		case BIT_SIZE: {
+			Register r = regs1[reg];
+			if (r.isVol) {
+				File << "push " << regs8[reg].reg << endl;
+			}
+			return r;
+		}
+		case SHORT_SIZE: {
+			Register r = regs2[reg];
+			if (r.isVol) {
+				File << "push " << regs8[reg].reg << endl;
+			}
+			return r;
+
+		};
+		case INT_SIZE: {
+			Register r = regs4[reg];
+			if (r.isVol) {
+				File << "push " << regs8[reg].reg << endl;
+			}
+			return r;
+		}
+		case PTR_SIZE: {
+			Register r = regs8[reg];
+			if (r.isVol) {
+				File << "push " << regs8[reg].reg << endl;
+			}
+			return r;
+		}
 		}
 
-		aThrowError(5,-1);
+		aThrowError(5, -1);
+		//return nullptr;
 	}
 
-	void free() {
-		if (reg >= 8) File << "pop " << regs8[reg] << endl;
+
+	Register A(AsmSize sz) const {
+		switch (sz) {
+		case BIT_SIZE: return regs1[0];
+		case SHORT_SIZE: return regs2[0];
+		case INT_SIZE: return regs4[0];
+		case PTR_SIZE: return regs8[0];
+		}
+		aThrowError(5, -1);
+	}
+
+
+	void free(Register r) {
+		if (r.isVol) {
+			File << "pop " << regs8[reg].reg << endl;
+		}
 		reg--;
 	}
 
 };
 
 struct Compiler {
-	const char* pushedx = "sub rsp, 4\n\tmov dword[rsp], edx\n";
-	const char* pusheax = "sub rsp, 4\n\tmov dword[rsp], eax\n";
-	const char* pushebx = "sub rsp, 4\n\tmov dword[rsp], ebx\n";
+	//const char* pushedx = "sub rsp, 4\n\tmov dword[rsp], edx\n";
+	//const char* pusheax = "sub rsp, 4\n\tmov dword[rsp], eax\n";
+	//const char* pushebx = "sub rsp, 4\n\tmov dword[rsp], ebx\n";
 
 	const char* pop = "add rsp, 4\n";
 	const char* popedx = "mov edx, dword[rsp]\nadd rsp, 4\n";
@@ -99,13 +215,25 @@ struct Compiler {
 
 	const char* push1 = "sub rsp, 1\n\tmov byte[rsp], {0}\n";
 	const char* push4 = "sub rsp, 4\n\tmov dword[rsp], {0}\n";
+	const char* pushxmm = "sub rsp, 4\n\tmov dword[rsp], {0}\n";
 	const char* pop4 = "mov {0}, dword[rsp]\nadd rsp, 4\n";
-	RegisterRegister rr;
+
+	
 	unsigned int operationLabelIdx = 0;
+	unsigned int dataLabelIdx = 0;
+	RegisterRegister rr;
+
+	string version = "version db '0.3.1'\n";
+	stringstream data;
+
+	Compiler() {
+		data << version;
+		rr = RegisterRegister();
+	}
 
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
-		File << "push rbx" << endl;
+		//File << "push rbx" << endl;
 		File << "push rbp" << endl;
 		File << "mov rbp, rsp" << endl << endl;
 	}
@@ -118,17 +246,21 @@ struct Compiler {
 		fn->scopesStack.pop_back();
 		File << endl << "mov rsp, rbp" << endl;
 		File << "pop rbp;" << endl;
-		File << "pop rbx" << endl;
+		//File << "pop rbx" << endl;
 	}
 
 
 
-	void compile(vector<Statement*> tree, string s);
+	void compile(vector<Statement*> tree, string base);
 
-	void compile(Statement* b, Func* fn);
-	void compile(string f, Statement* b, Func* fn, bool hasptr = false);
+	void compileStatement(Statement* b, Func* fn);
 
-	int getSize(Value* v, Func* fn) {
+	void compileInstruction(INSTRUCTION i, Value* op,
+		Value* op2, Func* fn, bool o1isptr = false);
+
+	CompilationToken compileValue(Value* v, Func* fn);
+
+	AsmSize getSize(Value* v, Func* fn) {
 		switch (v->getType())
 		{
 		case REFERENCE: {
@@ -145,20 +277,20 @@ struct Compiler {
 			MultipleOperation* mop = (MultipleOperation*)v;
 			if (mop->op == OR || mop->op == AND || mop->op == COMPARISON || mop->op == NOT_EQUAL || mop->op == GREATER_THAN || mop->op == SMALLER_THAN || mop->op == GREATER_THAN_EQUAL || mop->op == SMALLER_THAN_EQUAL) return BIT_SIZE;
 
-			int sz = 0;
+			AsmSize sz = VOID_SIZE;
 
 			for (size_t i = 0; i < mop->operands.size(); i++) {
-				int osz = getSize(mop->operands[i], fn);
+				AsmSize osz = getSize(mop->operands[i], fn);
 				if (osz > sz)
 					sz = osz;
 			}
 
 			for (size_t i = 0; i < mop->invoperands.size(); i++) {
-				int osz = getSize(mop->invoperands[i], fn);
+				AsmSize osz = getSize(mop->invoperands[i], fn);
 				if (osz > sz)
 					sz = osz;
 			}
-
+			mop->size = sz;
 			return sz;
 
 		}
@@ -183,14 +315,14 @@ struct Compiler {
 			return DOUBLE_SIZE;
 		}
 		case STRING_STMT: {
-			return STRING_SIZE;
+			return PTR_SIZE;
 		}
 		case BIT_STMT: {
 			return BIT_SIZE;
 		}
-					 aThrowError(2, -1);
 		}
 
-
+		aThrowError(2, -1);
+		return VOID_SIZE;
 	}
 };

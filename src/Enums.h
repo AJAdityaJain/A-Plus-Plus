@@ -38,6 +38,9 @@ enum StatementType {
 	DOUBLE_STMT,
 	STRING_STMT,
 	REFERENCE,
+	REGISTER,
+	PTR,
+	_TOKEN,
 
 	CALL,
 	FUNC_DEFINITION,
@@ -104,11 +107,28 @@ enum InBuiltIds {
 
 };
 
-enum Sizes {
+enum AsmSize {
 	VOID_SIZE = 0,
 	BIT_SIZE = 1,
+	SHORT_SIZE = 2,
 	INT_SIZE = 4,
-	FLOAT_SIZE = 4,
-	DOUBLE_SIZE = 8,
-	STRING_SIZE = 8,
+	LONG_SIZE = 8,
+	PTR_SIZE = 8,
+	FLOAT_SIZE = 16,
+	DOUBLE_SIZE = 16,
+};
+
+enum INSTRUCTION {
+	MOV2,
+	ADD2,
+	SUB2,
+	IMUL2,
+	XOR2,
+	IDIV1,
+	CDQ0,
+	NEG1,
+	TEST2,
+	JNZ1,
+	JMP1,
+	JZ1,
 };
