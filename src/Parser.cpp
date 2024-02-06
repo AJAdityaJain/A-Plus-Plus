@@ -157,7 +157,41 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	/// Variable Assignment
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
-		return new Assignment(*(IdentifierToken*)stack[0], (Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())), ((AssignToken*)stack[1])->value);
+		AssignmentType at = ((AssignToken*)stack[1])->value;
+		if (at == DIVIDE_EQUAL) {
+			vector < Value*> invop = vector<Value*>();
+			invop.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+			vector < Value*> op = vector<Value*>();
+			op.push_back(new Reference(*(IdentifierToken*)stack[0]));
+
+			return new Assignment(
+				*(IdentifierToken*)stack[0], 
+				new MultipleOperation(
+					MULTIPLY, 
+					op,
+					invop
+					),
+				EQUALS
+			);
+		}
+		if (at == MODULO_EQUAL) {
+			vector < Value*> op = vector<Value*>();
+			op.push_back(new Reference(*(IdentifierToken*)stack[0]));
+			op.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
+
+			return new Assignment(
+				*(IdentifierToken*)stack[0],
+				new MultipleOperation(
+					MODULO,
+					op,
+					vector<Value*>()
+					),
+				EQUALS
+			);
+
+		}
+
+		return new Assignment(*(IdentifierToken*)stack[0], (Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())), at);
 	}
 
 	///While

@@ -218,20 +218,6 @@ struct RegisterRegister {
 };
 
 struct Compiler {
-	//const char* pushedx = "sub rsp, 4\n\tmov dword[rsp], edx\n";
-	//const char* pusheax = "sub rsp, 4\n\tmov dword[rsp], eax\n";
-	//const char* pushebx = "sub rsp, 4\n\tmov dword[rsp], ebx\n";
-
-	const char* pop = "add rsp, 4\n";
-	const char* popedx = "mov edx, dword[rsp]\nadd rsp, 4\n";
-	const char* popeax = "mov eax, dword[rsp]\nadd rsp, 4\n";
-	const char* popebx = "mov ebx, dword[rsp]\nadd rsp, 4\n";
-
-
-	const char* push1 = "sub rsp, 1\n\tmov byte[rsp], {0}\n";
-	const char* push4 = "sub rsp, 4\n\tmov dword[rsp], {0}\n";
-	const char* pushxmm = "sub rsp, 4\n\tmov dword[rsp], {0}\n";
-	const char* pop4 = "mov {0}, dword[rsp]\nadd rsp, 4\n";
 
 	
 	unsigned int operationLabelIdx = 0;

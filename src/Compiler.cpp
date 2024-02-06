@@ -112,15 +112,6 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 					ins = IMUL2;
 					break;
 				}
-				case DIVIDE_EQUAL: {
-					//PROOF
-					break;
-				}
-
-				case MODULO_EQUAL: {
-					//PROOF
-					break;
-				}
 				case BITWISE_OR_EQUAL: {
 					ins = OR2;
 					break;
