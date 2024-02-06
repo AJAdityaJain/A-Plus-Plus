@@ -20,10 +20,6 @@ struct Statement {
 	virtual StatementType getType() {
 		return NONE_STMT;
 	}
-	virtual void print() {
-		cout << "STMT_FAIL" << endl;
-	}
-
 };
 
 struct Value : Statement {};
@@ -63,13 +59,6 @@ struct CodeBlock : Statement {
 	StatementType getType()override {
 		return SCOPE;
 	}
-	void print()override {
-		cout << "Start Block" << endl;
-		for (Statement* statement : code) {
-			statement->print();
-		}
-		cout << "End Block" << endl;
-	}
 };
 
 
@@ -82,9 +71,6 @@ struct Int : Value
 		return INT_STMT;
 	}
 	Int(int val) : value(val) {}
-	void print()override {
-		cout << value;	
-	}
 
 };
 struct Float :Value
@@ -96,9 +82,6 @@ struct Float :Value
 	}
 
 	Float(float val):value(val) {}
-	void print()override {
-		cout << value;
-	}
 };
 
 struct Double : Value
@@ -110,9 +93,6 @@ struct Double : Value
 	}
 
 	Double(DoubleToken val):value(val) {}
-	void print()override {
-		cout << value.value << "d";
-	}
 };
 
 struct Bit : Value
@@ -124,9 +104,6 @@ struct Bit : Value
 	}
 
 	Bit(bool val) : value(val) {}
-	void print()override {
-		cout << value;
-	}
 };
 
 
@@ -141,9 +118,6 @@ struct String : Value
 	}
 
 	String(string val) : value(val) {}
-	void print()override {
-		cout << value;
-	}
 };
 
 
@@ -160,22 +134,35 @@ struct Reference : Value
 	Reference(IdentifierToken val) {
 		this->value = val;
 	}
-	void print() {
-		cout << value.value;
-	}
 
 };
 
 
 
+struct FuncCall : Statement {
+	IdentifierToken name;
+	vector<Value*> params;
 
+	FuncCall(IdentifierToken name, vector<Value*> params) {
+		this->name = name;
+		this->params = params;
+	}
+	~FuncCall() {
+		for (Value* v : params)
+		{
+			delete v;
+		}
+		params.clear();
+		params.shrink_to_fit();
+	}
 
+	StatementType getType()override {
+		return FUNC_CALL;
+	}
+};
 
 struct Func : Statement {
-	IdentifierToken name;
-	
-	vector<IdentifierToken> params;
-	
+	IdentifierToken name;	
 	CodeBlock* body;
 
 
@@ -192,23 +179,15 @@ struct Func : Statement {
 
 		deallocstmt(body);
 	}
-	Func(IdentifierToken nam , vector<IdentifierToken> param, CodeBlock* val) : name(nam) {
-		params = param;
+	Func(IdentifierToken nam , CodeBlock* val) : name(nam) {
 		body = val;
-	}
-	
-	void print() override {
-		cout << "Defining func " << name.value;
-		cout << " as ";
-		body->print();
-		cout << endl;
-
-	}
+	}	
 };
 
 
 struct Assignment : Statement {
 	
+	AssignmentType type;
 	IdentifierToken name;
 	Value* value;
 
@@ -221,18 +200,12 @@ struct Assignment : Statement {
 		deallocstmt(value);
 	}
 
-	Assignment(IdentifierToken nam, Value* val) {
-		name = nam;
-		value = val;
+	Assignment(IdentifierToken name, Value* value, AssignmentType type) {
+		this -> name = name;
+		this->value = value;
+		this->type = type;
 	}
 
-	void print()override {
-		cout << "Reassigning " << name.value;
-		cout << " to ";
-		value->print();
-		cout << endl;
-
-	}
 };
 
 struct WhileStatement : Statement {
@@ -254,13 +227,6 @@ struct WhileStatement : Statement {
 		whileBlock = whileb;
 	}
 
-	void print()override {
-		cout << "while ";
-		//condition->print();
-		cout << " :";
-		whileBlock->print();
-		cout << endl;
-	}
 };
 
 struct IfStatement : Statement {
@@ -282,13 +248,6 @@ struct IfStatement : Statement {
 		ifBlock = ifb;
 	}
 
-	void print()override {
-		cout << "if";
-		condition->print();
-		cout << " do ";
-		ifBlock->print();
-		cout << endl;
-	}
 };
 
 struct ElseStatement : Statement {
@@ -306,11 +265,6 @@ struct ElseStatement : Statement {
 		elseBlock = elseb;
 	}
 
-	void print()override {
-		cout << "else ";
-		elseBlock->print();
-		cout << endl;
-	}
 };
 
 
@@ -351,16 +305,6 @@ struct MultipleOperation : Value {
 		this->op = op;
 	}
 
-	void print()override {
-		cout << "(";
-		for (Statement* operand : operands)
-		{
-			cout << " " << (op) << " ";
-			operand->print();
-		}
-		cout << ")";
-	}
-
 };
 
 struct UnaryOperation : Value {
@@ -379,11 +323,6 @@ struct UnaryOperation : Value {
 	UnaryOperation(UnaryOperatorType op, Value* right) {
 		this->right = right;
 		this->op = op;
-	}
-
-	void print()override {
-		cout << (op) << " ";
-		right->print();
 	}
 
 };

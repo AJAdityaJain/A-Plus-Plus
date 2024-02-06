@@ -6,7 +6,34 @@ include 'WIN64A.inc'
 section '.text' code readable executable
 
 
-start:
+macro printnum[number]{
+push rax
+push rdx
+push r8
+
+push r10
+push r11
+invoke printf, ns,number
+pop r11
+pop r10
+pop r8
+pop rdx
+pop rax
+}
+macro printstr[string]{
+push rax
+push rdx
+push r8
+
+push r10
+push r11
+invoke printf, string
+pop r11
+pop r10
+pop r8
+pop rdx
+pop rax
+}start:
 push rbp
 mov rbp, rsp
 
@@ -19,10 +46,8 @@ cmp eax, 10
 setl al
 cmp al, 1
 jnz .LABBRNCH1
-xor rax,rax
-mov eax, dword[rbp - 4]
-add eax, 1
-mov dword[rbp - 4], eax
+printnum dword[rbp - 4]
+add dword[rbp - 4], 1
 add rsp,0
 jmp .LABBRNCH0
 .LABBRNCH1:
@@ -35,7 +60,7 @@ pop rbp;
 invoke  exit, rax
 
 section '.data' data readable writeable
-version db '0.3.1'
+ns db '%d',10
 
 
 

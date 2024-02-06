@@ -4,6 +4,7 @@ void Compiler::compile(vector<Statement*> tree, char* loc) {
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
+	File <<"macro printnum[number]{\npush rax\npush rdx\npush r8\n\npush r10\npush r11\ninvoke printf, ns,number\npop r11\npop r10\npop r8\npop rdx\npop rax\n}\nmacro printstr[string]{\npush rax\npush rdx\npush r8\n\npush r10\npush r11\ninvoke printf, string\npop r11\npop r10\npop r8\npop rdx\npop rax\n}";
 
 	for (Statement* st : tree) {
 		switch (st->getType()) {
@@ -23,9 +24,7 @@ void Compiler::compile(vector<Statement*> tree, char* loc) {
 		}
 	}
 	File << "\nsection '.data' data readable writeable\n";
-	//DATA
 	File << data.str();
-	//~DATA
 
 	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess'\nimport msvcrt,\\printf, 'printf'";
 	File.close();
@@ -35,6 +34,18 @@ void Compiler::compile(vector<Statement*> tree, char* loc) {
 void Compiler::compileStatement(Statement* b, Func* fn) {
 	switch (b->getType())
 	{
+	case FUNC_CALL: {
+		FuncCall* fc = (FuncCall*)b;
+		if (fc->name.value == PRINT) 
+			for (Value* v : fc->params)
+				if (v->getType() == STRING_STMT) 
+					compileInstruction(PRINTSTR1, v, nullptr, fn);
+				else
+					compileInstruction(PRINTNUM1, v, nullptr, fn);
+			
+		
+		return;
+	}
 	case SCOPE: {
 		prologue(fn);
 
@@ -78,14 +89,52 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 	}
 	case ASSIGNMENT: {
 		Assignment* a = (Assignment*)b;
-		AsmSize sz = getSize(a->value, fn,false);
+		AsmSize sz = getSize(a->value, fn, false);
 
 		for (int i = 0; i < fn->varsStack.size(); i++)
 			if (fn->varsStack[i]->name.value == a->name.value && fn->varsStack[i]->size == sz) {
-				compileInstruction(MOV2, new Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size), a->value, fn, true);
+				INSTRUCTION ins = MOV2;
+				switch (a->type)
+				{
+				case EQUALS: {
+					ins = MOV2;
+					break;
+				}
+				case PLUS_EQUAL: {
+					ins = ADD2;
+					break;
+				}
+				case MINUS_EQUAL: {
+					ins = SUB2;
+					break;
+				}
+				case MULTIPLY_EQUAL: {
+					ins = IMUL2;
+					break;
+				}
+				case DIVIDE_EQUAL: {
+					//PROOF
+					break;
+				}
+
+				case MODULO_EQUAL: {
+					//PROOF
+					break;
+				}
+				case BITWISE_OR_EQUAL: {
+					ins = OR2;
+					break;
+				}
+				case BITWISE_AND_EQUAL: {
+					ins = AND2;
+					break;
+				}
+				}
+
+				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size), a->value, fn, true);
 				return;
 			}
-
+	
 		//FUTURE PROOF THIS
 		compileInstruction(MOV2, new Pointer("[rsp-"+to_string(sz) + "]", sz), a->value, fn, true);
 		compileInstruction(SUB2, rr.rsp, new Int(sz), fn);
@@ -176,11 +225,17 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 			File << "setle " << o1.line << endl;
 			break;
 		}
+		case PRINTNUM1: {
+			File << "printnum " << o1.line << endl;
+			break;
+		}
+		case PRINTSTR1: {
+			File << "printstr " << o1.line << endl;
+			break;
+		}
 		}
 		return;
 	}
-
-
 
 	CompilationToken o2 = compileValue(op2, fn);
 

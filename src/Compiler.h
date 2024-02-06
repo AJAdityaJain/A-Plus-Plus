@@ -238,11 +238,10 @@ struct Compiler {
 	unsigned int dataLabelIdx = 0;
 	RegisterRegister rr;
 
-	string version = "version db '0.3.1'\n";
 	stringstream data;
 
 	Compiler() {
-		data << version;
+		data << "ns db '%d',10\n";
 		rr = RegisterRegister();
 	}
 

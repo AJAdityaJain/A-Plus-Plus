@@ -33,6 +33,10 @@ void deallocstmt(Statement * statement){
 			delete (Reference*)statement;
 			break;
 		}
+		case FUNC_CALL: {
+			delete (FuncCall*)statement;
+			break;
+		}
 		case FUNC_DEFINITION: {
 			delete (Func*)statement;
 			break;
@@ -66,6 +70,7 @@ void deallocstmt(Statement * statement){
 			break;
 		}
 		default:
+			aThrowError(0,-1);
 			break;
 		}	
 }
@@ -105,10 +110,28 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		CodeBlock* block = new CodeBlock(parseStatements(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
 		return block;
 	}
+	///Func Call
+	if (st0 == ID && st1 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
+		vector<Value*> params = vector<Value*>();
+		int depth = 0;
+		int p = 2;
+		int i = 2;
+		for (i; i < stack.size()-1; i++) {
+			TokenType t = stack[i]->getType();
+			if (t == PARENTHESIS_OPEN) depth++;
+			if (t == PARENTHESIS_CLOSE) depth--;
+			if (depth == 0 && t == COMMA ) {
+				params.push_back((Value*)parseStatement(vector<Token*>(stack.begin()+p,stack.begin() +i)));
+				p = i+1;
+			} 
+		}
+		params.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + p, stack.begin() + i)));
+		return new FuncCall(*(IdentifierToken*)stack[0],params);
+	}
 
 	///Func Definition
 	if (st0 == FUNC && st1 == ID) {
-		vector<IdentifierToken> params;
+		//vector<IdentifierToken> params;
 
 		int bi = -1;
 		int depth = 0;
@@ -116,9 +139,9 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 			TokenType t = stack[i]->getType();
 			if (t == PARENTHESIS_OPEN) depth++;
 			if (t == PARENTHESIS_CLOSE) depth--;
-			if (depth == 1 && t == ID && bi == -1) {
-				params.push_back(*(IdentifierToken*)stack[i]);
-			} 
+			//if (depth == 1 && t == ID && bi == -1) {
+				//params.push_back(*(IdentifierToken*)stack[i]);
+			//} 
 
 			if (t == CURLY_OPEN) {
 				bi = i;
@@ -127,46 +150,14 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		}
 
 		CodeBlock* body = (CodeBlock*)parseStatement(vector<Token*>(stack.begin() + bi, stack.end()));
-		return new Func(*(IdentifierToken*)stack[1], params, body);
+		return new Func(*(IdentifierToken*)stack[1], body);
 		
 	}
 
 
 	/// Variable Assignment
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
-		AssignmentType at = ((AssignToken*)stack[1])->value;
-		IdentifierToken id = *(IdentifierToken*)stack[0];
-		Value* val = nullptr;
-
-		switch (at) {
-		case PLUS_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), PLUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		case MINUS_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), MINUS, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		case MULTIPLY_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), MULTIPLY, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		case DIVIDE_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), DIVIDE, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		case MODULO_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), MODULO, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		case BITWISE_OR_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), BITWISE_OR, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		case BITWISE_AND_EQUAL:
-			//Value = new BinaryOperation(new Identifier(*id), BITWISE_AND, parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
-			break;
-		default:
-			val = (Value*) parseStatement(vector<Token*>(stack.begin() + 2, stack.end()));
-			break;
-		}
-		
-
-		return new Assignment(id, val);
+		return new Assignment(*(IdentifierToken*)stack[0], (Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())), ((AssignToken*)stack[1])->value);
 	}
 
 	///While

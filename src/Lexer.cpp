@@ -16,7 +16,7 @@ void Lexer::tokenize(vector<string> lines)
 	bool inLiteral = false;
 
 	idMap.insert({ "main", idx++ });
-	idMap.insert({ "print", idx++ });
+	idMap.insert({ "write", idx++ });
 
 	for (string line : lines) {
 		for (int i = 0; i < line.size(); i++) {
