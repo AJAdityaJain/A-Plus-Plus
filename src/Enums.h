@@ -107,16 +107,6 @@ enum InBuiltIds {
 
 };
 
-enum AsmSize {
-	VOID_SIZE = 0,
-	BIT_SIZE = 1,
-	SHORT_SIZE = 2,
-	INT_SIZE = 4,
-	LONG_SIZE = 8,
-	PTR_SIZE = 8,
-	FLOAT_SIZE = 16,
-	DOUBLE_SIZE = 16,
-};
 
 enum INSTRUCTION {
 	CDQ0,
@@ -134,15 +124,14 @@ enum INSTRUCTION {
 	SETGE1,
 	SETL1,
 	SETLE1,
-	PRINTNUM1,
-	PRINTSTR1,
 
 	MOV2,
 
 	ADD2,
 	SUB2,
-	IMUL2,
-	
+	MUL2,
+	DIV2,
+
 	TEST2,
 	CMP2,
 	

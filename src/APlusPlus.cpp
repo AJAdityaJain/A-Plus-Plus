@@ -1,13 +1,8 @@
 ﻿#include "Compiler.h"
 
-void replaceFileExtension(char* path) {
-	if (path == nullptr) {
-		std::cerr << "Error: Null pointer." << std::endl;
-		return;
-	}
-	char* dotPosition = strrchr(path, '.');
-	if (dotPosition != nullptr) strcpy(dotPosition, ".asm");
-	else strcat(path, ".asm");
+string replaceFileExtension(string path) {
+	size_t dot = path.find_last_of('.');
+	return path.substr(0,dot)+".asm";
 }
 
 
@@ -41,9 +36,8 @@ int main(int argc, char* argv[])
 	//for(Statement* s : tree) s->print();
 
 	///COMPILE
-	replaceFileExtension(argv[1]);
 	Compiler compiler = Compiler();
-	compiler.compile(tree, argv[1]);
+	compiler.compile(tree, replaceFileExtension(argv[1]));
 
 	///FREE
 	for (Statement* s : tree) deallocstmt(s);

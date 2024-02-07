@@ -3,7 +3,18 @@
 #include "Lexer.h"
 
 using namespace std;
-
+struct AsmSize {
+	int sz;
+	int prec;
+};
+const AsmSize VOID_SIZE = { 0 ,0 };
+const AsmSize BIT_SIZE = { 1,0 };
+const AsmSize SHORT_SIZE = { 2,0 };
+const AsmSize INT_SIZE = { 4,0 };
+const AsmSize LONG_SIZE = { 8,0 };
+const AsmSize PTR_SIZE = { 8,0 };
+const AsmSize FLOAT_SIZE = { 4,1 };
+const AsmSize DOUBLE_SIZE = { 8,2 };
 struct Variable {
 	unsigned int off;
 	AsmSize size;
@@ -86,13 +97,13 @@ struct Float :Value
 
 struct Double : Value
 {
-	DoubleToken value;
+	double value;
 
 	StatementType getType()override {
 		return DOUBLE_STMT;
 	}
 
-	Double(DoubleToken val):value(val) {}
+	Double(double val):value(val) {}
 };
 
 struct Bit : Value

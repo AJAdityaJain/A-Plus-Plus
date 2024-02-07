@@ -17,5 +17,6 @@ void aThrowError(char code, unsigned int line) {
 	}
 	printf("\033[0m\t\t");
 
+	exit(-code);
 	throw invalid_argument("Check terminal for more information");
 };

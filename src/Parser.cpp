@@ -95,7 +95,7 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 		case ID:return new Reference(((IdentifierToken*)stack[0])->value);
 		case INT:return new Int(((IntToken*)stack[0])->value);
 		case FLOAT:	return new Float(((FloatToken*)stack[0])->value);
-		case DOUBLE:return new Double(*((DoubleToken*)stack[0]));
+		case DOUBLE:return new Double(((DoubleToken*)stack[0])->value);
 		case BIT:return new Bit(((BitToken*)stack[0])->value);
 		case STRING:return new String(((StringToken*)stack[0])->value);
 		default:aThrowError(0,stack[0]->ln);
@@ -196,8 +196,8 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	///While
 	if (st0 == WHILE) {
-		Value* con;
-		CodeBlock* whileb;
+		Value* con = nullptr;
+		CodeBlock* whileb = nullptr;
 
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
@@ -222,13 +222,14 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 					break;
 				}
 
-		return new WhileStatement(con, whileb);
+		if(con != nullptr && whileb != nullptr)
+			return new WhileStatement(con, whileb);
 	}
 
 	///If
 	if (st0 == IF) {
-		Value* con;
-		CodeBlock* ifb;
+		Value* con = nullptr;
+		CodeBlock* ifb = nullptr;
 
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
@@ -254,8 +255,8 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 					break;
 				}
 		
-
-		return new IfStatement(con, ifb);
+		if(con != nullptr && ifb != nullptr)
+			return new IfStatement(con, ifb);
 	}
 
 	///Else
