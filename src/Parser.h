@@ -87,6 +87,7 @@ struct Int : Value
 struct Float :Value
 {
 	float value;
+	int label = -1;
 
 	StatementType getType()override {
 		return FLOAT_STMT;
@@ -98,6 +99,7 @@ struct Float :Value
 struct Double : Value
 {
 	double value;
+	int label = -1;
 
 	StatementType getType()override {
 		return DOUBLE_STMT;
@@ -123,7 +125,7 @@ struct String : Value
 {
 
 	string value;
-
+	int label = -1;
 	StatementType getType()override {
 		return STRING_STMT;
 	}

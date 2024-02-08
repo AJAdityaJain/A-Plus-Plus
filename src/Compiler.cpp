@@ -4,27 +4,14 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
-	File << "  macro cspush{\n      push rax  \n      push rcx  \n      push rdx  \n      push r8  \n      push r9  \n      push r10  \n      push r11  \n}  \n  macro cspop{\n      pop r11  \n      pop r10  \n      pop r9  \n      pop r8  \n      pop rdx  \n      pop rcx  \n      pop rax  \n}  \n    \n  macro printint[int]{\n      cspush  \n      invoke printf, intfmt,int  \n      cspop  \n}  \n    \n  macro printstr[string]{\n      cspush  \n      invoke printf, string  \n      cspop  \n}  \n    \n  macro printdouble[xmm]{\n      cspush  \n        \n      sub rsp, 8  \n      movsd QWORD[rsp], xmm0  \n        \n      movsd xmm0, xmm  \n      movq rdx, xmm0          \n      invoke printf, doublefmt  \n    \n      movsd xmm0, QWORD[rsp]  \n      add rsp, 8  \n    \n      cspop  \n}  \n  macro printfloat[dwrd]{\n		sub rsp, 8\n		movsd QWORD[rsp], xmm0\n		cvtss2sd xmm0, dwrd\n		printdouble xmm0\n		movsd xmm0, QWORD[rsp]\n		add rsp, 8\n}";
+	File << "  macro callerpush{\n      push rax  \n      push rcx  \n      push rdx  \n      push r8  \n      push r9  \n      push r10  \n      push r11  \n}  \n    \n  macro callerpop{\n      pop r11  \n      pop r10  \n      pop r9  \n      pop r8  \n      pop rdx  \n      pop rcx  \n      pop rax  \n}\n    \n  macro printint[int]{\n      callerpush  \n      invoke printf, intfmt,int  \n      callerpop  \n}  \n    \n  macro printstr[string]{\n      callerpush  \n      invoke printf, string  \n      callerpop  \n}  \n    \n  macro printdouble[xmm]{\n      callerpush  \n        \n      sub rsp, 8  \n      movsd QWORD[rsp], xmm0  \n        \n      movsd xmm0, xmm  \n      movq rdx, xmm0          \n      invoke printf, doublefmt  \n    \n      movsd xmm0, QWORD[rsp]  \n      add rsp, 8  \n    \n      callerpop  \n}  \n  macro printfloat[dwrd]{\n		sub rsp, 8\n		movsd QWORD[rsp], xmm0\n		cvtss2sd xmm0, dwrd\n		printdouble xmm0\n		movsd xmm0, QWORD[rsp]\n		add rsp, 8\n}";
 
-
-	for (Statement* st : tree) {
-		switch (st->getType()) {
-		case FUNC_DEFINITION: {
-			Func* fn = (Func*)st;
-			if (fn->name.value == MAIN) {
-				File << "start:" << endl;
-
-				functionPrologue();
-				compileStatement(fn->body, fn);
-				functionEpilogue();
-
-				File << "\n\ninvoke  exit, rax"<<endl;
-			}
-			break;
-		}
-		}
-	}
+	for (Statement* st : tree) 
+		compileStatement(st,nullptr);
+	
+	File << "section '.data' data readable writeable\n";
 	File << data.str();
+
 
 	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess'\nimport msvcrt,\\printf, 'printf'";
 	File.close();
@@ -34,6 +21,19 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 void Compiler::compileStatement(Statement* b, Func* fn) {
 	switch (b->getType())
 	{
+	case FUNC_DEFINITION: {
+		Func* fun = (Func*)b;
+		if (fun->name.value == MAIN) {
+			File << "start:" << endl;
+
+			functionPrologue();
+			compileStatement(fun->body, fun);
+			functionEpilogue();
+
+			File << "\n\ninvoke  exit, rax" << endl;
+		}
+		return;
+	}
 	case FUNC_CALL: {
 		FuncCall* fc = (FuncCall*)b;
 		if (fc->name.value == PRINT)
@@ -370,18 +370,38 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 	case INT_STMT: return { to_string(((Int*)v)->value) };
 	case BIT_STMT: return{ to_string((((Bit*)v)->value) ? 1 : 0) };
 	case FLOAT_STMT: {
-		string label = "LABDAT" + to_string(dataLabelIdx);
-		dataLabelIdx++;
-		addToData(label + " dd " + to_string(((Float*)v)->value));
+		Float* fpt = (Float*)v;
+		string label = "LABDAT" + to_string(fpt->label);
+		if (fpt->label == -1) {
+			fpt->label = dataLabelIdx;
+			label = "LABDAT" + to_string(fpt->label);
+			addToData(label + " dd " + to_string(fpt->value));
+			dataLabelIdx++;
+		}
 		return { "DWORD [" + label + "]",_PTR };
 	}
 	case DOUBLE_STMT: {
-		string label = "LABDAT" + to_string(dataLabelIdx);
-		dataLabelIdx++;
-		addToData(label + " dq " + to_string(((Double*)v)->value));
+		Double* fpt = (Double*)v;
+		string label = "LABDAT" + to_string(fpt->label);
+		if (fpt->label == -1) {
+			fpt->label = dataLabelIdx;
+			label = "LABDAT" + to_string(fpt->label);
+			addToData(label + " dq " + to_string(fpt->value));
+			dataLabelIdx++;
+		}
 		return { "QWORD [" + label + "]",_PTR };
 	}
-
+	case STRING_STMT: {
+		String* fpt = (String*)v;
+		string label = "LABDAT" + to_string(fpt->label);
+		if (fpt->label == -1) {
+			fpt->label = dataLabelIdx;
+			label = "LABDAT" + to_string(fpt->label);
+			addToData(label + " dq '" + fpt->value+ '\'');
+			dataLabelIdx++;
+		}
+		return { "QWORD [" + label + "]",_PTR };	
+	}
 	case REFERENCE: {
 		Reference* id = (Reference*)v;
 		for (int i = 0; i < fn->varsStack.size(); i++)

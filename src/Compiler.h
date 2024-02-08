@@ -296,8 +296,7 @@ struct Compiler {
 	}
 
 	void addToData(string s) {
-		data << "section '.data' data readable writeable\n";
-		data << s << endl;
+		data << s << ",0" << endl;
 	}
 
 	void functionPrologue()const {
