@@ -75,13 +75,9 @@ void deallocstmt(Statement * statement){
 		}	
 }
 
-CodeBlock* parseTree(vector<Token*> tokens) {
-	return (CodeBlock*)parseStatement(tokens);
-}
 
 
-
-Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
+Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	size_t size = stack.size();
 
@@ -107,25 +103,27 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 
 	///Scope Definition
 	if (size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
-		CodeBlock* block = new CodeBlock(parseStatements(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
+		CodeBlock* block = new CodeBlock(parse(vector<Token*>(stack.begin() + 1, stack.end() - 1)));
 		return block;
 	}
 	///Func Call
 	if (st0 == ID && st1 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
 		vector<Value*> params = vector<Value*>();
-		int depth = 0;
-		int p = 2;
-		int i = 2;
-		for (i; i < stack.size()-1; i++) {
-			TokenType t = stack[i]->getType();
-			if (t == PARENTHESIS_OPEN) depth++;
-			if (t == PARENTHESIS_CLOSE) depth--;
-			if (depth == 0 && t == COMMA ) {
-				params.push_back((Value*)parseStatement(vector<Token*>(stack.begin()+p,stack.begin() +i)));
-				p = i+1;
-			} 
+		if (stack.size() > 3) {
+			int depth = 0;
+			int p = 2;
+			int i = 2;
+			for (i; i < stack.size() - 1; i++) {
+				TokenType t = stack[i]->getType();
+				if (t == PARENTHESIS_OPEN) depth++;
+				if (t == PARENTHESIS_CLOSE) depth--;
+				if (depth == 0 && t == COMMA) {
+					params.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + p, stack.begin() + i)));
+					p = i + 1;
+				}
+			}
+			params.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + p, stack.begin() + i)));
 		}
-		params.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + p, stack.begin() + i)));
 		return new FuncCall(*(IdentifierToken*)stack[0],params);
 	}
 
@@ -372,7 +370,11 @@ Statement* parseStatement(vector<Token*> stack, bool waitForElse) {
 	return nullptr;
 }
 
-vector<Statement*> parseStatements(vector<Token*> stack) {
+vector<Statement*> Parser::parse() {
+	return parse(tks);
+}
+
+vector<Statement*> Parser::parse(vector<Token*> stack) {
 	vector <Statement*> statements = vector<Statement*>();
 	vector<Token*> subStack = vector<Token*>();
 

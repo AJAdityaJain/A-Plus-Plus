@@ -2,22 +2,18 @@
 
 #include <fstream>
 #include <format>
-#include <sstream>
 
 #include "Parser.h"
-
-static  ofstream File;
-
 
 
 struct Register : Value {
 	const char* reg;
-	bool isVol;
+	bool isPreserved;
 	AsmSize size;
-	Register(const char* reg, AsmSize size, bool isVol = true) {
+	Register(const char* reg, AsmSize size, bool isPreserved = true) {
 		this->reg = reg;
 		this->size = size;
-		this->isVol = isVol;
+		this->isPreserved = isPreserved;
 	};
 	StatementType getType()override {
 		return REGISTER;
@@ -161,27 +157,30 @@ struct RegisterRegister {
 		new Register("xmm3" ,DOUBLE_SIZE,false),
 		new Register("xmm4" ,DOUBLE_SIZE,false),
 		new Register("xmm5" ,DOUBLE_SIZE,false),
-		new Register("xmm6" ,DOUBLE_SIZE,true),
-		new Register("xmm7" ,DOUBLE_SIZE,true),
-		new Register("xmm8" ,DOUBLE_SIZE,true),
-		new Register("xmm9" ,DOUBLE_SIZE,true),
-		new Register("xmm10",DOUBLE_SIZE,true),
-		new Register("xmm11",DOUBLE_SIZE,true),
-		new Register("xmm12",DOUBLE_SIZE,true),
-		new Register("xmm13",DOUBLE_SIZE,true),
-		new Register("xmm14",DOUBLE_SIZE,true),
-		new Register("xmm15",DOUBLE_SIZE,true)
+		new Register("xmm6" ,DOUBLE_SIZE),
+		new Register("xmm7" ,DOUBLE_SIZE),
+		new Register("xmm8" ,DOUBLE_SIZE),
+		new Register("xmm9" ,DOUBLE_SIZE),
+		new Register("xmm10",DOUBLE_SIZE),
+		new Register("xmm11",DOUBLE_SIZE),
+		new Register("xmm12",DOUBLE_SIZE),
+		new Register("xmm13",DOUBLE_SIZE),
+		new Register("xmm14",DOUBLE_SIZE),
+		new Register("xmm15",DOUBLE_SIZE)
 	};
 
 	Register* rsp = new Register("rsp", PTR_SIZE);
 	vector<int> rspOff = vector<int>();
 
-	int reg = -1;
-	int regxmm = -1;
+	vector<Register*> saves = vector<Register*>();
+	vector<int> scratches = vector<int>();
+
+	int regIdx = -1;
+	int xmmIdx = -1;
 
 	//ONLY FOR GENERAL REGS
 	int getRegIdx() const {
-		return reg;
+		return regIdx;
 	}
 	Register* A(AsmSize sz) const {
 		switch (sz.sz) {
@@ -205,79 +204,57 @@ struct RegisterRegister {
 	}
 
 
-
 	Register* alloc(AsmSize sz) {
+		Register* rptr = nullptr;
 		if (sz.prec == 0) {
-			reg++;
-			if (reg >= 14) aThrowError(6, -1);
+			regIdx++;
+			if (regIdx >= 14) aThrowError(6, -1);
+			rptr = regs8[regIdx];
 		}
 		else {
-			regxmm++;
-			if (reg >= 16) aThrowError(6, -1);
+			xmmIdx++;
+			if (xmmIdx >= 16) aThrowError(6, -1);
+			rptr = regsXMM[xmmIdx];
 		}
+
+		if (rptr != nullptr) if (rptr->isPreserved) {
+			bool found = false;
+			for (size_t i = 0; i < saves.size(); i++)
+				if (saves[i] == rptr) {
+					found = true;
+					break;
+				}
+			if (!found) {
+				saves.push_back(rptr);
+			}
+
+		}
+
 		return realloc(sz);
+	}
+	void free(Register* r) {
+		if (r->size.prec != 0)
+			xmmIdx--;
+		else
+			regIdx--;
 	}
 	Register* realloc(AsmSize sz) const {
 		if (sz.prec != 0) {
-			Register* r = regsXMM[regxmm];
-			if (r->isVol) {
-				File << "sub rsp, 8" << endl;
-				File << "movsd QWORD[rsp], " << regsXMM[regxmm]->reg << endl;
-			}
+			Register* r = regsXMM[xmmIdx];
 			r->size = sz;
 			return r;
 		}
 		switch (sz.sz) {
-		case 1: {
-			Register* r = regs1[reg];
-			if (r->isVol) {
-				File << "push " << regs8[reg]->reg << endl;
-			}
-			return r;
-		}
-		case 2: {
-			Register* r = regs2[reg];
-			if (r->isVol) {
-				File << "push " << regs8[reg]->reg << endl;
-			}
-			return r;
-
-		};
-		case 4: {
-			Register* r = regs4[reg];
-			if (r->isVol) {
-				File << "push " << regs8[reg]->reg << endl;
-			}
-			return r;
-		}
-		case 8: {
-			Register* r = regs8[reg];
-			if (r->isVol) {
-				File << "push " << regs8[reg]->reg << endl;
-			}
-			return r;
-		}
+		case 1: return regs1[regIdx];
+		case 2: return regs2[regIdx];
+		case 4: return regs4[regIdx];
+		case 8: return regs8[regIdx];
 		}
 
 		aThrowError(5, -1);
 		return nullptr;
 	}
-	void free(Register* r) {
-		bool voliti = (r->isVol);
-		if (r->size.prec != 0) {
-			if (voliti) {
-				File << "movsd " << r->reg << ", QWORD[rsp]" << endl;
-				File << "add rsp, 8" << endl;
-			}
-			regxmm--;
-		}
-		else {
-			if (voliti) 
-				File << "pop " << regs8[reg]->reg << endl;
-			reg--;
-		}
-	}
-
+	
 };
 
 struct Compiler {
@@ -285,8 +262,9 @@ struct Compiler {
 	
 	unsigned int operationLabelIdx = 0;
 	unsigned int dataLabelIdx = 0;
-	RegisterRegister rr;
 
+	RegisterRegister rr;
+	ofstream File;
 	stringstream data;
 
 	Compiler() {
@@ -298,33 +276,103 @@ struct Compiler {
 	void addToData(string s) {
 		data << s << ",0" << endl;
 	}
-
-	void functionPrologue()const {
-		File << "push rbp" << endl;
-		File << "mov rbp, rsp" << endl << endl;
-
-	}
-
-	void functionEpilogue()const {
-		File << endl << "mov rsp, rbp" << endl;
-		File << "pop rbp;" << endl;
-	}
-
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		rr.rspOff.push_back(0);
 	}
-
 	void epilogue(Func* fn) {
-		for (size_t i = 0; i < fn->scopesStack.back(); i++)
+		for (int i = 0; i < fn->scopesStack.back(); i++)
 		{
 			fn->varsStack.pop_back();
 		}
-		fn->scopesStack.pop_back();
-		File << "add rsp,"<< rr.rspOff.back() << endl;
+		fn->fbody << "add rsp," << rr.rspOff.back() << endl;
+
 		rr.rspOff.pop_back();
-		//File << "pop rbx" << endl;
+		fn->scopesStack.pop_back();
+
+		rr.rspOff.shrink_to_fit();
+		fn->varsStack.shrink_to_fit();
+		fn->scopesStack.shrink_to_fit();
 	}
+
+
+	void savePreserved() {
+		for (Register* rptr : rr.saves)
+		{
+			if (rptr->size.prec == 0) {
+				File << "push " << rptr->reg << endl;
+			}
+			else {
+
+				File << "sub rsp, 8" << endl;
+				File << "movsd QWORD[rsp], " << rptr->reg << endl;
+			}
+		}
+	}
+	void restorePreserved() {
+		for (Register* rptr : rr.saves)
+		{
+			if (rptr->size.prec == 0) {
+				File << "pop " << rptr->reg << endl;
+			}
+			else {
+				File << "movsd " << rptr->reg << ", QWORD[rsp]" << endl;
+				File << "add rsp, 8" << endl;
+			}
+		}
+
+		rr.saves.clear();
+		rr.saves.shrink_to_fit();
+	}
+	void saveScratch(Func* fn) {
+		for (int i = 0; i <= rr.regIdx; i++) {
+			if (!rr.regs8[i]->isPreserved)
+				fn->fbody << "push " << rr.regs8[i]->reg << endl;
+			else
+				break;
+		}
+		for (int i = 0; i <= rr.xmmIdx; i++) {
+			if (!rr.regsXMM[i]->isPreserved) {
+
+				fn->fbody << "sub rsp, 8" << endl;
+				fn->fbody << "movsd QWORD[rsp], " << rr.regsXMM[i]->reg << endl;
+			}
+			else
+				break;
+		}
+
+		rr.scratches.push_back(rr.regIdx);
+		rr.scratches.push_back(rr.xmmIdx);
+		rr.regIdx = -1;
+		rr.xmmIdx = -1;
+	}
+	void restoreScratch(Func* fn) {
+		rr.xmmIdx = rr.scratches.back();
+		rr.scratches.pop_back();
+		rr.regIdx = rr.scratches.back();
+		rr.scratches.pop_back();
+		for (int i = rr.xmmIdx; i >= 0 ; i--)
+			if (!rr.regsXMM[i]->isPreserved) {
+				fn->fbody << "movsd " << rr.regsXMM[i]->reg << ", QWORD[rsp]" << endl;
+				fn->fbody << "add rsp, 8" << endl;
+			}
+			else
+				break;
+
+		for (int i = rr.regIdx; i >= 0 ; i--)
+			if (!rr.regs8[i]->isPreserved)
+				fn->fbody << "pop " << rr.regs8[i]->reg << endl;
+			else
+				break;
+	}
+
+
+
+
+
+
+
+
 
 
 

@@ -4,7 +4,7 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
-	File << "  macro callerpush{\n      push rax  \n      push rcx  \n      push rdx  \n      push r8  \n      push r9  \n      push r10  \n      push r11  \n}  \n    \n  macro callerpop{\n      pop r11  \n      pop r10  \n      pop r9  \n      pop r8  \n      pop rdx  \n      pop rcx  \n      pop rax  \n}\n    \n  macro printint[int]{\n      callerpush  \n      invoke printf, intfmt,int  \n      callerpop  \n}  \n    \n  macro printstr[string]{\n      callerpush  \n      invoke printf, string  \n      callerpop  \n}  \n    \n  macro printdouble[xmm]{\n      callerpush  \n        \n      sub rsp, 8  \n      movsd QWORD[rsp], xmm0  \n        \n      movsd xmm0, xmm  \n      movq rdx, xmm0          \n      invoke printf, doublefmt  \n    \n      movsd xmm0, QWORD[rsp]  \n      add rsp, 8  \n    \n      callerpop  \n}  \n  macro printfloat[dwrd]{\n		sub rsp, 8\n		movsd QWORD[rsp], xmm0\n		cvtss2sd xmm0, dwrd\n		printdouble xmm0\n		movsd xmm0, QWORD[rsp]\n		add rsp, 8\n}";
+	File << "  macro callerpush{\n      push rax  \n      push rcx  \n      push rdx  \n      push r8  \n      push r9  \n      push r10  \n      push r11  \n}  \n    \n  macro callerpop{\n      pop r11  \n      pop r10  \n      pop r9  \n      pop r8  \n      pop rdx  \n      pop rcx  \n      pop rax  \n}\n    \n  macro printint[int]{\n      callerpush  \n      invoke printf, intfmt,int  \n      callerpop  \n}  \n    \n  macro printstr[string]{\n      callerpush  \n      invoke printf, string  \n      callerpop  \n}  \n    \n  macro printdouble[xmm]{\n      callerpush  \n        \n      sub rsp, 8  \n      movsd QWORD[rsp], xmm0  \n        \n      movsd xmm0, xmm  \n      movq rdx, xmm0          \n      invoke printf, doublefmt  \n    \n      movsd xmm0, QWORD[rsp]  \n      add rsp, 8  \n    \n      callerpop  \n}  \n  macro printfloat[dwrd]{\n		sub rsp, 8\n		movsd QWORD[rsp], xmm0\n		cvtss2sd xmm0, dwrd\n		printdouble xmm0\n		movsd xmm0, QWORD[rsp]\n		add rsp, 8\n}\n\n\n\n";
 
 	for (Statement* st : tree) 
 		compileStatement(st,nullptr);
@@ -23,15 +23,39 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 	{
 	case FUNC_DEFINITION: {
 		Func* fun = (Func*)b;
+
+		compileStatement(fun->body, fun);
+
 		if (fun->name.value == MAIN) {
 			File << "start:" << endl;
-
-			functionPrologue();
-			compileStatement(fun->body, fun);
-			functionEpilogue();
-
+			File << "push rbp" << endl;
+			File << "mov rbp, rsp" << endl;
+			savePreserved();
+			File << endl;
+			File << fun->fbody.str();
+			File << endl;
+			restorePreserved();
+			File << "mov rsp, rbp" << endl;
+			File << "pop rbp;" << endl;
 			File << "\n\ninvoke  exit, rax" << endl;
 		}
+		else {
+			File << "LABFUNC" + to_string(fun->name.value) << ":" << endl;
+			File << "push rbp" << endl;
+			File << "mov rbp, rsp" << endl;
+			savePreserved();
+			File << endl;
+			File << fun->fbody.str();
+			File << endl;
+			restorePreserved();
+			File << "mov rsp, rbp" << endl;
+			File << "pop rbp;" << endl;
+			File << "ret" << endl;
+		}
+
+		fun->fbody.str(std::string());
+		fun->fbody.clear();
+
 		return;
 	}
 	case FUNC_CALL: {
@@ -44,14 +68,19 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 				case 0:
 					switch (sz.sz) {
 					case 8:
-						File << "printstr " << ct.line << endl; break;
+						fn->fbody << "printstr " << ct.line << endl; break;
 					case 4:
-						File << "printint " << ct.line << endl; break;
+						fn->fbody << "printint " << ct.line << endl; break;
 					}break;
-				case 1: File << "printfloat " << ct.line << endl; break;
-				case 2: File << "printdouble " << ct.line << endl; break;
+				case 1: fn->fbody << "printfloat " << ct.line << endl; break;
+				case 2: fn->fbody << "printdouble " << ct.line << endl; break;
 				}
 			}
+		else {
+			saveScratch(fn);
+			fn->fbody << "call LABFUNC" + to_string(fc->name.value) << endl;
+			restoreScratch(fn);
+		}
 
 		return;
 	}
@@ -75,7 +104,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 		string label2 = ".LABBRNCH" + to_string(dataLabelIdx);
 		dataLabelIdx++;
 
-		File << label << ":" << endl;
+		fn->fbody << label << ":" << endl;
 		compileInstruction(CMP2, ifs->condition, new Bit(true), fn,BIT_SIZE);
 		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn, BIT_SIZE);
 
@@ -83,7 +112,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 
 		compileInstruction(JMP1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
 
-		File << label2 << ":" << endl;
+		fn->fbody << label2 << ":" << endl;
 		return;
 	}	
 	case IF_STMT: {
@@ -95,7 +124,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 
 		compileStatement(ifs->ifBlock, fn);
 
-		File << label << ":" << endl;
+		fn->fbody << label << ":" << endl;
 		return;
 	}
 	case ASSIGNMENT: {
@@ -166,12 +195,8 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 	if (op == nullptr) {
 		switch (i)
 		{
-		case CDQ0: {
-			File << "cdq" << endl;
-			break;
+		case CDQ0: fn->fbody << "cdq" << endl;break;
 		}
-		}
-
 		return;
 	}
 
@@ -179,53 +204,17 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 	if (op2 == nullptr) {
 		switch (i)
 		{
-		case IDIV1: {
-			File << "idiv " << o1.line << endl;
-			break;
-		}
-		case NEG1: {
-			File << "neg " << o1.line << endl;
-			break;
-		}
-		case JNZ1: {
-			File << "jnz " << o1.line << endl;
-			break;
-		}
-		case JZ1: {
-			File << "jz " << o1.line << endl;
-			break;
-		}
-		case JMP1: {
-			File << "jmp " << o1.line << endl;
-			break;
-		}
-		case SETE1: {
-			File << "sete " << o1.line << endl;
-			break;
-
-		}
-		case SETNE1: {
-			File << "setne " << o1.line << endl;
-			break;
-		}
-		case SETG1: {
-			File << "setg " << o1.line << endl;
-			break;
-
-		}
-		case SETGE1: {
-			File << "setge " << o1.line << endl;
-			break;
-		}
-		case SETL1: {
-			File << "setl " << o1.line << endl;
-			break;
-
-		}
-		case SETLE1: {
-			File << "setle " << o1.line << endl;
-			break;
-		}
+		case IDIV1: fn->fbody << "idiv " << o1.line << endl;	break;
+		case NEG1: fn->fbody << "neg " << o1.line << endl;break;
+		case JNZ1: fn->fbody << "jnz " << o1.line << endl;break;
+		case JZ1: fn->fbody << "jz " << o1.line << endl;break;
+		case JMP1: fn->fbody << "jmp " << o1.line << endl;break;
+		case SETE1: fn->fbody << "sete " << o1.line << endl;break;
+		case SETNE1: fn->fbody << "setne " << o1.line << endl;break;
+		case SETG1: fn->fbody << "setg " << o1.line << endl;break;
+		case SETGE1: fn->fbody << "setge " << o1.line << endl;break;
+		case SETL1: fn->fbody << "setl " << o1.line << endl;break;
+		case SETLE1: fn->fbody << "setle " << o1.line << endl;break;
 		}
 		return;
 	}
@@ -268,45 +257,49 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 			return;
 		}
 		else {
-			File << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
+			fn->fbody << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
 		}
 		break;
 	}
 	case ADD2: {
-		File << "add" << suffix << " " << o1.line << ", " << o2.line << endl;
+		fn->fbody << "add" << suffix << " " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case SUB2: {
-		File << "sub" << suffix << " " << o1.line << ", " << o2.line << endl;
+		fn->fbody << "sub" << suffix << " " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case MUL2: {
 		if (sz.prec == 0)
-			File << "imul " << o1.line << ", " << o2.line << endl;
+			fn->fbody << "imul " << o1.line << ", " << o2.line << endl;
 		else
-			File << "mul" << suffix << " " << o1.line << ", " << o2.line << endl;
+			fn->fbody << "mul" << suffix << " " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case DIV2: {
 		if (sz.prec != 0)
-			File << "div" << suffix << " " << o1.line << ", " << o2.line << endl;
+			fn->fbody << "div" << suffix << " " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case XOR2: {
-		File << "xor " << o1.line << ", " << o2.line << endl;
+		fn->fbody << "xor " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case AND2: {
-		File << "and " << o1.line << ", " << o2.line << endl;
+		fn->fbody << "and " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case OR2: {
-		File << "or " << o1.line << ", " << o2.line << endl;
+		fn->fbody << "or " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case CMP2: {
 		if (o1.type == _REGISTER || o2.type == _REGISTER) {
-			File << "cmp " << o1.line << ", " << o2.line << endl;
+			if (sz.prec == 0)
+				fn->fbody << "cmp " << o1.line << ", " << o2.line << endl;
+			else
+				fn->fbody << "comi" << suffix << " " << o1.line << ", " << o2.line << endl;
+
 		}
 		else {
 			Register* reg = rr.alloc(getSize(op, fn, false));
@@ -317,13 +310,14 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 		break;
 	}
 	case TEST2: {
-		File << "test " << o1.line << ", " << o2.line << endl;
+		fn->fbody << "test " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	}
 
 	return;
 }
+
 
 
 Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn) {
@@ -354,7 +348,7 @@ Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn) {
 	else if (from.prec == 2 && to.prec == 1)
 		cvt = "cvtsd2ss ";
 
-	File << cvt << compileValue(r2,fn).line << ", " << compileValue(r1, fn).line << endl;
+	fn->fbody << cvt << compileValue(r2,fn).line << ", " << compileValue(r1, fn).line << endl;
 	if(regRe)
 		rr.free(r1);
 	return r2;
@@ -547,9 +541,9 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			compileInstruction(JMP1, new CompilationToken(".LABOP_E" + to_string(lidx)), nullptr, fn, sz);
-			File << ".LABOP_S" << lidx << ":" << endl;
+			fn->fbody << ".LABOP_S" << lidx << ":" << endl;
 			compileInstruction(MOV2, reg, new Bit(true), fn, sz);
-			File << ".LABOP_E" << lidx << ":" << endl;
+			fn->fbody << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
 			return { reg->reg,_REGISTER };
@@ -565,9 +559,9 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			compileInstruction(JMP1, new CompilationToken(".LABOP_E" + to_string(lidx)), nullptr, fn, sz);
-			File << ".LABOP_S" << lidx << ":" << endl;
+			fn->fbody << ".LABOP_S" << lidx << ":" << endl;
 			compileInstruction(MOV2, reg, new Bit(false), fn, sz);
-			File << ".LABOP_E" << lidx << ":" << endl;
+			fn->fbody << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
 			return { reg->reg,_REGISTER };

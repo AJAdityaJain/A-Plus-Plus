@@ -8,8 +8,10 @@ string replaceFileExtension(string path) {
 
 int main(int argc, char* argv[])
 {
-	if (argc < 2)
-		return -1;
+	if (argc < 2) {
+		cout << "No path provided";
+		exit(0);
+	}
 
 
 	///READ FILE
@@ -31,16 +33,19 @@ int main(int argc, char* argv[])
 	programString.shrink_to_fit();
 
 	///PARSE
-	vector<Statement*> tree = parseStatements(lexer.tokens);
+	Parser parser = Parser(lexer.tokens);
+	vector<Statement*> tree = parser.parse();
 	lexer.clean();	
-	//for(Statement* s : tree) s->print();
 
 	///COMPILE
 	Compiler compiler = Compiler();
-	compiler.compile(tree, replaceFileExtension(argv[1]));
+	string outAsm = replaceFileExtension(argv[1]);
+	compiler.compile(tree, outAsm);
 
 	///FREE
 	for (Statement* s : tree) deallocstmt(s);
+
+	system(("fasm " + outAsm).c_str());
 
 	return 0;
 }

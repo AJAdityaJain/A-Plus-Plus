@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Lexer.h"
+#include <sstream>
 
 using namespace std;
 struct AsmSize {
@@ -181,7 +182,7 @@ struct Func : Statement {
 
 	vector<Variable*> varsStack;
 	vector<int> scopesStack;
-
+	stringstream fbody;
 
 
 	StatementType getType()override {
@@ -340,10 +341,20 @@ struct UnaryOperation : Value {
 
 };
 
+struct Parser {
 
-Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
+	vector<Token*> tks;
 
-vector<Statement*> parseStatements(vector<Token*> stack);
+	Parser(vector<Token*> tks) {
+		this->tks = tks;
+	}
 
-CodeBlock* parseTree(vector<Token*> tokens);
+	Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
+
+	vector<Statement*> parse();
+	vector<Statement*> parse(vector<Token*> stack);
+
+
+};
+
 

@@ -19,7 +19,7 @@ void Lexer::tokenize(vector<string> lines)
 	idMap.insert({ "write", idx++ });
 
 	for (string line : lines) {
-		for (int i = 0; i < line.size(); i++) {
+		for (size_t i = 0; i < line.size(); i++) {
 			char c = line[i];
 			cont = false;
 			tempString += c;
