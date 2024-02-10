@@ -13,10 +13,10 @@ void aThrowError(const char code,const  unsigned int line) {
 	case 4: cout << "No closure bracket found in the expression at line " << line; break;
 	case 5: cout << "Fatal error. Variable width exceeds stack size"; break;
 	case 6: cout << "Now listen to me. Have you heard of 'CODE READABLITY'.\nWHAT THE HELL HAVE YOU WRITTEN.\nI aint spending a singular second tryna understand that.\nTry making more variables in your statements and not cram EVERY SINGLE OPERATION IN ONE LINE!!!\n"; break;
+	case 7: cout << "Unknown operator at line " << line; break;
 	default:break;
 	}
 	printf("\033[0m\t\t");
 
-	exit(-code);
-	// cout << "break";
-};
+	//exit(-code);
+}

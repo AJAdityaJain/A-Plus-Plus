@@ -27,23 +27,23 @@ int main(const int argc, char* argv[])
 	tempString.shrink_to_fit();
 
 	///TOKENIZE
-	Lexer lexer = Lexer();
+	auto lexer = Lexer();
 	lexer.tokenize(programString);
 	programString.clear();
 	programString.shrink_to_fit();
 
 	///PARSE
-	Parser parser = Parser(lexer.tokens);
+	auto parser = Parser(lexer.tokens);
 	const vector<Statement*> tree = parser.parse();
 	lexer.clean();	
 
 	///COMPILE
-	Compiler compiler = Compiler();
+	auto compiler = Compiler();
 	const string outAsm = replaceFileExtension(argv[1]);
 	compiler.compile(tree, outAsm);
 
 	///FREE
-	for (Statement* s : tree) deallocstmt(s);
+	for (const Statement* s : tree) delete s;
 
 	system(("fasm " + outAsm).c_str());
 

@@ -1,6 +1,6 @@
 #include "Lexer.h"
 
-void Lexer::tokenize(vector<string> lines)
+void Lexer::tokenize(const vector<string>& lines)
 {
 	map<string, unsigned int> idMap;
 	string tempString;
@@ -8,7 +8,6 @@ void Lexer::tokenize(vector<string> lines)
 	unsigned int idx = 0;
 	unsigned int lineIdx = 0;
 
-	bool cont = false;
 
 	char strStart = ' ';
 	bool inStr = false;
@@ -20,8 +19,7 @@ void Lexer::tokenize(vector<string> lines)
 
 	for (string line : lines) {
 		for (size_t i = 0; i < line.size(); i++) {
-			char c = line[i];
-			cont = false;
+			const char c = line[i];
 			tempString += c;
 
 			if (!inStr && (c == '\'' || c == '"' || c == '`')) {
@@ -40,8 +38,10 @@ void Lexer::tokenize(vector<string> lines)
 				continue;
 			}
 
-
-			if (!inStr && !inLiteral) {
+			if(inStr)
+				continue;
+			if (!inLiteral) {
+				bool cont = false;
 				if (c == '(')tokens.push_back(new KeyWordToken{ PARENTHESIS_OPEN ,lineIdx });
 				else if (c == ')')tokens.push_back(new KeyWordToken{ PARENTHESIS_CLOSE ,lineIdx });
 				else if (c == '{')tokens.push_back(new KeyWordToken{ CURLY_OPEN ,lineIdx });
@@ -86,36 +86,21 @@ void Lexer::tokenize(vector<string> lines)
 						}
 						if (b->getType() == OPERATOR) {
 							Token* replace;
-							switch (((OperatorToken*)b)->uValue) {
-							case NOT:
-								replace = new OperatorToken(NOT_EQUAL, lineIdx);
-								break;
-							}
-							switch (((OperatorToken*)b)->biValue) {
-							case PLUS:
-								replace = new AssignToken(PLUS_EQUAL, lineIdx);
-								break;
-							case MINUS:
-								replace = new AssignToken(MINUS_EQUAL, lineIdx);
-								break;
-							case MULTIPLY:
-								replace = new AssignToken(MULTIPLY_EQUAL, lineIdx);
-								break;
-							case DIVIDE:
-								replace = new AssignToken(DIVIDE_EQUAL, lineIdx);
-								break;
-							case GREATER_THAN:
-								replace = new OperatorToken(GREATER_THAN_EQUAL, lineIdx);
-								break;
-							case SMALLER_THAN:
-								replace = new OperatorToken(SMALLER_THAN_EQUAL, lineIdx);
-								break;
-							case BITWISE_AND:
-								replace = new AssignToken(BITWISE_AND_EQUAL, lineIdx);
-								break;
-							case BITWISE_OR:
-								replace = new AssignToken(BITWISE_OR_EQUAL, lineIdx);
-								break;
+							switch (dynamic_cast<OperatorToken*>(b)->uValue) {
+							case NOT:replace = new OperatorToken(NOT_EQUAL, lineIdx); break;
+							default:
+
+								switch (dynamic_cast<OperatorToken*>(b)->biValue) {
+								case PLUS:replace = new AssignToken(PLUS_EQUAL, lineIdx); break;
+								case MINUS:replace = new AssignToken(MINUS_EQUAL, lineIdx); break;
+								case MULTIPLY:replace = new AssignToken(MULTIPLY_EQUAL, lineIdx); break;
+								case DIVIDE:replace = new AssignToken(DIVIDE_EQUAL, lineIdx); break;
+								case GREATER_THAN:replace = new OperatorToken(GREATER_THAN_EQUAL, lineIdx); break;
+								case SMALLER_THAN:replace = new OperatorToken(SMALLER_THAN_EQUAL, lineIdx); break;
+								case BITWISE_AND:replace = new AssignToken(BITWISE_AND_EQUAL, lineIdx); break;
+								case BITWISE_OR:replace = new AssignToken(BITWISE_OR_EQUAL, lineIdx); break;
+								default:aThrowError(7, lineIdx);
+								}break;
 							}
 							tokens.pop_back();
 							tokens.push_back(replace);
@@ -125,36 +110,36 @@ void Lexer::tokenize(vector<string> lines)
 				}
 				if (!cont) 	tempString = "";
 			}
-			else if (!inStr && inLiteral) {
+			else{
 				if (!isalnum(c) && c != '.') {
 					inLiteral = false;
 					string sub = tempString.substr(0, tempString.size() - 1);
 					i--;
 
-						 if (sub.compare("func") == 0)		tokens.push_back(new KeyWordToken{ FUNC,lineIdx });
-						 else if (sub.compare("if") == 0)		tokens.push_back(new KeyWordToken{ IF ,lineIdx });
-						 else if (sub.compare("else") == 0)		tokens.push_back(new KeyWordToken{ ELSE ,lineIdx });
-						 else if (sub.compare("while") == 0)		tokens.push_back(new KeyWordToken{ WHILE ,lineIdx });
-						 else if (sub.compare("return") == 0)	tokens.push_back(new KeyWordToken{ RETURN ,lineIdx });
-						 else if (sub.compare("and") == 0)		tokens.push_back(new OperatorToken{ AND ,lineIdx });
-						 else if (sub.compare("or") == 0)		tokens.push_back(new OperatorToken{ OR ,lineIdx });
-						 else if (sub.compare("xor") == 0)		tokens.push_back(new OperatorToken{ XOR,lineIdx });
-						 else if (sub.compare("true") == 0)		tokens.push_back(new BitToken{ true ,lineIdx });
-						 else if (sub.compare("false") == 0)		tokens.push_back(new BitToken{ false ,lineIdx });
-
+					if (sub == "func")			tokens.push_back(new KeyWordToken{ FUNC,lineIdx });
+					else if (sub == "if")		tokens.push_back(new KeyWordToken{ IF ,lineIdx });
+					else if (sub == "else")	tokens.push_back(new KeyWordToken{ ELSE ,lineIdx });
+					else if (sub == "while")	tokens.push_back(new KeyWordToken{ WHILE ,lineIdx });
+					else if (sub == "return")	tokens.push_back(new KeyWordToken{ RETURN ,lineIdx });
+					else if (sub == "and")		tokens.push_back(new OperatorToken{ AND ,lineIdx });
+					else if (sub == "or")		tokens.push_back(new OperatorToken{ OR ,lineIdx });
+					else if (sub == "xor")		tokens.push_back(new OperatorToken{ XOR,lineIdx });
+					else if (sub == "true")	tokens.push_back(new BitToken{ true ,lineIdx });
+					else if (sub == "false")	tokens.push_back(new BitToken{ false ,lineIdx });
 					else {
-						int typ = isNumeric(sub);
-						if (typ == 0) {
+						switch (isNumeric(sub))
+						{
+						case 0:{
 							bool t = !isalpha(sub[0]);
 							if (!t)
-								for (char c : sub)
-									if (!isalnum(c)) {
+								for (const char subc : sub)
+									if (!isalnum(subc)) {
 										t = true;
 										break;
 									}
 							if (t)aThrowError(3, lineIdx);
-							else { 
-								if (idMap.count(sub) > 0) {
+							else {
+								if (idMap.contains(sub)) {
 									tokens.push_back(new IdentifierToken{ idMap[sub] ,lineIdx });
 								}
 								else {
@@ -163,11 +148,13 @@ void Lexer::tokenize(vector<string> lines)
 									idx++;
 								}
 							}
+							break;
 						}
-						else if (typ == 1)tokens.push_back(new IntToken{ stoi(sub) ,lineIdx });
-						else if (typ == 2)tokens.push_back(new FloatToken{ stof(sub) ,lineIdx });
-						else if (typ == 3)tokens.push_back(new DoubleToken{ stod(sub) ,lineIdx });
-
+						case 1:tokens.push_back(new IntToken{ stoi(sub) ,lineIdx });	break;
+						case 2:tokens.push_back(new FloatToken{ stof(sub) ,lineIdx });	break;
+						case 3:tokens.push_back(new DoubleToken{ stod(sub) ,lineIdx });break;
+						default:aThrowError(3,lineIdx);								break;
+						}
 					}
 					tempString = "";
 				}
@@ -192,7 +179,6 @@ int Lexer::isNumeric(const std::string& str) {
 
 	bool decimalPointFound = false;
 	bool isDouble = false;
-	bool isUnknown = false;
 
 	// Check for digits and at most one decimal point
 	while (i < str.length() && (str[i] >= '0' && str[i] <= '9' || (str[i] == '.' && !decimalPointFound))) {

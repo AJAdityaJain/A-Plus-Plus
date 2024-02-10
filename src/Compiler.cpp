@@ -1,6 +1,6 @@
 #include "Compiler.h"
 
-void Compiler::compile(vector<Statement*> tree, string loc) {
+void Compiler::compile(const vector<Statement*>& tree, const string& loc) {
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
@@ -18,11 +18,14 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 }
 
 
-void Compiler::compileStatement(Statement* b, Func* fn) {
-	switch (b->getType())
+void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
+	const StatementType statementtype = b->getType();
+	if(statementtype!=FUNC_DEFINITION && fn == nullptr)
+		return;
+	switch (statementtype)
 	{
 	case FUNC_DEFINITION: {
-		Func* fun = (Func*)b;
+		const auto fun = dynamic_cast<Func*>(b);
 
 		compileStatement(fun->body, fun);
 
@@ -59,21 +62,22 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 		return;
 	}
 	case FUNC_CALL: {
-		FuncCall* fc = (FuncCall*)b;
-		if (fc->name.value == PRINT)
+		if (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value == PRINT)
 			for (Value* v : fc->params) {
-				AsmSize sz = getSize(v, fn, false);
+				auto [sz, prec] = getSize(v, fn, false);
 				CompilationToken ct = compileValue(v, fn);
-				switch (sz.prec) {
+				switch (prec) {
 				case 0:
-					switch (sz.sz) {
+					switch (sz) {
 					case 8:
 						fn->fbody << "printstr " << ct.line << endl; break;
 					case 4:
 						fn->fbody << "printint " << ct.line << endl; break;
+					default: break;
 					}break;
 				case 1: fn->fbody << "printfloat " << ct.line << endl; break;
 				case 2: fn->fbody << "printdouble " << ct.line << endl; break;
+					default:break;
 				}
 			}
 		else {
@@ -89,26 +93,25 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 	case SCOPE: {
 		prologue(fn);
 
-		CodeBlock* scope = (CodeBlock*)b;
-		for (size_t i = 0; i < scope->code.size(); i++)
-			compileStatement(scope->code[i], fn);
+		for (const auto* scope = dynamic_cast<CodeBlock*>(b); const auto i : scope->code)
+			compileStatement(i, fn);
 
 		epilogue(fn);
 
 		return;
 	}
 	case WHILE_STMT: {
-		IfStatement* ifs = (IfStatement*)b;
-		string label = ".LABBRNCH" + to_string(dataLabelIdx);
+		const auto* whils = dynamic_cast<WhileStatement*>(b);
+		const string label = ".LABBRNCH" + to_string(dataLabelIdx);
 		dataLabelIdx++;
-		string label2 = ".LABBRNCH" + to_string(dataLabelIdx);
+		const string label2 = ".LABBRNCH" + to_string(dataLabelIdx);
 		dataLabelIdx++;
 
 		fn->fbody << label << ":" << endl;
-		compileInstruction(CMP2, ifs->condition, new Bit(true), fn, BIT_SIZE);
+		compileInstruction(CMP2, whils->condition, new Bit(true), fn, BIT_SIZE);
 		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn, BIT_SIZE);
 
-		compileStatement(ifs->ifBlock, fn);
+		compileStatement(whils->whileBlock, fn);
 
 		compileInstruction(JMP1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
 
@@ -116,8 +119,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 		return;
 	}
 	case IF_STMT: {
-		IfStatement* ifs = (IfStatement*)b;
-		string label = ".LABBRNCH" + to_string(dataLabelIdx);
+		const auto* ifs = dynamic_cast<IfStatement*>(b);
+		const string label = ".LABBRNCH" + to_string(dataLabelIdx);
 		dataLabelIdx++;
 		compileInstruction(CMP2, ifs->condition, new Bit(true), fn, BIT_SIZE);
 		compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
@@ -128,8 +131,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 		return;
 	}
 	case ASSIGNMENT: {
-		Assignment* a = (Assignment*)b;
-		AsmSize sz = getSize(a->value, fn, false);
+		const auto* a = dynamic_cast<Assignment*>(b);
+		const AsmSize sz = getSize(a->value, fn, false);
 
 		for (int i = 0; i < fn->varsStack.size(); i++)
 			if (fn->varsStack[i]->name.value == a->name.value && fn->varsStack[i]->size.sz == sz.sz) {
@@ -160,6 +163,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 					ins = AND2;
 					break;
 				}
+				default: break;
 				}
 
 				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size), a->value, fn, sz);
@@ -170,15 +174,14 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 
 		fn->scopesStack.back()++;
 
-		if (fn->varsStack.size() == 0) {
+		if (fn->varsStack.empty()) {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
 			compileInstruction(SUB2, rr.rsp, new Int(8), fn, PTR_SIZE);
 			rr.rspOff.back() += ALIGN;
 			fn->varsStack.push_back(new Variable(sz.sz, sz, a->name));
 			return;
 		}
-		Variable* v = fn->varsStack.back();
-		if (v->size.sz == sz.sz && v->share > 0) {
+		if (const Variable* v = fn->varsStack.back(); v->size.sz == sz.sz && v->share > 0) {
 			compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v->share-sz.sz) + "]", sz), a->value, fn, sz);
 			fn->varsStack.push_back(new Variable(v->off+sz.sz, sz, a->name, v->share));
 		}
@@ -197,12 +200,14 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 
 
 
-void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn, AsmSize sz) {
+void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Func* fn, const AsmSize sz) // NOLINT(*-no-recursion)
+{
 
 	if (op == nullptr) {
 		switch (i)
 		{
 		case CDQ0: fn->fbody << "cdq" << endl;break;
+		default: break;
 		}
 		return;
 	}
@@ -222,26 +227,25 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 		case SETGE1: fn->fbody << "setge " << o1.line << endl;break;
 		case SETL1: fn->fbody << "setl " << o1.line << endl;break;
 		case SETLE1: fn->fbody << "setle " << o1.line << endl;break;
+		default: break;
 		}
 		return;
 	}
 
-	AsmSize o1sz = getSize(op, fn, false);
-	if (o1sz.prec != sz.prec) {
+	if (const AsmSize o1sz = getSize(op, fn, false); o1sz.prec != sz.prec) {
 		Register* r = cast(op, o1sz, sz, fn);
 		op  = r;
 		o1  = compileValue(op, fn);
 		rr.free(r);
 	}
-	AsmSize o2sz = getSize(op2, fn, false);
-	if (o2sz.prec != sz.prec) {
+	if (const AsmSize o2sz = getSize(op2, fn, false); o2sz.prec != sz.prec) {
 		Register* r = cast(op2, o2sz, sz, fn);
 		op2 = r;
 		rr.free(r);
 	}
 
 
-	const char* suffix = "";
+	auto suffix = "";
 	if (sz.prec == 1) {
 		suffix = "ss";
 	}
@@ -254,8 +258,7 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 	switch (i)
 	{
 	case MOV2: {
-		if (o1.type == _PTR && o2.type == _PTR) {
-			Reference* op2ptr = (Reference*)op2;
+		if (o1.type == COMPILETIME_PTR && o2.type == COMPILETIME_PTR) {
 			Register* reg = rr.alloc(getSize(op, fn, false));
 
 			compileInstruction(MOV2, reg, op2, fn, sz);
@@ -263,9 +266,7 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 			rr.free(reg);
 			return;
 		}
-		else {
-			fn->fbody << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
-		}
+		fn->fbody << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
 		break;
 	}
 	case ADD2: {
@@ -301,7 +302,7 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 		break;
 	}
 	case CMP2: {
-		if (o1.type == _REGISTER || o2.type == _REGISTER) {
+		if (o1.type == COMPILETIME_REGISTER || o2.type == COMPILETIME_REGISTER) {
 			if (sz.prec == 0)
 				fn->fbody << "cmp " << o1.line << ", " << o2.line << endl;
 			else
@@ -320,18 +321,17 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 		fn->fbody << "test " << o1.line << ", " << o2.line << endl;
 		break;
 	}
+	default: break;
 	}
-
-	return;
 }
 
 
 
-Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn){
+Register* Compiler::cast(Value* v, const AsmSize from, const AsmSize to, Func* fn){ // NOLINT(*-no-recursion)
 	Register* r1 = rr.alloc(from);
 	compileInstruction(MOV2, r1, v, fn, from);
 	bool regRe = false;
-	Register* r2 = nullptr;
+	Register* r2;
 	if (from.prec == 0 || to.prec == 0) {
 		regRe = true;
 		r2 = rr.alloc(to);
@@ -340,8 +340,7 @@ Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn){
 		r2 = rr.realloc(to);
 
 
-
-	const char* cvt = "cvt";
+	auto cvt = "cvt";
 	if (from.prec == 0 && to.prec == 1)
 		cvt = "cvtsi2ss ";
 	else if (from.prec == 0 && to.prec == 2)
@@ -361,17 +360,17 @@ Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn){
 	return r2;
 }
 
-CompilationToken Compiler::compileValue(Value* v, Func* fn) {
+CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 
 	switch (v->getType())
 	{
-	case _TOKEN: return { ((CompilationToken*)v)->line };
-	case PTR: return { ((Pointer*)v)->ptr , _PTR };
-	case REGISTER: return { ((Register*)v)->reg, _REGISTER };
-	case INT_STMT: return { to_string(((Int*)v)->value) };
-	case BIT_STMT: return{ to_string((((Bit*)v)->value) ? 1 : 0) };
+	case COMPILETIME_TOKEN: return CompilationToken( dynamic_cast<CompilationToken*>(v)->line );
+	case PTR: return CompilationToken{dynamic_cast<Pointer*>(v)->ptr , COMPILETIME_PTR };
+	case REGISTER: return CompilationToken{ dynamic_cast<Register*>(v)->reg, COMPILETIME_REGISTER };
+	case INT_STMT: return CompilationToken{ to_string(dynamic_cast<Int*>(v)->value) };
+	case BIT_STMT: return CompilationToken{ to_string(dynamic_cast<Bit*>(v)->value ? 1 : 0) };
 	case FLOAT_STMT: {
-		Float* fpt = (Float*)v;
+		auto* fpt = dynamic_cast<Float*>(v);
 		string label = "LABDAT" + to_string(fpt->label);
 		if (fpt->label == -1) {
 			fpt->label = dataLabelIdx;
@@ -379,10 +378,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			addToData(label + " dd " + to_string(fpt->value));
 			dataLabelIdx++;
 		}
-		return { "DWORD [" + label + "]",_PTR };
+		return CompilationToken{ "DWORD [" + label + "]",COMPILETIME_PTR };
 	}
 	case DOUBLE_STMT: {
-		Double* fpt = (Double*)v;
+		auto* fpt = dynamic_cast<Double*>(v);
 		string label = "LABDAT" + to_string(fpt->label);
 		if (fpt->label == -1) {
 			fpt->label = dataLabelIdx;
@@ -390,10 +389,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			addToData(label + " dq " + to_string(fpt->value));
 			dataLabelIdx++;
 		}
-		return { "QWORD [" + label + "]",_PTR };
+		return CompilationToken{ "QWORD [" + label + "]",COMPILETIME_PTR };
 	}
 	case STRING_STMT: {
-		String* fpt = (String*)v;
+		auto* fpt = dynamic_cast<String*>(v);
 		string label = "LABDAT" + to_string(fpt->label);
 		if (fpt->label == -1) {
 			fpt->label = dataLabelIdx;
@@ -401,27 +400,26 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			addToData(label + " dq '" + fpt->value+ '\'');
 			dataLabelIdx++;
 		}
-		return { "QWORD [" + label + "]",_PTR };
+		return CompilationToken{ "QWORD [" + label + "]",COMPILETIME_PTR };
 	}
 	case REFERENCE: {
-		Reference* id = (Reference*)v;
-		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i]->name.value == id->value) {
-				Pointer p = Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size);
-				return { p.ptr, _PTR };
+		const auto* id = dynamic_cast<Reference*>(v);
+		for (const auto & i : fn->varsStack)
+			if (i->name.value == id->value) {
+				const auto p = Pointer("[rbp - " + to_string(i->off) + "]", i->size);
+				return CompilationToken{ p.ptr, COMPILETIME_PTR };
 			}
 		break;
 	}
 	case UN_OPERATION: {
-		UnaryOperation* uo = (UnaryOperation*)v;
-		switch (uo->op)
+		switch (auto* uo = dynamic_cast<UnaryOperation*>(v); uo->op)
 		{
 		case NOT: {
 			Register* reg = rr.alloc(BIT_SIZE);
 			compileInstruction(MOV2, reg, uo->right, fn,reg->size);
 			compileInstruction(XOR2, reg, new Bit(true), fn, reg->size);
 			rr.free(reg);
-			return { reg->reg,_REGISTER };
+			return CompilationToken{ reg->reg,COMPILETIME_REGISTER };
 		}
 
 		case NEGATIVE: {
@@ -429,16 +427,17 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			compileInstruction(MOV2, reg, uo->right, fn, reg->size);
 			compileInstruction(NEG1, reg, nullptr, fn, reg->size);
 			rr.free(reg);
-			return { reg->reg,_REGISTER };
+			return CompilationToken{ reg->reg,COMPILETIME_REGISTER };
 		}
+		default: break;
 		}
 		break;
 	}
 
 
 	case MULTI_OPERATION: {
-		MultipleOperation* mo = (MultipleOperation*)v;
-		AsmSize sz = getSize(mo, fn, true);
+		auto* mo = dynamic_cast<MultipleOperation*>(v);
+		const AsmSize sz = getSize(mo, fn, true);
 		switch (mo->op) {
 
 		case PLUS: {
@@ -446,10 +445,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			compileInstruction(MOV2, reg, mo->operands[0], fn,sz);
 			for (size_t i = 1; i < mo->operands.size(); i++)
 				compileInstruction(ADD2, reg, mo->operands[i], fn, sz);
-			for (size_t i = 0; i < mo->invoperands.size(); i++)
-				compileInstruction(SUB2, reg, mo->invoperands[i], fn, sz);
+			for (const auto & invoperand : mo->invoperands)
+				compileInstruction(SUB2, reg, invoperand, fn, sz);
 			rr.free(reg);
-			return { reg->reg ,_REGISTER };
+			return CompilationToken{ reg->reg ,COMPILETIME_REGISTER };
 		}
 		case MULTIPLY: {
 			Register* reg = rr.alloc(sz);
@@ -458,10 +457,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			for (size_t i = 1; i < mo->operands.size(); i++)
 				compileInstruction(MUL2, reg, mo->operands[i], fn, sz);
 
-			if (mo->invoperands.size() > 0) {
+			if (!mo->invoperands.empty()) {
 				if (sz.prec == 0) {
 					Register* Areg = rr.A(sz);
-					for (size_t i = 0; i < mo->invoperands.size(); i++)
+					for (const auto & invoperand : mo->invoperands)
 					{
 						if (rr.getRegIdx() != 0) {
 							compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
@@ -471,13 +470,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 						Register* diver = rr.alloc(sz);
 						if (rr.getRegIdx() == 2) {
 							Register* diver2 = rr.alloc(sz);
-							compileInstruction(MOV2, diver2, mo->invoperands[i], fn, sz);
+							compileInstruction(MOV2, diver2, invoperand, fn, sz);
 							compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
 							compileInstruction(IDIV1, diver2, nullptr, fn, sz);
 							rr.free(diver2);
 						}
 						else {
-							compileInstruction(MOV2, diver, mo->invoperands[i], fn, sz);
+							compileInstruction(MOV2, diver, invoperand, fn, sz);
 							compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
 							compileInstruction(IDIV1, diver, nullptr, fn, sz);
 						}
@@ -491,11 +490,11 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 					}
 				}
 				else
-					for (size_t i = 0; i < mo->invoperands.size(); i++)
-						compileInstruction(DIV2, reg, mo->invoperands[i], fn, sz);
+					for (const auto & invoperand : mo->invoperands)
+						compileInstruction(DIV2, reg, invoperand, fn, sz);
 			}
 			rr.free(reg);
-			return { reg->reg,_REGISTER };
+			return CompilationToken{ reg->reg,COMPILETIME_REGISTER };
 		}
 		case MODULO: {
 			Register* reg = rr.alloc(sz);
@@ -534,11 +533,11 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 				}
 			}
 			rr.free(reg);
-			return { reg->reg,_REGISTER };
+			return CompilationToken { reg->reg,COMPILETIME_REGISTER };
 		}
 
 		case OR: {
-			unsigned int lidx = operationLabelIdx;
+			const unsigned int lidx = operationLabelIdx;
 			operationLabelIdx++;
 			Register* reg = rr.alloc(BIT_SIZE);
 			for (Value* s : mo->operands) {
@@ -553,10 +552,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			fn->fbody << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
-			return { reg->reg,_REGISTER };
+			return CompilationToken{ reg->reg,COMPILETIME_REGISTER };
 		}
 		case AND: {
-			unsigned int lidx = operationLabelIdx;
+			const unsigned int lidx = operationLabelIdx;
 			operationLabelIdx++;
 			Register* reg = rr.alloc(BIT_SIZE);
 			for (Value* s : mo->operands) {
@@ -571,7 +570,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			fn->fbody << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
-			return { reg->reg,_REGISTER };
+			return CompilationToken{ reg->reg,COMPILETIME_REGISTER };
 		}
 		case XOR: {
 			Register* reg = rr.alloc(sz);
@@ -583,7 +582,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			rr.free(reg);
-			return { reg->reg ,_REGISTER };
+			return CompilationToken { reg->reg ,COMPILETIME_REGISTER };
 		}
 		case BITWISE_AND: {
 			Register* reg = rr.alloc(sz);
@@ -595,7 +594,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			rr.free(reg);
-			return { reg->reg , _REGISTER };
+			return CompilationToken { reg->reg , COMPILETIME_REGISTER };
 		}
 		case BITWISE_OR: {
 			Register* reg = rr.alloc(sz);
@@ -607,12 +606,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			}
 
 			rr.free(reg);
-			return { reg->reg , _REGISTER };
+			return CompilationToken { reg->reg , COMPILETIME_REGISTER };
 		}
+		default: break;
 		}
 
 
-		INSTRUCTION cmp;
+		INSTRUCTION cmp = {};
 		switch (mo->op)
 		{
 		case COMPARISON:cmp = SETE1; break;
@@ -621,10 +621,11 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 		case GREATER_THAN_EQUAL:cmp = SETGE1; break;
 		case SMALLER_THAN:cmp = SETL1; break;
 		case SMALLER_THAN_EQUAL:cmp = SETLE1; break;
+		default: break;
 		}
 
 		Register* reg = rr.alloc(getSize(mo, fn, true));
-		Register* reg2;
+		Register* reg2 = nullptr;
 		bool regRe = false;
 		compileInstruction(MOV2, reg, mo->operands[0], fn, sz);
 		for (size_t i = 1; i < mo->operands.size(); i++) {
@@ -638,38 +639,36 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			compileInstruction(cmp, reg2, nullptr, fn, sz);
 		}
 		rr.free(reg);
-		if (regRe) rr.free(reg2);
-		return { reg2->reg  , _REGISTER };
-
-
-		break;
-	};
-	};
+			if(reg2 != nullptr)
+			{
+				if (regRe) rr.free(reg2);
+				return CompilationToken { reg2->reg  , COMPILETIME_REGISTER };}};
+	default: break;};
 	aThrowError(5, -1);
-	return { "" };
+	return CompilationToken{ "" };
 }
 
-AsmSize Compiler::getSize(Value* v, Func* fn, bool inp) {
+AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) { // NOLINT(*-no-recursion)
 	switch (v->getType())
 	{
 	case REGISTER: {
-		return ((Register*)v)->size;
+		return dynamic_cast<Register*>(v)->size;
 	}
 	case PTR: {
-		return ((Pointer*)v)->size;
+		return dynamic_cast<Pointer*>(v)->size;
 	}
 	case REFERENCE: {
-		for (size_t i = 0; i < fn->varsStack.size(); i++)
+		for (const auto & i : fn->varsStack)
 		{
-			if (fn->varsStack[i]->name.value == ((Reference*)v)->value) {
-				return fn->varsStack[i]->size;
+			if (i->name.value == dynamic_cast<Reference*>(v)->value) {
+				return i->size;
 			}
 		}
 		break;
 	}
 
 	case MULTI_OPERATION: {
-		MultipleOperation* mop = (MultipleOperation*)v;
+		auto* mop = dynamic_cast<MultipleOperation*>(v);
 		if (mop->op == OR || mop->op == AND) return BIT_SIZE;
 		if (!inp)
 			if (
@@ -684,16 +683,16 @@ AsmSize Compiler::getSize(Value* v, Func* fn, bool inp) {
 
 		AsmSize sz = VOID_SIZE;
 
-		for (size_t i = 0; i < mop->operands.size(); i++) {
-			AsmSize osz = getSize(mop->operands[i], fn, inp);
+		for (const auto & operand : mop->operands) {
+			const AsmSize osz = getSize(operand, fn, inp);
 			if (osz.sz > sz.sz)
 				sz = osz;
 			if(osz.prec > sz.prec)
 				sz = osz;
 		}
 
-		for (size_t i = 0; i < mop->invoperands.size(); i++) {
-			AsmSize osz = getSize(mop->invoperands[i], fn, inp);
+		for (const auto & invoperand : mop->invoperands) {
+			const AsmSize osz = getSize(invoperand, fn, inp);
 			if (osz.sz > sz.sz)
 				sz = osz;
 			if (osz.prec > sz.prec)
@@ -703,16 +702,14 @@ AsmSize Compiler::getSize(Value* v, Func* fn, bool inp) {
 		return sz;
 
 	}
-	case UN_OPERATION: {
-		UnaryOperation* uop = (UnaryOperation*)v;
+	case UN_OPERATION:{
+		const auto uop = dynamic_cast<UnaryOperation*>(v);
 		switch (uop->op) {
-		case NEGATIVE:return getSize(uop->right, fn, inp);
-		case POSITIVE:return getSize(uop->right, fn, inp);
 		case NOT:return BIT_SIZE;
 		case BITWISE_NOT:return getSize(uop->right, fn, inp);
+		default: break;
 		}
-
-		break;
+		return getSize(uop->right, fn, inp);
 	}
 	case INT_STMT: {
 		return INT_SIZE;
@@ -729,6 +726,7 @@ AsmSize Compiler::getSize(Value* v, Func* fn, bool inp) {
 	case BIT_STMT: {
 		return BIT_SIZE;
 	}
+	default: break;
 	}
 
 	aThrowError(2, -1);

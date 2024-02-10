@@ -1,3 +1,4 @@
+// ReSharper disable CppUnusedIncludeDirective
 #pragma once
 
 #include <string>
@@ -8,19 +9,18 @@
 #include "AError.h"
 #include "Enums.h"
 
-///using namespace std;
-
 
 struct Token {
 	unsigned int ln;
 	virtual TokenType getType() {
 		return NONE;
 	}
-	explicit Token(const unsigned int ln) :ln(ln) {};
+	virtual ~Token() = default;
+	explicit Token(const unsigned int ln) :ln(ln) {}
 };
 
 
-struct AssignToken : Token {
+struct AssignToken final : Token {
 	AssignmentType value;
 
 	TokenType getType()override {
@@ -32,7 +32,7 @@ struct AssignToken : Token {
 	}
 };
 
-struct OperatorToken : Token {
+struct OperatorToken final : Token {
 	MultipleOperatorType biValue;
 	UnaryOperatorType uValue;
 
@@ -40,34 +40,34 @@ struct OperatorToken : Token {
 		return OPERATOR;
 	}
 
-	OperatorToken(UnaryOperatorType u, MultipleOperatorType bi, const unsigned int ln) :Token(ln) {
+	OperatorToken(const UnaryOperatorType u, const MultipleOperatorType bi, const unsigned int ln) :Token(ln) {
 		uValue = u;
 		biValue = bi;
 	}
-	OperatorToken(MultipleOperatorType value, const unsigned int ln) :Token(ln) {
+	OperatorToken(const MultipleOperatorType value, const unsigned int ln) :Token(ln) {
 		biValue = value;
 		uValue = NONE_UN_OPERATOR;
 	}
-	OperatorToken(UnaryOperatorType value, const unsigned int ln) :Token(ln) {
+	OperatorToken(const UnaryOperatorType value, const unsigned int ln) :Token(ln) {
 		uValue = value;
 		biValue = NONE_BI_OPERATOR;
 	}
 };
 
 
-struct KeyWordToken : Token {
+struct KeyWordToken final: Token {
 	TokenType value;
 
 	TokenType getType()override {
 		return value;
 	}
 
-	KeyWordToken(TokenType value, const unsigned int ln):Token(ln){
+	KeyWordToken(const TokenType value, const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
 
-struct StringToken : Token {
+struct StringToken final: Token {
 	string value;
 
 	TokenType getType()override {
@@ -77,62 +77,62 @@ struct StringToken : Token {
 		this->value = std::move(value);
 	}
 };
-struct BitToken : Token {
+struct BitToken final : Token {
 	bool value;
 
 	TokenType getType()override {
 		return BIT;
 	}
-	BitToken(bool value,const unsigned int ln):Token(ln){
+	BitToken(const bool value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
 
-struct IntToken : Token {
+struct IntToken final: Token {
 	int value;
 
 	TokenType getType()override {
 		return INT;
 	}
 
-	IntToken(int value,const unsigned int ln):Token(ln){
+	IntToken(const int value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
-struct FloatToken : Token {
+struct FloatToken final: Token {
 	float value;
 
 	TokenType getType()override {
 		return FLOAT;
 	}
 
-	FloatToken(float value,const unsigned int ln):Token(ln){
+	FloatToken(const float value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
 
-struct DoubleToken : Token {
+struct DoubleToken final: Token {
 	double value;
 
 	TokenType getType()override {
 		return DOUBLE;
 	}
 
-	DoubleToken(double value,const unsigned int ln):Token(ln){
+	DoubleToken(const double value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
 
 
 
-struct IdentifierToken : Token {
+struct IdentifierToken final: Token {
 	unsigned int value;
 
 	TokenType getType()override {
 		return ID;
 	}
 
-	explicit IdentifierToken(unsigned int value=-1,const unsigned int ln=-1):Token(ln){
+	explicit IdentifierToken(const unsigned int value=-1,const unsigned int ln=-1):Token(ln){
 		this->value = value;
 	}
 };
@@ -146,13 +146,13 @@ struct Lexer {
 	}
 
 	void clean() {
-		for (Token* t: tokens) {
+		for (const Token* t: tokens) {
 			delete t;
 		}
 		tokens.clear();
 		tokens.shrink_to_fit();
 	}
 
-	void tokenize(vector<string> lines);
-	int isNumeric(const std::string& str);
+	void tokenize(const vector<string>& lines);
+	static int isNumeric(const std::string& str);
 };

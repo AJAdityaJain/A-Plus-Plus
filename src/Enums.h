@@ -1,3 +1,4 @@
+#pragma once
 enum TokenType {
 	NONE,
 
@@ -40,7 +41,7 @@ enum StatementType {
 	REFERENCE,
 	REGISTER,
 	PTR,
-	_TOKEN,
+	COMPILETIME_TOKEN,
 
 	FUNC_CALL,
 	FUNC_DEFINITION,
@@ -140,8 +141,8 @@ enum INSTRUCTION {
 	XOR2,
 };
 enum CompilationTokenType {
-	_NONE,
-	_PTR,
-	_REGISTER
+	COMPILETIME_NONE,
+	COMPILETIME_PTR,
+	COMPILETIME_REGISTER
 
 };

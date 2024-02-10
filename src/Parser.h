@@ -25,7 +25,7 @@ struct Variable {
 	AsmSize size{};
 	IdentifierToken name;
 
-	Variable(unsigned int off, AsmSize size, IdentifierToken name,int share= ALIGN) {
+	Variable(const unsigned int off,const AsmSize size, IdentifierToken name,const int share= ALIGN) {
 		this->off = off;
 		this->size = size;
 		this->name = std::move(name);
@@ -35,6 +35,7 @@ struct Variable {
 };
 
 struct Statement {
+	virtual ~Statement() = default;
 	virtual StatementType getType() {
 		return NONE_STMT;
 	}
@@ -42,29 +43,24 @@ struct Statement {
 
 struct Value : Statement {};
 
-void deallocstmt(Statement* statement);
 
 
 
 
-
-struct CodeBlock : Statement {
+struct CodeBlock final : Statement {
 	vector<Statement*> code; 
 
-	~CodeBlock() {
-		for (Statement* statement : code) {
-			deallocstmt(statement);
-		}
+	~CodeBlock() override {
 		code.clear();
 		code.shrink_to_fit();
 	}
 
-	CodeBlock(vector<Statement*> code) {
+	explicit CodeBlock(const vector<Statement*>& code) {
 		this->code = code;
 	}
-	CodeBlock(Statement* line) {
+	explicit CodeBlock(Statement* line) {
 		if (line->getType() == SCOPE) {
-			this->code = ((CodeBlock*)line)->code;
+			this->code = dynamic_cast<CodeBlock*>(line)->code;
 			delete line;
 		}
 		else {
@@ -81,41 +77,39 @@ struct CodeBlock : Statement {
 
 
 
-struct Int : Value
+struct Int final: Value
 {
 	int value;
 
 	StatementType getType()override {
 		return INT_STMT;
 	}
-	Int(int val) : value(val) {}
+	explicit Int(const int val) : value(val) {}
 
 };
-struct Float :Value
+struct Float final:Value
 {
 	float value;
-	int label = -1;
+	unsigned int label = -1;
 
 	StatementType getType()override {
 		return FLOAT_STMT;
 	}
 
-	Float(float val):value(val) {}
+	explicit Float(const float val):value(val) {}
 };
-
-struct Double : Value
+struct Double final: Value
 {
 	double value;
-	int label = -1;
+	unsigned int label = -1;
 
 	StatementType getType()override {
 		return DOUBLE_STMT;
 	}
 
-	Double(double val):value(val) {}
+	explicit Double(const double val):value(val) {}
 };
-
-struct Bit : Value
+struct Bit final: Value
 {
 	bool value;
 
@@ -123,26 +117,23 @@ struct Bit : Value
 		return BIT_STMT;
 	}
 
-	Bit(bool val) : value(val) {}
+	explicit Bit(const bool val) : value(val) {}
 };
-
-
-
-struct String : Value
+struct String final : Value
 {
 
 	string value;
-	int label = -1;
+	unsigned int label = -1;
 	StatementType getType()override {
 		return STRING_STMT;
 	}
 
-	String(string val) : value(val) {}
+	explicit String(string val) : value(std::move(val)) {}
 };
 
 
 
-struct Reference : Value
+struct Reference final: Value
 {
 
 	unsigned int value;
@@ -151,25 +142,22 @@ struct Reference : Value
 		return REFERENCE;
 	}
 
-	Reference(unsigned int val) {
+	explicit Reference(const unsigned int val) {
 		this->value = val;
 
 	}
 
 };
-
-
-
-struct FuncCall : Statement {
+struct FuncCall final: Statement {
 	IdentifierToken name;
 	vector<Value*> params;
 
-	FuncCall(IdentifierToken name, vector<Value*> params) {
+	FuncCall(const IdentifierToken& name,const  vector<Value*>& params) {
 		this->name = name;
 		this->params = params;
 	}
-	~FuncCall() {
-		for (Value* v : params)
+	~FuncCall() override {
+		for (const Value* v : params)
 		{
 			delete v;
 		}
@@ -181,8 +169,7 @@ struct FuncCall : Statement {
 		return FUNC_CALL;
 	}
 };
-
-struct Func : Statement {
+struct Func final: Statement {
 	IdentifierToken name;	
 	CodeBlock* body;
 
@@ -196,17 +183,16 @@ struct Func : Statement {
 		return FUNC_DEFINITION;
 	}
 
-	~Func () {
-
-		deallocstmt(body);
+	~Func () override {
+		delete body;
 	}
-	Func(IdentifierToken nam , CodeBlock* val) : name(nam) {
+	Func(IdentifierToken nam , CodeBlock* val) : name(std::move(nam)) {
 		body = val;
 	}	
 };
 
 
-struct Assignment : Statement {
+struct Assignment final: Statement {
 	
 	AssignmentType type;
 	IdentifierToken name;
@@ -217,19 +203,18 @@ struct Assignment : Statement {
 		return ASSIGNMENT;
 	}
 
-	~Assignment() {
-		deallocstmt(value);
+	~Assignment() override {
+		delete value;
 	}
 
-	Assignment(IdentifierToken name, Value* value, AssignmentType type) {
+	Assignment(const IdentifierToken& name, Value* value,const AssignmentType type) {
 		this -> name = name;
 		this->value = value;
 		this->type = type;
 	}
 
 };
-
-struct WhileStatement : Statement {
+struct WhileStatement final: Statement {
 	Value* condition;
 	CodeBlock* whileBlock;
 
@@ -238,9 +223,9 @@ struct WhileStatement : Statement {
 		return WHILE_STMT;
 	}
 
-	~WhileStatement() {
-		deallocstmt(condition);
-		deallocstmt(whileBlock);
+	~WhileStatement() override {
+		delete condition;
+		delete whileBlock;
 	}
 
 	WhileStatement(Value* con, CodeBlock* whileb) {
@@ -249,8 +234,7 @@ struct WhileStatement : Statement {
 	}
 
 };
-
-struct IfStatement : Statement {
+struct IfStatement final: Statement {
 	Value* condition;
 	CodeBlock* ifBlock;
 
@@ -259,9 +243,9 @@ struct IfStatement : Statement {
 		return IF_STMT;
 	}
 
-	~IfStatement() {
-		deallocstmt(condition);
-		deallocstmt(ifBlock);
+	~IfStatement() override {
+		delete condition;
+		delete ifBlock;
 	}
 
 	IfStatement(Value* con, CodeBlock* ifb) {
@@ -270,27 +254,25 @@ struct IfStatement : Statement {
 	}
 
 };
-
-struct ElseStatement : Statement {
+struct ElseStatement final: Statement {
 	CodeBlock* elseBlock;
 
 	StatementType getType()override {
 		return ELSE_STMT;
 	}
 
-	~ElseStatement() {
-		deallocstmt(elseBlock);
+	~ElseStatement() override {
+		delete elseBlock;
 	}
 
-	ElseStatement(CodeBlock* elseb) {
+	explicit ElseStatement(CodeBlock* elseb) {
 		elseBlock = elseb;
 	}
 
 };
 
 
-
-struct MultipleOperation : Value {
+struct MultipleOperation final: Value {
 
 	vector<Value*> operands;
 	vector<Value*> invoperands;
@@ -302,33 +284,32 @@ struct MultipleOperation : Value {
 		return MULTI_OPERATION;
 	}
 
-	~MultipleOperation() {
-		for (Statement* operand : operands)
+	~MultipleOperation() override {
+		for (const Statement* operand : operands)
 		{
-			deallocstmt(operand);
+			delete operand;
 
 		}
 		operands.clear();
 		operands.shrink_to_fit();
 
-		for (Statement* operand : invoperands)
+		for (const Statement* operand : invoperands)
 		{
-			deallocstmt(operand);
+			delete operand;
 
 		}
 		invoperands.clear();
 		invoperands.shrink_to_fit();
 	}
 
-	MultipleOperation(MultipleOperatorType op, vector<Value*> operands, vector<Value*> invoperands) {
+	MultipleOperation(const MultipleOperatorType op,const vector<Value*>& operands,const vector<Value*>& invoperands) {
 		this->operands = operands;
 		this->invoperands = invoperands;
 		this->op = op;
 	}
 
 };
-
-struct UnaryOperation : Value {
+struct UnaryOperation final: Value {
 
 	UnaryOperatorType op;
 	Value* right;
@@ -337,29 +318,30 @@ struct UnaryOperation : Value {
 		return UN_OPERATION;
 	}
 
-	~UnaryOperation() {
-		deallocstmt(right);
+	~UnaryOperation() override {
+		delete right;
 	}
 
-	UnaryOperation(UnaryOperatorType op, Value* right) {
+	UnaryOperation(const UnaryOperatorType op, Value* right) {
 		this->right = right;
 		this->op = op;
 	}
 
 };
 
+
 struct Parser {
 
 	vector<Token*> tks;
 
-	Parser(vector<Token*> tks) {
+	explicit Parser(const vector<Token*>& tks) {
 		this->tks = tks;
 	}
 
 	Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
 
 	vector<Statement*> parse();
-	vector<Statement*> parse(vector<Token*> stack);
+	vector<Statement*> parse(const vector<Token*>& stack);
 
 
 };

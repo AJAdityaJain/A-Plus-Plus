@@ -6,27 +6,27 @@
 #include "Parser.h"
 
 
-struct Register : Value {
+struct Register final: Value {
 	const char* reg;
 	bool isPreserved;
-	AsmSize size;
-	Register(const char* reg, AsmSize size, bool isPreserved = true) {
+	AsmSize size{};
+	Register(const char* reg, const AsmSize size, const bool isPreserved = true) {
 		this->reg = reg;
 		this->size = size;
 		this->isPreserved = isPreserved;
-	};
+	}
 	StatementType getType()override {
 		return REGISTER;
-	};
+	}
 
 };
 
 
-struct Pointer : Value {
+struct Pointer final: Value {
 	string ptr;
-	AsmSize size;
-	Pointer(string ptr,AsmSize size) {
-		string prefix = "";
+	AsmSize size{};
+	Pointer(const string& ptr,const AsmSize size) {
+		string prefix;
 		switch (size.sz)
 		{
 		case 1:
@@ -58,21 +58,16 @@ struct Pointer : Value {
 		return PTR;
 	}
 };
-struct CompilationToken:Value {
+struct CompilationToken final:Value {
 	string line;
 	CompilationTokenType type;
 	StatementType getType()override {
-		return _TOKEN;
+		return COMPILETIME_TOKEN;
 	}
-	CompilationToken(string line, CompilationTokenType type) {
+	explicit CompilationToken(const string& line,const  CompilationTokenType type=COMPILETIME_NONE) {
 		this->line = line;
 		this->type = type;
 	}
-	CompilationToken(string line) {
-		this->line = line;
-		this->type = _NONE;
-	}
-
 };
 
 
@@ -179,33 +174,34 @@ struct RegisterRegister {
 	int xmmIdx = -1;
 
 	//ONLY FOR GENERAL REGS
-	int getRegIdx() const {
+	[[nodiscard]] int getRegIdx() const {
 		return regIdx;
 	}
-	Register* A(AsmSize sz) const {
+	[[nodiscard]] Register* A(const AsmSize sz) const {
 		switch (sz.sz) {
 		case 1: return regs1[0];
 		case 2: return regs2[0];
 		case 4: return regs4[0];
 		case 8: return regs8[0];
+		default:aThrowError(5, -1);
 		}
-		aThrowError(5, -1);
 		return nullptr;
 	}
-	Register* D(AsmSize sz) const {
-		switch (sz.sz) {
+	[[nodiscard]] Register* D(const AsmSize sz) const {
+		switch (sz.sz)
+		{
 		case 1: return regs1[2];
 		case 2: return regs2[2];
 		case 4: return regs4[2];
 		case 8: return regs8[2];
+		default:		aThrowError(5, -1);
 		}
-		aThrowError(5, -1);
 		return nullptr;
 	}
 
 
-	Register* alloc(AsmSize sz) {
-		Register* rptr = nullptr;
+	Register* alloc(const AsmSize sz) {
+		Register* rptr;
 		if (sz.prec == 0) {
 			regIdx++;
 			if (regIdx >= 14) aThrowError(6, -1);
@@ -219,8 +215,8 @@ struct RegisterRegister {
 
 		if (rptr != nullptr) if (rptr->isPreserved) {
 			bool found = false;
-			for (size_t i = 0; i < saves.size(); i++)
-				if (saves[i] == rptr) {
+			for (const auto & save : saves)
+				if (save == rptr) {
 					found = true;
 					break;
 				}
@@ -232,13 +228,13 @@ struct RegisterRegister {
 
 		return realloc(sz);
 	}
-	void free(Register* r) {
+	void free(const Register* r) {
 		if (r->size.prec != 0)
 			xmmIdx--;
 		else
 			regIdx--;
 	}
-	Register* realloc(AsmSize sz) const {
+	[[nodiscard]] Register* realloc(const AsmSize sz) const {
 		if (sz.prec != 0) {
 			Register* r = regsXMM[xmmIdx];
 			r->size = sz;
@@ -249,9 +245,10 @@ struct RegisterRegister {
 		case 2: return regs2[regIdx];
 		case 4: return regs4[regIdx];
 		case 8: return regs8[regIdx];
+			default:aThrowError(5, -1);
 		}
 
-		aThrowError(5, -1);
+
 		return nullptr;
 	}
 	
@@ -273,7 +270,7 @@ struct Compiler {
 		rr = RegisterRegister();
 	}
 
-	void addToData(string s) {
+	void addToData(const string& s) {
 		data << s << ",0" << endl;
 	}
 	void prologue(Func* fn) {
@@ -297,7 +294,7 @@ struct Compiler {
 
 
 	void savePreserved() {
-		for (Register* rptr : rr.saves)
+		for (const Register* rptr : rr.saves)
 		{
 			if (rptr->size.prec == 0) {
 				File << "push " << rptr->reg << endl;
@@ -310,7 +307,7 @@ struct Compiler {
 		}
 	}
 	void restorePreserved() {
-		for (Register* rptr : rr.saves)
+		for (const Register* rptr : rr.saves)
 		{
 			if (rptr->size.prec == 0) {
 				File << "pop " << rptr->reg << endl;
@@ -376,17 +373,16 @@ struct Compiler {
 
 
 
-	void compile(vector<Statement*> tree, string base);
+	void compile(const vector<Statement*>& tree, const string& loc);
 
 	void compileStatement(Statement* b, Func* fn);
 
-	void compileInstruction(INSTRUCTION i, Value* op,
-		Value* op2, Func* fn, AsmSize sz);
+	void compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn, AsmSize sz);
 
 	Register* cast(Value* v, AsmSize from, AsmSize to, Func* fn);
 
 
 	CompilationToken compileValue(Value* v, Func* fn);
 
-	AsmSize getSize(Value* v, Func* fn, bool inp);
+	static AsmSize getSize(Value* v, Func* fn, bool inp);
 };
