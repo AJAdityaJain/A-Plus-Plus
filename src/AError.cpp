@@ -1,9 +1,9 @@
 #include "AError.h"
-void aThrowError(char code, unsigned int line) {
+void aThrowError(const char code,const  unsigned int line) {
 
 	printf("\x1B[31m");
 
-	cout << "Error Axx" << (int)code << ":";
+	cout << "Error Axx" << static_cast<int>(code) << ":";
 	switch (code)
 	{
 	case 0: cout << "Unexpected token found in line " << line; break;
@@ -18,5 +18,5 @@ void aThrowError(char code, unsigned int line) {
 	printf("\033[0m\t\t");
 
 	exit(-code);
-	throw invalid_argument("Check terminal for more information");
+	// cout << "break";
 };

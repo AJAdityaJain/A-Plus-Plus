@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 #include <map>
 
@@ -15,7 +16,7 @@ struct Token {
 	virtual TokenType getType() {
 		return NONE;
 	}
-	Token(unsigned int ln) :ln(ln) {};
+	explicit Token(const unsigned int ln) :ln(ln) {};
 };
 
 
@@ -26,7 +27,7 @@ struct AssignToken : Token {
 		return ASSIGN;
 	}
 
-	AssignToken(AssignmentType value, unsigned int ln) :Token(ln) {
+	AssignToken(const AssignmentType value,const unsigned int ln) :Token(ln) {
 		this->value = value;
 	}
 };
@@ -39,15 +40,15 @@ struct OperatorToken : Token {
 		return OPERATOR;
 	}
 
-	OperatorToken(UnaryOperatorType u, MultipleOperatorType bi, unsigned int ln) :Token(ln) {
+	OperatorToken(UnaryOperatorType u, MultipleOperatorType bi, const unsigned int ln) :Token(ln) {
 		uValue = u;
 		biValue = bi;
 	}
-	OperatorToken(MultipleOperatorType value, unsigned int ln) :Token(ln) {
+	OperatorToken(MultipleOperatorType value, const unsigned int ln) :Token(ln) {
 		biValue = value;
 		uValue = NONE_UN_OPERATOR;
 	}
-	OperatorToken(UnaryOperatorType value, unsigned int ln) :Token(ln) {
+	OperatorToken(UnaryOperatorType value, const unsigned int ln) :Token(ln) {
 		uValue = value;
 		biValue = NONE_BI_OPERATOR;
 	}
@@ -61,7 +62,7 @@ struct KeyWordToken : Token {
 		return value;
 	}
 
-	KeyWordToken(TokenType value, unsigned int ln):Token(ln){
+	KeyWordToken(TokenType value, const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -72,8 +73,8 @@ struct StringToken : Token {
 	TokenType getType()override {
 		return STRING;
 	}
-	StringToken(string value,unsigned int ln):Token(ln){
-		this->value = value;
+	StringToken(string value,const unsigned int ln):Token(ln){
+		this->value = std::move(value);
 	}
 };
 struct BitToken : Token {
@@ -82,7 +83,7 @@ struct BitToken : Token {
 	TokenType getType()override {
 		return BIT;
 	}
-	BitToken(bool value,unsigned int ln):Token(ln){
+	BitToken(bool value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -94,7 +95,7 @@ struct IntToken : Token {
 		return INT;
 	}
 
-	IntToken(int value,unsigned int ln):Token(ln){
+	IntToken(int value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -105,7 +106,7 @@ struct FloatToken : Token {
 		return FLOAT;
 	}
 
-	FloatToken(float value,unsigned int ln):Token(ln){
+	FloatToken(float value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -117,7 +118,7 @@ struct DoubleToken : Token {
 		return DOUBLE;
 	}
 
-	DoubleToken(double value,unsigned int ln):Token(ln){
+	DoubleToken(double value,const unsigned int ln):Token(ln){
 		this->value = value;
 	}
 };
@@ -131,7 +132,7 @@ struct IdentifierToken : Token {
 		return ID;
 	}
 
-	IdentifierToken(unsigned int value=-1,unsigned int ln=-1):Token(ln){
+	explicit IdentifierToken(unsigned int value=-1,const unsigned int ln=-1):Token(ln){
 		this->value = value;
 	}
 };

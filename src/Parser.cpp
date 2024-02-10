@@ -160,7 +160,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) {
 			vector < Value*> invop = vector<Value*>();
 			invop.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 			vector < Value*> op = vector<Value*>();
-			op.push_back(new Reference(*(IdentifierToken*)stack[0]));
+			op.push_back(new Reference(((IdentifierToken*)stack[0])->value) );
 
 			return new Assignment(
 				*(IdentifierToken*)stack[0], 
@@ -174,7 +174,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) {
 		}
 		if (at == MODULO_EQUAL) {
 			vector < Value*> op = vector<Value*>();
-			op.push_back(new Reference(*(IdentifierToken*)stack[0]));
+			op.push_back(new Reference(((IdentifierToken*)stack[0])->value));
 			op.push_back((Value*)parseStatement(vector<Token*>(stack.begin() + 2, stack.end())));
 
 			return new Assignment(

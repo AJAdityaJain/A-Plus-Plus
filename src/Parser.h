@@ -2,29 +2,35 @@
 
 #include "Lexer.h"
 #include <sstream>
+#include <utility>
 
 using namespace std;
+
+constexpr static int ALIGN = 8;
 struct AsmSize {
 	int sz;
 	int prec;
 };
-const AsmSize VOID_SIZE = { 0 ,0 };
-const AsmSize BIT_SIZE = { 1,0 };
-const AsmSize SHORT_SIZE = { 2,0 };
-const AsmSize INT_SIZE = { 4,0 };
-const AsmSize LONG_SIZE = { 8,0 };
-const AsmSize PTR_SIZE = { 8,0 };
-const AsmSize FLOAT_SIZE = { 4,1 };
-const AsmSize DOUBLE_SIZE = { 8,2 };
+constexpr AsmSize VOID_SIZE = { 0 ,0 };
+constexpr AsmSize BIT_SIZE = { 1,0 };
+constexpr AsmSize SHORT_SIZE = { 2,0 };
+constexpr AsmSize INT_SIZE = { 4,0 };
+constexpr AsmSize LONG_SIZE = { 8,0 };
+constexpr AsmSize PTR_SIZE = { 8,0 };
+constexpr AsmSize FLOAT_SIZE = { 4,1 };
+constexpr AsmSize DOUBLE_SIZE = { 8,2 };
 struct Variable {
 	unsigned int off;
-	AsmSize size;
+	int share;
+	AsmSize size{};
 	IdentifierToken name;
 
-	Variable(unsigned int off, AsmSize size, IdentifierToken name) {
+	Variable(unsigned int off, AsmSize size, IdentifierToken name,int share= ALIGN) {
 		this->off = off;
 		this->size = size;
-		this->name = name;
+		this->name = std::move(name);
+
+		this->share = share-size.sz;
 	}
 };
 
@@ -139,14 +145,15 @@ struct String : Value
 struct Reference : Value
 {
 
-	IdentifierToken value;
+	unsigned int value;
 
 	StatementType getType()override {
 		return REFERENCE;
 	}
 
-	Reference(IdentifierToken val) {
+	Reference(unsigned int val) {
 		this->value = val;
+
 	}
 
 };

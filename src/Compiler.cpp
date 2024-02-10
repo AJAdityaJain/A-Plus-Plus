@@ -6,9 +6,9 @@ void Compiler::compile(vector<Statement*> tree, string loc) {
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
 	File << "  macro callerpush{\n      push rax  \n      push rcx  \n      push rdx  \n      push r8  \n      push r9  \n      push r10  \n      push r11  \n}  \n    \n  macro callerpop{\n      pop r11  \n      pop r10  \n      pop r9  \n      pop r8  \n      pop rdx  \n      pop rcx  \n      pop rax  \n}\n    \n  macro printint[int]{\n      callerpush  \n      invoke printf, intfmt,int  \n      callerpop  \n}  \n    \n  macro printstr[string]{\n      callerpush  \n      invoke printf, string  \n      callerpop  \n}  \n    \n  macro printdouble[xmm]{\n      callerpush  \n        \n      sub rsp, 8  \n      movsd QWORD[rsp], xmm0  \n        \n      movsd xmm0, xmm  \n      movq rdx, xmm0          \n      invoke printf, doublefmt  \n    \n      movsd xmm0, QWORD[rsp]  \n      add rsp, 8  \n    \n      callerpop  \n}  \n  macro printfloat[dwrd]{\n		sub rsp, 8\n		movsd QWORD[rsp], xmm0\n		cvtss2sd xmm0, dwrd\n		printdouble xmm0\n		movsd xmm0, QWORD[rsp]\n		add rsp, 8\n}\n\n\n\n";
 
-	for (Statement* st : tree) 
+	for (Statement* st : tree)
 		compileStatement(st,nullptr);
-	
+
 	File << "section '.data' data readable writeable\n";
 	File << data.str();
 
@@ -105,7 +105,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 		dataLabelIdx++;
 
 		fn->fbody << label << ":" << endl;
-		compileInstruction(CMP2, ifs->condition, new Bit(true), fn,BIT_SIZE);
+		compileInstruction(CMP2, ifs->condition, new Bit(true), fn, BIT_SIZE);
 		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn, BIT_SIZE);
 
 		compileStatement(ifs->ifBlock, fn);
@@ -114,7 +114,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 
 		fn->fbody << label2 << ":" << endl;
 		return;
-	}	
+	}
 	case IF_STMT: {
 		IfStatement* ifs = (IfStatement*)b;
 		string label = ".LABBRNCH" + to_string(dataLabelIdx);
@@ -162,32 +162,39 @@ void Compiler::compileStatement(Statement* b, Func* fn) {
 				}
 				}
 
-				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size), a->value, fn,sz);
+				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size), a->value, fn, sz);
 				return;
 			}
-	
-		//FUTURE PROOF THIS
-		compileInstruction(MOV2, new Pointer("[rsp-"+to_string(sz.sz) + "]", sz), a->value, fn,sz);
-		compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn,PTR_SIZE);
 
-		rr.rspOff.back() += sz.sz;
+		//FUTURE PROOF THIS
+
 		fn->scopesStack.back()++;
 
-		if (fn->varsStack.size() == 0)
+		if (fn->varsStack.size() == 0) {
+			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
+			compileInstruction(SUB2, rr.rsp, new Int(8), fn, PTR_SIZE);
+			rr.rspOff.back() += ALIGN;
 			fn->varsStack.push_back(new Variable(sz.sz, sz, a->name));
-		else
-			fn->varsStack.push_back(new Variable(fn->varsStack.back()->off + sz.sz, sz, a->name));
-
+			return;
+		}
+		Variable* v = fn->varsStack.back();
+		if (v->size.sz == sz.sz && v->share > 0) {
+			compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v->share-sz.sz) + "]", sz), a->value, fn, sz);
+			fn->varsStack.push_back(new Variable(v->off+sz.sz, sz, a->name, v->share));
+		}
+		else {
+			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
+			compileInstruction(SUB2, rr.rsp, new Int(ALIGN), fn, PTR_SIZE);
+			rr.rspOff.back() += ALIGN;
+			fn->varsStack.push_back(new Variable(v->off + sz.sz + v->share, sz, a->name));
+		}
 
 		return;
 	}
-
+	default: aThrowError(2, -1);
 	}
-	
-	aThrowError(2, -1);
-	return;
-
 }
+
 
 
 void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn, AsmSize sz) {
@@ -320,7 +327,7 @@ void Compiler::compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn
 
 
 
-Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn) {
+Register* Compiler::cast(Value* v, AsmSize from, AsmSize to, Func* fn){
 	Register* r1 = rr.alloc(from);
 	compileInstruction(MOV2, r1, v, fn, from);
 	bool regRe = false;
@@ -394,12 +401,12 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 			addToData(label + " dq '" + fpt->value+ '\'');
 			dataLabelIdx++;
 		}
-		return { "QWORD [" + label + "]",_PTR };	
+		return { "QWORD [" + label + "]",_PTR };
 	}
 	case REFERENCE: {
 		Reference* id = (Reference*)v;
 		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i]->name.value == id->value.value) {
+			if (fn->varsStack[i]->name.value == id->value) {
 				Pointer p = Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size);
 				return { p.ptr, _PTR };
 			}
@@ -483,7 +490,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) {
 						}
 					}
 				}
-				else 
+				else
 					for (size_t i = 0; i < mo->invoperands.size(); i++)
 						compileInstruction(DIV2, reg, mo->invoperands[i], fn, sz);
 			}
@@ -654,7 +661,7 @@ AsmSize Compiler::getSize(Value* v, Func* fn, bool inp) {
 	case REFERENCE: {
 		for (size_t i = 0; i < fn->varsStack.size(); i++)
 		{
-			if (fn->varsStack[i]->name.value == ((Reference*)v)->value.value) {
+			if (fn->varsStack[i]->name.value == ((Reference*)v)->value) {
 				return fn->varsStack[i]->size;
 			}
 		}

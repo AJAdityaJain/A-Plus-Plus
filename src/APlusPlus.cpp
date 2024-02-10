@@ -1,12 +1,12 @@
 ﻿#include "Compiler.h"
 
-string replaceFileExtension(string path) {
-	size_t dot = path.find_last_of('.');
+string replaceFileExtension(const string& path) {
+	const size_t dot = path.find_last_of('.');
 	return path.substr(0,dot)+".asm";
 }
 
 
-int main(int argc, char* argv[])
+int main(const int argc, char* argv[])
 {
 	if (argc < 2) {
 		cout << "No path provided";
@@ -34,12 +34,12 @@ int main(int argc, char* argv[])
 
 	///PARSE
 	Parser parser = Parser(lexer.tokens);
-	vector<Statement*> tree = parser.parse();
+	const vector<Statement*> tree = parser.parse();
 	lexer.clean();	
 
 	///COMPILE
 	Compiler compiler = Compiler();
-	string outAsm = replaceFileExtension(argv[1]);
+	const string outAsm = replaceFileExtension(argv[1]);
 	compiler.compile(tree, outAsm);
 
 	///FREE
