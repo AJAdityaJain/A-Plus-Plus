@@ -204,7 +204,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 			}
 			if (depth == 0)
 				return parseStatement(vector(stack.begin() + 1, stack.end() - 1));
-			else aThrowError(4, stack[0]->ln);
+			aThrowError(4, stack[0]->ln);
 	}
 
 
@@ -277,7 +277,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 					))));
 				}
 				else {
-					invoperands.push_back(dynamic_cast<Value*>(parseStatement(vector<Token*>(
+					invoperands.push_back(dynamic_cast<Value*>(parseStatement(vector(
 						stack.begin() + (abs(tokenIdx[j]) + 1),
 						stack.begin() + abs(tokenIdx[j + 1])
 					))));

@@ -193,9 +193,11 @@ int Lexer::isNumeric(const std::string& str) {
 	}
 
 	if (i != str.length())return 0;
-	else if (decimalPointFound && !isDouble) return 2;
-	else if (isDouble)
+	if (decimalPointFound && !isDouble) return 2;
+	if (isDouble)
+	{
 		if(str.length() >1)	return 3;
-		else return 0;
-	else return 1;
+		return 0;
+	}
+	return 1;
 }

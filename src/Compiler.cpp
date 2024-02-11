@@ -1,3 +1,4 @@
+// ReSharper disable CppDFATimeOver
 #include "Compiler.h"
 
 void Compiler::compile(const vector<Statement*>& tree, const string& loc) {
@@ -642,8 +643,8 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 			if(reg2 != nullptr)
 			{
 				if (regRe) rr.free(reg2);
-				return CompilationToken { reg2->reg  , COMPILETIME_REGISTER };}};
-	default: break;};
+				return CompilationToken { reg2->reg  , COMPILETIME_REGISTER };}}
+	default: break;}
 	aThrowError(5, -1);
 	return CompilationToken{ "" };
 }
