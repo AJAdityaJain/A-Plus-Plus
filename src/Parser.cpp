@@ -1,6 +1,6 @@
 #include "Parser.h"
 
-Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // NOLINT(*-no-recursion)
+Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // NOLINT(*-no-recursion)
 
 	size_t size = stack.size();
 
@@ -17,7 +17,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 		case DOUBLE:return new Double(dynamic_cast<DoubleToken*>(stack[0])->value);
 		case BIT:return new Bit(dynamic_cast<BitToken*>(stack[0])->value);
 		case STRING:return new String(dynamic_cast<StringToken*>(stack[0])->value);
-		default:aThrowError(0,stack[0]->ln);
+		default:aThrowError(0,line);
 		}
 
 	}
@@ -41,11 +41,11 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 				if (t == PARENTHESIS_OPEN) depth++;
 				if (t == PARENTHESIS_CLOSE) depth--;
 				if (depth == 0 && t == COMMA) {
-					params.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + p, stack.begin() + i))));
+					params.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + p, stack.begin() + i),line)));
 					p = i + 1;
 				}
 			}
-			params.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + p, stack.begin() + i))));
+			params.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + p, stack.begin() + i),line)));
 		}
 		return new FuncCall(*dynamic_cast<IdentifierToken*>(stack[0]),params);
 	}
@@ -70,7 +70,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 			}
 		}
 
-		auto body = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end())));
+		auto body = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line));
 		return new Func(*dynamic_cast<IdentifierToken*>(stack[1]), body);
 		
 	}
@@ -81,7 +81,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 		AssignmentType at = dynamic_cast<AssignToken*>(stack[1])->value;
 		if (at == DIVIDE_EQUAL) {
 			auto invop = vector<Value*>();
-			invop.push_back( dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()))));
+			invop.push_back( dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line)));
 			auto op = vector<Value*>();
 			op.push_back(new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value));
 
@@ -98,7 +98,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 		if (at == MODULO_EQUAL) {
 			auto op = vector<Value*>();
 			op.push_back(new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value));
-			op.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()))));
+			op.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line)));
 
 			return new Assignment(
 				*dynamic_cast<IdentifierToken*>(stack[0]),
@@ -114,7 +114,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 
 		return new Assignment(
 		*dynamic_cast<IdentifierToken*>(stack[0]),
-		dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end())))
+		dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line))
 		, at
 		);
 	}
@@ -134,8 +134,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 				}
 				depth = abs(depth);
 				if (depth == 0) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i)));
-					whileb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end())));
+					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i),line));
+					whileb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
 					break;
 				}
 			}
@@ -143,8 +143,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 		else 
 			for (int i = 1; i < stack.size() - 1; i++)
 				if (stack[i]->getType() == COLON) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i)));
-					whileb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end())));
+					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
+					whileb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
 					break;
 				}
 
@@ -167,8 +167,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 				}
 				depth = abs(depth);
 				if (depth == 0) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i)));
-					ifb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end())));
+					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i),line));
+					ifb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
 					break;
 				}
 
@@ -177,8 +177,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 		else 
 			for (int i = 1; i < stack.size() - 1; i++)
 				if (stack[i]->getType() == COLON) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i)));
-					ifb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end())));
+					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
+					ifb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
 					break;
 				}
 		
@@ -188,7 +188,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 
 	///Else
 	if (st0 == ELSE) {
-		return new ElseStatement(new CodeBlock(parseStatement(vector(stack.begin() + 1, stack.end()))));
+		return new ElseStatement(new CodeBlock(parseStatement(vector(stack.begin() + 1, stack.end()),line)));
 	}
 
 	///Parenthesis
@@ -203,8 +203,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 				depth = abs(depth);
 			}
 			if (depth == 0)
-				return parseStatement(vector(stack.begin() + 1, stack.end() - 1));
-			aThrowError(4, stack[0]->ln);
+				return parseStatement(vector(stack.begin() + 1, stack.end() - 1),line);
+			aThrowError(4,line);
 	}
 
 
@@ -274,13 +274,13 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 					operands.push_back(dynamic_cast<Value*>(parseStatement(vector(
 						stack.begin() + (tokenIdx[j] + 1),
 						stack.begin() + abs(tokenIdx[j + 1])
-					))));
+					),line)));
 				}
 				else {
 					invoperands.push_back(dynamic_cast<Value*>(parseStatement(vector(
 						stack.begin() + (abs(tokenIdx[j]) + 1),
 						stack.begin() + abs(tokenIdx[j + 1])
-					))));
+					),line)));
 				}
 			}
 
@@ -292,11 +292,11 @@ Statement* Parser::parseStatement(vector<Token*> stack, bool waitForElse) { // N
 	if (size >= 2 && st0 == OPERATOR) {
 		UnaryOperatorType uop = dynamic_cast<OperatorToken*>(stack[0])->uValue;
 		if (uop == POSITIVE) {
-			return parseStatement(vector(stack.begin() + 1, stack.end()));
+			return parseStatement(vector(stack.begin() + 1, stack.end()),line);
 		}
-		return new UnaryOperation(uop,dynamic_cast<Value*>( parseStatement(vector(stack.begin() + 1, stack.end()))));
+		return new UnaryOperation(uop,dynamic_cast<Value*>( parseStatement(vector(stack.begin() + 1, stack.end()),line)));
 	}
-	aThrowError(1,stack[0]->ln);
+	aThrowError(1,line);
 	return nullptr;
 }
 
@@ -308,6 +308,7 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 	auto statements = vector<Statement*>();
 	auto subStack = vector<Token*>();
 
+	unsigned int line = -1;
 	int depth = 0;
 	bool shouldParse = false;
 
@@ -317,7 +318,11 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 		if (sti == CURLY_OPEN) depth++;
 		if (sti == CURLY_CLOSE) depth--;
 
-		if (sti == LINE_END && depth == 0)shouldParse = true;
+		if (sti == LINE_END && depth == 0)
+		{
+			line = dynamic_cast<LineToken*>(i)->line;
+			shouldParse = true;
+		}
 		else {
 			subStack.push_back(i);
 			if (sti == CURLY_CLOSE && depth == 0)shouldParse = true;
@@ -327,7 +332,7 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 		if (shouldParse) {
 			shouldParse = false;
 			if (!subStack.empty()) {
-				statements.push_back(parseStatement(subStack));
+				statements.push_back(parseStatement(subStack,line));
 			}
 			subStack.clear();
 		}

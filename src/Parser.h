@@ -338,7 +338,7 @@ struct Parser {
 		this->tks = tks;
 	}
 
-	Statement* parseStatement(vector<Token*> stack, bool waitForElse = false);
+	Statement* parseStatement(vector<Token*> stack, unsigned int line);
 
 	vector<Statement*> parse();
 	vector<Statement*> parse(const vector<Token*>& stack);

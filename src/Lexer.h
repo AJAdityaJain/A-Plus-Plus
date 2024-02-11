@@ -11,14 +11,11 @@
 
 
 struct Token {
-	unsigned int ln;
 	virtual TokenType getType() {
 		return NONE;
 	}
 	virtual ~Token() = default;
-	explicit Token(const unsigned int ln) :ln(ln) {}
 };
-
 
 struct AssignToken final : Token {
 	AssignmentType value;
@@ -27,11 +24,10 @@ struct AssignToken final : Token {
 		return ASSIGN;
 	}
 
-	AssignToken(const AssignmentType value,const unsigned int ln) :Token(ln) {
+	explicit AssignToken(const AssignmentType value) {
 		this->value = value;
 	}
 };
-
 struct OperatorToken final : Token {
 	MultipleOperatorType biValue;
 	UnaryOperatorType uValue;
@@ -40,21 +36,23 @@ struct OperatorToken final : Token {
 		return OPERATOR;
 	}
 
-	OperatorToken(const UnaryOperatorType u, const MultipleOperatorType bi, const unsigned int ln) :Token(ln) {
+	explicit OperatorToken(const MultipleOperatorType bi = NONE_BI_OPERATOR,const UnaryOperatorType u = NONE_UN_OPERATOR) {
 		uValue = u;
 		biValue = bi;
 	}
-	OperatorToken(const MultipleOperatorType value, const unsigned int ln) :Token(ln) {
-		biValue = value;
-		uValue = NONE_UN_OPERATOR;
-	}
-	OperatorToken(const UnaryOperatorType value, const unsigned int ln) :Token(ln) {
-		uValue = value;
-		biValue = NONE_BI_OPERATOR;
-	}
 };
 
+struct LineToken final: Token {
+	unsigned int line;
 
+	TokenType getType()override {
+		return LINE_END;
+	}
+
+	explicit LineToken(const unsigned int line){
+		this->line = line;
+	}
+};
 struct KeyWordToken final: Token {
 	TokenType value;
 
@@ -62,18 +60,17 @@ struct KeyWordToken final: Token {
 		return value;
 	}
 
-	KeyWordToken(const TokenType value, const unsigned int ln):Token(ln){
+	explicit KeyWordToken(const TokenType value){
 		this->value = value;
 	}
 };
-
 struct StringToken final: Token {
 	string value;
 
 	TokenType getType()override {
 		return STRING;
 	}
-	StringToken(string value,const unsigned int ln):Token(ln){
+	explicit StringToken(string value){
 		this->value = std::move(value);
 	}
 };
@@ -83,11 +80,11 @@ struct BitToken final : Token {
 	TokenType getType()override {
 		return BIT;
 	}
-	BitToken(const bool value,const unsigned int ln):Token(ln){
+
+	explicit BitToken(const bool value){
 		this->value = value;
 	}
 };
-
 struct IntToken final: Token {
 	int value;
 
@@ -95,7 +92,7 @@ struct IntToken final: Token {
 		return INT;
 	}
 
-	IntToken(const int value,const unsigned int ln):Token(ln){
+	explicit IntToken(const int value){
 		this->value = value;
 	}
 };
@@ -106,11 +103,10 @@ struct FloatToken final: Token {
 		return FLOAT;
 	}
 
-	FloatToken(const float value,const unsigned int ln):Token(ln){
+	explicit FloatToken(const float value){
 		this->value = value;
 	}
 };
-
 struct DoubleToken final: Token {
 	double value;
 
@@ -118,13 +114,10 @@ struct DoubleToken final: Token {
 		return DOUBLE;
 	}
 
-	DoubleToken(const double value,const unsigned int ln):Token(ln){
+	explicit DoubleToken(const double value){
 		this->value = value;
 	}
 };
-
-
-
 struct IdentifierToken final: Token {
 	unsigned int value;
 
@@ -132,7 +125,7 @@ struct IdentifierToken final: Token {
 		return ID;
 	}
 
-	explicit IdentifierToken(const unsigned int value=-1,const unsigned int ln=-1):Token(ln){
+	explicit IdentifierToken(const unsigned int value=-1){
 		this->value = value;
 	}
 };
@@ -142,10 +135,6 @@ struct Lexer {
 	vector<Token*> tokens;
 
 	~Lexer() {
-		clean();
-	}
-
-	void clean() {
 		for (const Token* t: tokens) {
 			delete t;
 		}

@@ -89,7 +89,6 @@ int main(const int argc, char* argv[])
 		programString.shrink_to_fit();
 		auto parser = Parser(lexer.tokens);
 		const vector<Statement*> tree = parser.parse();
-		lexer.clean();
 		auto compiler = Compiler();
 		compiler.compile(tree, midput);
 		for (const Statement* s : tree) delete s;
