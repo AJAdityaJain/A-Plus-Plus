@@ -1,19 +1,15 @@
 ﻿#include <chrono>
-#include <filesystem>
+
 #include "Compiler.h"
-
-string replaceFileExtension(const string& path) {
-	const size_t dot = path.find_last_of('.');
-	return path.substr(0,dot)+".exe";
-}
-
+#include "WFile.h"
 
 int main(const int argc, char* argv[])
 {
+	filesystem::path base = exeDirectory();
+	filesystem::path TEMPFOLDER = base.parent_path().string().append("\\TEMP\\");
 	string input;
 	string output;
 	string midput;
-	bool delMid = false;
 
 	switch(argc)
 	{
@@ -65,10 +61,8 @@ int main(const int argc, char* argv[])
 
 	if(midput.empty())
 	{
-		filesystem::path appx = argv[0];
 		srand ( time(nullptr) ); // NOLINT(*-msc51-cpp)
-		midput = appx.parent_path().parent_path().string() +  "\\TEMP\\"+ to_string(rand()) +".asm"; // NOLINT(*-msc50-cpp)
-		delMid = true;
+		midput = TEMPFOLDER.string() + to_string(rand()) +".asm"; // NOLINT(*-msc50-cpp)
 	}
 	if(output.empty())
 		output = replaceFileExtension(input);
@@ -95,7 +89,8 @@ int main(const int argc, char* argv[])
 	}
 
 	system(("fasm "+ midput + " " + output).c_str());
-	if(delMid)
-		system(("del " + midput).c_str());
+	for (const auto & entry : filesystem::directory_iterator(TEMPFOLDER))
+		if(filesystem::file_time_type::clock::now()-entry.last_write_time() > 5min)
+			filesystem::remove(entry);
 	return 0;
 }
