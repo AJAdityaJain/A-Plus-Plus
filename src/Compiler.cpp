@@ -398,10 +398,21 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		if (fpt->label == -1) {
 			fpt->label = dataLabelIdx;
 			label = "LABDAT" + to_string(fpt->label);
-			addToData(label + " dq '" + fpt->value+ '\'');
+			stringstream fmt;
+			for (int i = 0; i < fpt->value.length(); i++)
+			{
+				switch (fpt->value[i])
+				{
+				case '\'':fmt << "',0x27,'" ;break;
+				case '\n':fmt << "',0x0A,'" ;break;
+				case '\r':fmt << "',0x0D,'" ;break;
+				default:fmt << fpt->value[i];break;
+				}
+			}
+			addToData(label + " db '" + fmt.str() + '\'');
 			dataLabelIdx++;
 		}
-		return CompilationToken{ "QWORD [" + label + "]",COMPILETIME_PTR };
+		return CompilationToken{ label };
 	}
 	case REFERENCE: {
 		const auto* id = dynamic_cast<Reference*>(v);

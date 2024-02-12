@@ -30,6 +30,11 @@ void Lexer::tokenize(const vector<string>& lines)
 						strStart = c;
 						break;
 					}
+					if(c == '#')
+					{
+						inwhat = 3;
+						break;
+					}
 
 					bool cont = false;
 
@@ -110,6 +115,22 @@ void Lexer::tokenize(const vector<string>& lines)
 					break;
 				}
 			case 1:{
+				if(c == '\\')
+				{
+					if(i < line.size() -1)
+					{
+						i++;
+						if     (line[i] == 'n') tempString.pop_back(),tempString += '\n';
+						else if(line[i] == 't') tempString.pop_back(),tempString += '\t';
+						else if(line[i] == 'r') tempString.pop_back(),tempString += '\r';
+						else if(line[i] == '\\')tempString.pop_back(),tempString += '\\';
+						else if(line[i] == '\'')tempString.pop_back(),tempString += '\'';
+						else if(line[i] == '"') tempString.pop_back(),tempString += '"';
+						else if(line[i] == '`') tempString.pop_back(),tempString += '`';
+						else aThrowError(2,lineIdx);
+					}
+					break;
+				}
 				if(c == strStart) {
 					inwhat = 0;
 					strStart = ' ';
@@ -165,11 +186,10 @@ void Lexer::tokenize(const vector<string>& lines)
 
 				break;
 			}
-			// case 3:
-			// 	{
-			//
-			// 		break;
-			// 	}
+			case 3:
+				if(c == '\n')
+					inwhat = 0;
+				break;
 			// ReSharper disable once CppDFAUnreachableCode
 			default:break;
 			}

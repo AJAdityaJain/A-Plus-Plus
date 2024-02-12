@@ -18,5 +18,5 @@ void aThrowError(const char code,const  unsigned int line) {
 	}
 	printf("\033[0m\t\t");
 
-	//exit(-code);
+	exit(-code);
 }
