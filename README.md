@@ -16,8 +16,9 @@
 
 ## Requirements
 > None 😉
-> 
-> [!IMPORTANT]Currenty only ready for Intel x64. Rest is uncharted territory.
+
+> [!IMPORTANT]
+> Currenty only ready for Intel x64. Rest is uncharted territory.
 
 ## Install
 > Just download the latest release and run the installer.
