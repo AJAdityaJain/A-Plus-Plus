@@ -9,6 +9,8 @@
 > - [x] Simple syntax
 > - [x] Pseudo-dynamically typed
 > - [x] Made with love
+> - [x] No dependencies
+> - [x] 64-bit Stack aligned
 > ### Why is this even a thing?
 > <a href='https://en.wikipedia.org/wiki/A%2B_(programming_language)'>A and A+</a> existed 40 years ago, but became obsolete with the arrival of C and C++
 > Then I was bored on a Monday and decided to start this journey.
@@ -35,7 +37,7 @@ x = 12;    #Integers
 y = 1.05;  #Floats
 z = 1.05d; #Doubles
 z = y+x;   #Dynamic casting and assignment
-x = 0
+x = 0;
 ```
 
  - If-else
@@ -43,7 +45,7 @@ x = 0
 if(x == 0){
     write("Value of x is 0\n");
 }
-else if x > 0:
+else if (x > 0)
     write("Value of x is more than 0\n");
 ```
 

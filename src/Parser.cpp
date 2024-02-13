@@ -140,13 +140,6 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 				}
 			}
 		}
-		else 
-			for (int i = 1; i < stack.size() - 1; i++)
-				if (stack[i]->getType() == COLON) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
-					whileb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
-					break;
-				}
 
 		if(con != nullptr && whileb != nullptr)
 			return new WhileStatement(con, whileb);
@@ -174,14 +167,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 
 			}
 		}
-		else 
-			for (int i = 1; i < stack.size() - 1; i++)
-				if (stack[i]->getType() == COLON) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
-					ifb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
-					break;
-				}
-		
+
 		if(con != nullptr && ifb != nullptr)
 			return new IfStatement(con, ifb);
 	}
@@ -311,6 +297,7 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 	unsigned int line = -1;
 	int depth = 0;
 	bool shouldParse = false;
+	bool elseplz = false;
 
 	for (auto i : stack) {
 		const TokenType sti = i->getType();
@@ -332,7 +319,13 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 		if (shouldParse) {
 			shouldParse = false;
 			if (!subStack.empty()) {
-				statements.push_back(parseStatement(subStack,line));
+				if(Statement* ret = parseStatement(subStack,line); elseplz && ret->getType() == ELSE_STMT)
+					dynamic_cast<IfStatement*>(statements.back())->elseBlock =dynamic_cast<ElseStatement*>(ret)->elseBlock;
+				else
+				{
+					statements.push_back(ret);
+					elseplz = ret->getType() == IF_STMT;
+				}
 			}
 			subStack.clear();
 		}

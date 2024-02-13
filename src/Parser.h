@@ -237,7 +237,7 @@ struct WhileStatement final: Statement {
 struct IfStatement final: Statement {
 	Value* condition;
 	CodeBlock* ifBlock;
-
+    CodeBlock* elseBlock;
 
 	StatementType getType()override {
 		return IF_STMT;
@@ -246,9 +246,10 @@ struct IfStatement final: Statement {
 	~IfStatement() override {
 		delete condition;
 		delete ifBlock;
+		delete elseBlock;
 	}
 
-	IfStatement(Value* con, CodeBlock* ifb) {
+	IfStatement(Value* con, CodeBlock* ifb,CodeBlock* elseb = nullptr) {
 		condition = con;
 		ifBlock = ifb;
 	}

@@ -265,8 +265,8 @@ struct Compiler {
 	stringstream data;
 
 	Compiler() {
-		addToData("intfmt db '%d',10");
-		addToData("doublefmt db '%f',10");
+		addToData("intfmt db '%d'");
+		addToData("doublefmt db '%f'");
 		rr = RegisterRegister();
 	}
 

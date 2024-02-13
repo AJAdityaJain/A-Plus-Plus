@@ -119,18 +119,29 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		fn->fbody << label2 << ":" << endl;
 		return;
 	}
-	case IF_STMT: {
-		const auto* ifs = dynamic_cast<IfStatement*>(b);
-		const string label = ".LABBRNCH" + to_string(dataLabelIdx);
-		dataLabelIdx++;
-		compileInstruction(CMP2, ifs->condition, new Bit(true), fn, BIT_SIZE);
-		compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
+	case IF_STMT:
+		{
+			const auto* ifs = dynamic_cast<IfStatement*>(b);
+			const string label = ".LABBRNCH" + to_string(dataLabelIdx);
+			dataLabelIdx++;
+			const string label2 = ".LABBRNCH" + to_string(dataLabelIdx);
+			if(ifs->elseBlock != nullptr)
+				dataLabelIdx++;
+			compileInstruction(CMP2, ifs->condition, new Bit(true), fn, BIT_SIZE);
+			compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
 
-		compileStatement(ifs->ifBlock, fn);
+			compileStatement(ifs->ifBlock, fn);
+			if(ifs->elseBlock != nullptr)
+				compileInstruction(JMP1, new CompilationToken(label2), nullptr, fn, BIT_SIZE);
 
-		fn->fbody << label << ":" << endl;
-		return;
-	}
+			fn->fbody << label << ":" << endl;
+			if(ifs->elseBlock != nullptr)
+			{
+				compileStatement(ifs->elseBlock, fn);
+				fn->fbody << label2 << ":" << endl;
+			}
+			return;
+		}
 	case ASSIGNMENT: {
 		const auto* a = dynamic_cast<Assignment*>(b);
 		const AsmSize sz = getSize(a->value, fn, false);
@@ -539,7 +550,6 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				rr.free(diver);
 
 				if (rr.getRegIdx() != 0) {
-					compileInstruction(MOV2, reg, Areg, fn, sz);
 					compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 					compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
 				}
