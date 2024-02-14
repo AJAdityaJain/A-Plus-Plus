@@ -34,6 +34,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			File << "start:" << endl;
 			File << "push rbp" << endl;
 			File << "mov rbp, rsp" << endl;
+			File << "and rsp, 0xFFFFFFFFFFFFFFF0" << endl;
 			savePreserved();
 			File << endl;
 			File << fun->fbody.str();
@@ -184,12 +185,12 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 		//FUTURE PROOF THIS
 
+		const int szonstack = static_cast<int>(ceil(static_cast<double>(sz.sz)/ALIGN)*ALIGN);
 		fn->scopesStack.back()++;
-
 		if (fn->varsStack.empty()) {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
-			compileInstruction(SUB2, rr.rsp, new Int(8), fn, PTR_SIZE);
-			rr.rspOff.back() += ALIGN;
+			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
+			rr.rspOff.back() += szonstack;
 			fn->varsStack.push_back(new Variable(sz.sz, sz, a->name));
 			return;
 		}
@@ -199,8 +200,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		}
 		else {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
-			compileInstruction(SUB2, rr.rsp, new Int(ALIGN), fn, PTR_SIZE);
-			rr.rspOff.back() += ALIGN;
+			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
+			rr.rspOff.back() += szonstack;
 			fn->varsStack.push_back(new Variable(v->off + sz.sz + v->share, sz, a->name));
 		}
 
@@ -456,7 +457,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		}
 		break;
 	}
-
+	// case ARRAY:
+	// 	{
+	// 		return CompilationToken("$$$",COMPILETIME_REGISTER);
+	// 	}
 
 	case MULTI_OPERATION: {
 		auto* mo = dynamic_cast<MultipleOperation*>(v);
@@ -670,84 +674,96 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 	return CompilationToken{ "" };
 }
 
-AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) { // NOLINT(*-no-recursion)
+AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-recursion)
+{
 	switch (v->getType())
 	{
 	case REGISTER: {
-		return dynamic_cast<Register*>(v)->size;
+			return dynamic_cast<Register*>(v)->size;
 	}
 	case PTR: {
-		return dynamic_cast<Pointer*>(v)->size;
+			return dynamic_cast<Pointer*>(v)->size;
 	}
 	case REFERENCE: {
-		for (const auto & i : fn->varsStack)
-		{
-			if (i->name.value == dynamic_cast<Reference*>(v)->value) {
-				return i->size;
+			for (const auto & i : fn->varsStack)
+			{
+				if (i->name.value == dynamic_cast<Reference*>(v)->value) {
+					return i->size;
+				}
 			}
-		}
-		break;
+			break;
 	}
 
 	case MULTI_OPERATION: {
-		auto* mop = dynamic_cast<MultipleOperation*>(v);
-		if (mop->op == OR || mop->op == AND) return BIT_SIZE;
-		if (!inp)
-			if (
-				mop->op == COMPARISON ||
-				mop->op == NOT_EQUAL ||
-				mop->op == GREATER_THAN ||
-				mop->op == SMALLER_THAN ||
-				mop->op == GREATER_THAN_EQUAL ||
-				mop->op == SMALLER_THAN_EQUAL
-				)
-				return BIT_SIZE;
+			auto* mop = dynamic_cast<MultipleOperation*>(v);
+			if (mop->op == OR || mop->op == AND) return BIT_SIZE;
+			if (!inp)
+				if (
+					mop->op == COMPARISON ||
+					mop->op == NOT_EQUAL ||
+					mop->op == GREATER_THAN ||
+					mop->op == SMALLER_THAN ||
+					mop->op == GREATER_THAN_EQUAL ||
+					mop->op == SMALLER_THAN_EQUAL
+					)
+					return BIT_SIZE;
 
-		AsmSize sz = VOID_SIZE;
+			AsmSize sz = VOID_SIZE;
 
-		for (const auto & operand : mop->operands) {
-			const AsmSize osz = getSize(operand, fn, inp);
-			if (osz.sz > sz.sz)
-				sz = osz;
-			if(osz.prec > sz.prec)
-				sz = osz;
-		}
+			for (const auto & operand : mop->operands) {
+				const AsmSize osz = getSize(operand, fn, inp);
+				if (osz.sz > sz.sz)
+					sz = osz;
+				if(osz.prec > sz.prec)
+					sz = osz;
+			}
 
-		for (const auto & invoperand : mop->invoperands) {
-			const AsmSize osz = getSize(invoperand, fn, inp);
-			if (osz.sz > sz.sz)
-				sz = osz;
-			if (osz.prec > sz.prec)
-				sz = osz;
-		}
-		mop->size = sz;
-		return sz;
+			for (const auto & invoperand : mop->invoperands) {
+				const AsmSize osz = getSize(invoperand, fn, inp);
+				if (osz.sz > sz.sz)
+					sz = osz;
+				if (osz.prec > sz.prec)
+					sz = osz;
+			}
+			mop->size = sz;
+			return sz;
 
 	}
 	case UN_OPERATION:{
-		const auto uop = dynamic_cast<UnaryOperation*>(v);
-		switch (uop->op) {
-		case NOT:return BIT_SIZE;
-		case BITWISE_NOT:return getSize(uop->right, fn, inp);
-		default: break;
-		}
-		return getSize(uop->right, fn, inp);
+			const auto uop = dynamic_cast<UnaryOperation*>(v);
+			switch (uop->op) {
+			case NOT:return BIT_SIZE;
+			case BITWISE_NOT:return getSize(uop->right, fn, inp);
+			default: break;
+			}
+			return getSize(uop->right, fn, inp);
 	}
 	case INT_STMT: {
-		return INT_SIZE;
+			return INT_SIZE;
 	}
 	case FLOAT_STMT: {
-		return FLOAT_SIZE;
+			return FLOAT_SIZE;
 	}
 	case DOUBLE_STMT: {
-		return DOUBLE_SIZE;
+			return DOUBLE_SIZE;
 	}
 	case STRING_STMT: {
-		return PTR_SIZE;
+			return PTR_SIZE;
 	}
 	case BIT_STMT: {
-		return BIT_SIZE;
+			return BIT_SIZE;
 	}
+	// case ARRAY:{
+	// 		// if(inp)
+	// 		{
+	// 			const auto arr = dynamic_cast<Array*>(v);
+	// 			AsmSize sz{};
+	// 			sz.sz = static_cast<int>(arr->values.size()) * getSize(arr->values[0], fn, false).sz;
+	// 			sz.prec = 0;
+	// 			return sz;
+	// 		}
+	// 		return PTR_SIZE;
+	// }
 	default: break;
 	}
 

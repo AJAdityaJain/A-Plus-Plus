@@ -14,7 +14,8 @@ project ("appx")
 # Add source to this project's executable.
 add_executable (appx "src/APlusPlus.cpp"  "src/Lexer.h" "src/Lexer.cpp" "src/Parser.h" "src/Parser.cpp"   "src/Enums.h" "src/Compiler.cpp" "src/Compiler.h" "src/AError.h" "src/AError.cpp"
         src/WFile.h
-        src/WFile.cpp)
+        src/WFile.cpp
+        src/DebugLogger.h)
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET appx PROPERTY CXX_STANDARD 20)

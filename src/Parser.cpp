@@ -1,13 +1,13 @@
 #include "Parser.h"
 
-Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // NOLINT(*-no-recursion)
+Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line) { // NOLINT(*-no-recursion)
 
-	size_t size = stack.size();
+	const size_t size = stack.size();
 
 	if (size == 0)aThrowError(2, -1);
 
-	TokenType st0 = stack[0]->getType();
-	TokenType stb = stack.back()->getType();
+	const TokenType st0 = stack[0]->getType();
+	const TokenType stb = stack.back()->getType();
 
 	if (size == 1) {
 		switch (st0) {
@@ -22,7 +22,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 
 	}
 
-	TokenType st1 = stack[1]->getType();
+	const TokenType st1 = stack[1]->getType();
 
 	///Scope Definition
 	if (size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
@@ -38,8 +38,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 			int i = 2;
 			for (; i < stack.size() - 1; i++) {
 				TokenType t = stack[i]->getType();
-				if (t == PARENTHESIS_OPEN) depth++;
-				if (t == PARENTHESIS_CLOSE) depth--;
+				checkDepth(t,depth);
 				if (depth == 0 && t == COMMA) {
 					params.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + p, stack.begin() + i),line)));
 					p = i + 1;
@@ -57,9 +56,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 		int bi = -1;
 		int depth = 0;
 		for (int i = 2; i < stack.size(); i++) {
-			TokenType t = stack[i]->getType();
-			if (t == PARENTHESIS_OPEN) depth++;
-			if (t == PARENTHESIS_CLOSE) depth--;
+			const TokenType t = stack[i]->getType();
+			checkDepth(t,depth);
 			//if (depth == 1 && t == ID && bi == -1) {
 				//params.push_back(*(IdentifierToken*)stack[i]);
 			//} 
@@ -70,9 +68,32 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 			}
 		}
 
-		auto body = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line));
+		const auto body = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line));
 		return new Func(*dynamic_cast<IdentifierToken*>(stack[1]), body);
 		
+	}
+
+	//Array def
+	if(st0 == BRACKET_OPEN && stb == BRACKET_CLOSE){
+		auto values = vector<Value*>();
+		if (stack.size() > 2) {
+			int tstart = 1;
+			int depth = 0;
+			for(int i = 1; i < stack.size() - 1; i++){
+				const TokenType toktype = stack[i]->getType();
+				checkDepth(toktype,depth);
+				if(depth == 0 && toktype == COMMA){
+					values.push_back(dynamic_cast<Value*>(
+						parseStatement(vector(stack.begin() + tstart, stack.begin() + i),line))
+						);
+					tstart = i + 1;
+				}
+			}
+			values.push_back(dynamic_cast<Value*>(
+				parseStatement(vector(stack.begin() + tstart, stack.end() - 1),line))
+				);
+		}
+		return new Array(values);
 	}
 
 
@@ -127,11 +148,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
-				switch (stack[i]->getType()) {
-					case PARENTHESIS_OPEN: depth++; break;
-					case PARENTHESIS_CLOSE: depth--; break;
-					default:break;
-				}
+				checkDepth(stack[i]->getType(),depth);
 				depth = abs(depth);
 				if (depth == 0) {
 					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i),line));
@@ -153,11 +170,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
-				switch (stack[i]->getType()) {
-					case PARENTHESIS_OPEN: depth++; break;
-					case PARENTHESIS_CLOSE: depth--; break;
-					default:break;
-				}
+				checkDepth(stack[i]->getType(),depth);
 				depth = abs(depth);
 				if (depth == 0) {
 					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i),line));
@@ -181,11 +194,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 	if (size >= 3 && st0 == PARENTHESIS_OPEN && stb == PARENTHESIS_CLOSE) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
-				switch (stack[i]->getType()) {
-					case PARENTHESIS_OPEN: depth++; break;
-					case PARENTHESIS_CLOSE: depth--; break;
-					default:break;
-				}
+				checkDepth(stack[i]->getType(),depth);
+
 				depth = abs(depth);
 			}
 			if (depth == 0)
@@ -204,20 +214,14 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 		MultipleOperatorType _bot = NONE_BI_OPERATOR;
 
 		for (Token* t : stack) {
-			switch (t->getType())
-			{
-			case PARENTHESIS_OPEN: depth++; break;
-			case PARENTHESIS_CLOSE: depth--; break;
-			case OPERATOR: {
+				checkDepth(t->getType(),depth);
+			if (t->getType() ==  OPERATOR) {
 				if (i != 0 && depth == 0) {
 					MultipleOperatorType tt = dynamic_cast<OperatorToken*>(t)->biValue;
 					if (tt == MINUS) tt = PLUS;
 					if (tt == DIVIDE) tt = MULTIPLY;
 					if (bot == NONE_BI_OPERATOR || tt < bot) bot = tt;
 				}
-				break;
-			}
-				default:break;
 			}
 			i++;
 		}
@@ -225,12 +229,11 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 		if (bot == PLUS) _bot = MINUS;
 		if (bot == MULTIPLY) _bot = DIVIDE;
 		i = 0;
-		for (Token* t : stack) {
-			switch (t->getType())
+		for (Token* t : stack)
+		{
+			checkDepth(t->getType(), depth);
+			if (t->getType() == OPERATOR)
 			{
-			case PARENTHESIS_OPEN: depth++; break;
-			case PARENTHESIS_CLOSE: depth--; break; 
-			case OPERATOR: {
 				MultipleOperatorType mop = dynamic_cast<OperatorToken*>(t)->biValue;
 				if (i != 0 && depth == 0) {
 					if (mop == bot) {
@@ -240,9 +243,6 @@ Statement* Parser::parseStatement(vector<Token*> stack, unsigned int line) { // 
 						tokenIdx.push_back(-i);
 					}
 				}
-				break;
-			}
-				default:break;
 			}
 			i++;
 		}
@@ -302,8 +302,7 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 	for (auto i : stack) {
 		const TokenType sti = i->getType();
 
-		if (sti == CURLY_OPEN) depth++;
-		if (sti == CURLY_CLOSE) depth--;
+		checkDepth(sti, depth);
 
 		if (sti == LINE_END && depth == 0)
 		{

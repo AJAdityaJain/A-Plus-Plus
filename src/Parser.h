@@ -6,7 +6,7 @@
 
 using namespace std;
 
-constexpr static int ALIGN = 8;
+constexpr static int ALIGN = 16;
 struct AsmSize {
 	int sz;
 	int prec;
@@ -131,6 +131,27 @@ struct String final : Value
 	explicit String(string val) : value(std::move(val)) {}
 };
 
+struct Array final: Value
+{
+	vector<Value*> values;
+
+	StatementType getType()override {
+		return ARRAY;
+	}
+
+	~Array() override {
+		for (const Statement* v : values)
+		{
+			delete v;
+		}
+		values.clear();
+		values.shrink_to_fit();
+	}
+
+	explicit Array(const vector<Value*>& val) {
+		this->values = val;
+	}
+};
 
 
 struct Reference final: Value
@@ -237,7 +258,7 @@ struct WhileStatement final: Statement {
 struct IfStatement final: Statement {
 	Value* condition;
 	CodeBlock* ifBlock;
-    CodeBlock* elseBlock;
+    CodeBlock* elseBlock = nullptr;
 
 	StatementType getType()override {
 		return IF_STMT;
@@ -249,7 +270,7 @@ struct IfStatement final: Statement {
 		delete elseBlock;
 	}
 
-	IfStatement(Value* con, CodeBlock* ifb,CodeBlock* elseb = nullptr) {
+	IfStatement(Value* con, CodeBlock* ifb) {
 		condition = con;
 		ifBlock = ifb;
 	}
@@ -344,7 +365,11 @@ struct Parser {
 	vector<Statement*> parse();
 	vector<Statement*> parse(const vector<Token*>& stack);
 
-
+	static void checkDepth(const TokenType tt, int&depth)
+	{
+		if(tt == BRACKET_OPEN || tt == CURLY_OPEN || tt == PARENTHESIS_OPEN) depth++;
+		else if(tt == BRACKET_CLOSE || tt == CURLY_CLOSE || tt == PARENTHESIS_CLOSE) depth--;
+	}
 };
 
 

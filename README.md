@@ -10,7 +10,7 @@
 > - [x] Pseudo-dynamically typed
 > - [x] Made with love
 > - [x] No dependencies
-> - [x] 64-bit Stack aligned
+> - [x] 16-byte Stack aligned
 > ### Why is this even a thing?
 > <a href='https://en.wikipedia.org/wiki/A%2B_(programming_language)'>A and A+</a> existed 40 years ago, but became obsolete with the arrival of C and C++
 > Then I was bored on a Monday and decided to start this journey.

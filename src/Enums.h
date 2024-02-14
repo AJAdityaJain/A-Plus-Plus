@@ -38,6 +38,7 @@ enum StatementType {
 	FLOAT_STMT,
 	DOUBLE_STMT,
 	STRING_STMT,
+	ARRAY,
 	REFERENCE,
 	REGISTER,
 	PTR,

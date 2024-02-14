@@ -1,6 +1,4 @@
-﻿#include <chrono>
-
-#include "Compiler.h"
+﻿#include "Compiler.h"
 #include "WFile.h"
 
 int main(const int argc, char* argv[])
@@ -10,6 +8,8 @@ int main(const int argc, char* argv[])
 	string input;
 	string output;
 	string midput;
+	bool isDebug = false;
+	bool isLex = false;
 
 	switch(argc)
 	{
@@ -40,20 +40,32 @@ int main(const int argc, char* argv[])
 						cout << "Options:" << endl;
 						cout << "\tappx  -v, -version                                   : Version information" << endl;
 						cout << "\tappx  -h, -help                                      : Display this information" << endl;
+						cout << "\tappx	 -d, -debug										: Prints verbose debug information" << endl;
+						cout << "\tappx	 -l, -lex										: Prints lexical information" << endl;
 						cout << "\tappx <InputFile.app>                                 : Compiles app files into exe" << endl;
 						cout << "\tappx <InputFile.app> <OutputFile.exe>                : Compiles app files into exe at that location" << endl;
 						cout << "\tappx <InputFile.app> <OutputFile.exe> <AsmFile.asm>  : Compiles app files into exe at that location also outputs raw assembly" << endl;
 						exit(0);
 					}
-					cout << "Invalid Option use -h for all options" << endl;
-					exit(0);
+					if(strcmp(argv[i],"-d") == 0|| strcmp(argv[i],"-debug") == 0)
+						isDebug = true;
+					else if(strcmp(argv[i],"-l") == 0|| strcmp(argv[i],"-lex") == 0)
+						isLex = true;
+					else
+					{
+						cout << "Invalid Option use -h for all options" << endl;
+						exit(0);
+					}
 				}
-				if(input.empty())
-					input = argv[i];
-				else if(output.empty())
-					output = argv[i];
-				else if(midput.empty())
-					midput = argv[i];
+				else
+				{
+					if(input.empty())
+						input = argv[i];
+					else if(output.empty())
+						output = argv[i];
+					else if(midput.empty())
+						midput = argv[i];
+				}
 			}
 			break;
 		}
@@ -81,14 +93,17 @@ int main(const int argc, char* argv[])
 		lexer.tokenize(programString);
 		programString.clear();
 		programString.shrink_to_fit();
+		if(isLex)
+			printTokens(lexer.tokens);
 		auto parser = Parser(lexer.tokens);
 		const vector<Statement*> tree = parser.parse();
+		if(isDebug)
+			printTree(tree);
 		auto compiler = Compiler();
 		compiler.compile(tree, midput);
 		for (const Statement* s : tree) delete s;
+		system(("fasm "+ midput + " " + output).c_str());
 	}
-
-	system(("fasm "+ midput + " " + output).c_str());
 	for (const auto & entry : filesystem::directory_iterator(TEMPFOLDER))
 		if(filesystem::file_time_type::clock::now()-entry.last_write_time() > 5min)
 			filesystem::remove(entry);
