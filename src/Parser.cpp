@@ -96,6 +96,13 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 		return new Array(values);
 	}
 
+	//Array Access
+	if(st0 == ID && st1 == BRACKET_OPEN && stb == BRACKET_CLOSE){
+		return new ArrayAccess(
+			*dynamic_cast<IdentifierToken*>(stack[0]),
+			dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end() - 1),line))
+		);
+	}
 
 	/// Variable Assignment
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {

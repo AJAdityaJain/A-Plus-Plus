@@ -20,12 +20,14 @@ constexpr AsmSize PTR_SIZE = { 8,0 };
 constexpr AsmSize FLOAT_SIZE = { 4,1 };
 constexpr AsmSize DOUBLE_SIZE = { 8,2 };
 struct Variable {
+	void* val;
 	unsigned int off;
 	int share;
 	AsmSize size{};
 	IdentifierToken name;
 
-	Variable(const unsigned int off,const AsmSize size, IdentifierToken name,const int share= ALIGN) {
+	Variable(void* val, const unsigned int off,const AsmSize size, IdentifierToken name,const int share= ALIGN) {
+		this->val = val;
 		this->off = off;
 		this->size = size;
 		this->name = std::move(name);
@@ -152,7 +154,24 @@ struct Array final: Value
 		this->values = val;
 	}
 };
+struct ArrayAccess final:Value
+{
+	IdentifierToken name;
+	Value* index;
 
+	StatementType getType()override {
+		return ARRAY_ACCESS;
+	}
+
+	~ArrayAccess() override {
+		delete index;
+	}
+
+	explicit ArrayAccess(const IdentifierToken& name, Value* index) {
+		this->name = name;
+		this->index = index;
+	}
+};
 
 struct Reference final: Value
 {

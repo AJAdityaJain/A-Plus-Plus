@@ -191,18 +191,18 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
 			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
 			rr.rspOff.back() += szonstack;
-			fn->varsStack.push_back(new Variable(sz.sz, sz, a->name));
+			fn->varsStack.push_back(new Variable(a->value, sz.sz, sz, a->name));
 			return;
 		}
 		if (const Variable* v = fn->varsStack.back(); v->size.sz == sz.sz && v->share > 0) {
 			compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v->share-sz.sz) + "]", sz), a->value, fn, sz);
-			fn->varsStack.push_back(new Variable(v->off+sz.sz, sz, a->name, v->share));
+			fn->varsStack.push_back(new Variable(a->value,v->off+sz.sz, sz, a->name, v->share));
 		}
 		else {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
 			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
 			rr.rspOff.back() += szonstack;
-			fn->varsStack.push_back(new Variable(v->off + sz.sz + v->share, sz, a->name));
+			fn->varsStack.push_back(new Variable(a->value,v->off + sz.sz + v->share, sz, a->name));
 		}
 
 		return;
@@ -271,6 +271,8 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 	switch (i)
 	{
 	case MOV2: {
+			if(o1.type == COMPILETIME_IGNORE || o2.type == COMPILETIME_IGNORE)
+				return;
 		if (o1.type == COMPILETIME_PTR && o2.type == COMPILETIME_PTR) {
 			Register* reg = rr.alloc(getSize(op, fn, false));
 
@@ -457,11 +459,31 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		}
 		break;
 	}
-	// case ARRAY:
-	// 	{
-	// 		return CompilationToken("$$$",COMPILETIME_REGISTER);
-	// 	}
-
+	case ARRAY:
+		{
+			const auto arr = dynamic_cast<Array*>(v);
+			if(arr->values.empty())
+				aThrowError(101, -1);
+			const auto sz = getSize(arr->values[0], fn, true);
+			int i;
+			int itlen = arr->values.size(); // NOLINT(*-narrowing-conversions)
+			for(i = 0; i < itlen; i++)
+			{
+				compileInstruction(MOV2, new Pointer("[rsp - " + to_string(sz.sz * (itlen-i)) + "]", sz), arr->values[i], fn, sz);
+			}
+			return CompilationToken{ "{array}",COMPILETIME_IGNORE };
+		}
+	case ARRAY_ACCESS:{
+		const auto aa = dynamic_cast<ArrayAccess*>(v);
+			for (const auto var : fn->varsStack)
+				if (var->name.value == aa->name.value)
+				{
+					auto sz = getSize(aa, fn, false);
+					const auto ind = compileValue(aa->index, fn);
+					const auto ptr = Pointer("[rbp - (" + to_string(var->off) + "-" +"("+to_string(sz.sz) +"*"+ ind.line+"))]", sz);
+					return CompilationToken{ ptr.ptr,COMPILETIME_PTR };
+				}
+	}
 	case MULTI_OPERATION: {
 		auto* mo = dynamic_cast<MultipleOperation*>(v);
 		const AsmSize sz = getSize(mo, fn, true);
@@ -753,17 +775,27 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 	case BIT_STMT: {
 			return BIT_SIZE;
 	}
-	// case ARRAY:{
-	// 		// if(inp)
-	// 		{
-	// 			const auto arr = dynamic_cast<Array*>(v);
-	// 			AsmSize sz{};
-	// 			sz.sz = static_cast<int>(arr->values.size()) * getSize(arr->values[0], fn, false).sz;
-	// 			sz.prec = 0;
-	// 			return sz;
-	// 		}
-	// 		return PTR_SIZE;
-	// }
+	case ARRAY:{
+			const auto arr = dynamic_cast<Array*>(v);
+			if(!inp)
+			{
+				AsmSize sz{};
+				sz.sz = static_cast<int>(arr->values.size()) * getSize(arr->values[0], fn, inp).sz;
+				sz.prec = 0;
+				return sz;
+			}
+			return getSize(arr->values[0],fn,inp);
+	}
+	case ARRAY_ACCESS:
+		{
+			const auto arr = dynamic_cast<ArrayAccess*>(v);
+			for (const auto var : fn->varsStack)
+				if (var->name.value == arr->name.value)
+				{
+					const auto arrptr = static_cast<Array*>(var->val);
+					return getSize(arrptr->values[0], fn, inp);
+				}
+		}
 	default: break;
 	}
 

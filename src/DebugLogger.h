@@ -109,6 +109,12 @@ inline void printStatement(Statement* stmt, const int depth = 0) // NOLINT(*-no-
             cout << "]";
             break;
         }
+    case ARRAY_ACCESS:
+        {
+            const auto a = dynamic_cast<ArrayAccess*>(stmt);
+            cout << "{ v" << a->name.value << "[" << a->index << "] }";
+            break;
+        }
     case REFERENCE:cout << "v" << dynamic_cast<Reference*>(stmt)->value;break;
     case FUNC_CALL:
         {
