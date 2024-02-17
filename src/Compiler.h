@@ -163,6 +163,7 @@ struct RegisterRegister {
 	};
 
 	Register* rsp = new Register("rsp", PTR_SIZE);
+	Register* rbp = new Register("rbp", PTR_SIZE);
 	vector<int> rspOff = vector<int>();
 
 	vector<Register*> saves = vector<Register*>();
@@ -171,10 +172,7 @@ struct RegisterRegister {
 	int regIdx = -1;
 	int xmmIdx = -1;
 
-	//ONLY FOR GENERAL REGS
-	[[nodiscard]] int getRegIdx() const {
-		return regIdx;
-	}
+
 	[[nodiscard]] Register* A(const AsmSize sz) const {
 		switch (sz.sz) {
 		case 1: return regs1[0];

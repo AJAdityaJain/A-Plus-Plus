@@ -212,7 +212,6 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 }
 
 
-
 void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Func* fn, const AsmSize sz) // NOLINT(*-no-recursion)
 {
 
@@ -479,9 +478,31 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				if (var->name.value == aa->name.value)
 				{
 					auto sz = getSize(aa, fn, false);
-					const auto ind = compileValue(aa->index, fn);
-					const auto ptr = Pointer("[rbp - (" + to_string(var->off) + "-" +"("+to_string(sz.sz) +"*"+ ind.line+"))]", sz);
-					return CompilationToken{ ptr.ptr,COMPILETIME_PTR };
+					if(aa->index->getType() == INT_STMT)
+					{
+						const auto ind = compileValue(aa->index, fn);
+						return CompilationToken{  Pointer("[rbp - "+to_string(var->off - sz.sz*dynamic_cast<Int*>(aa->index)->value)+"]", sz).ptr,COMPILETIME_PTR };
+					}
+					Register* reg = rr.alloc(sz);
+					Register* Areg = rr.A(sz);
+					if (rr.regIdx != 0) {
+						compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
+						compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
+						compileInstruction(MOV2, Areg, reg, fn, sz);
+					}
+					Register *AregSz = rr.A(getSize(aa->index,fn, false));
+					compileInstruction(MOV2, AregSz,aa->index, fn, sz);
+					compileInstruction(MUL2, Areg, new Int(sz.sz),fn,sz);
+					compileInstruction(SUB2, Areg,new Int(static_cast<int>(var->off)),fn,sz);
+					compileInstruction(ADD2,Areg,rr.rbp,fn,sz);
+					if (rr.regIdx != 0) {
+						compileInstruction(MOV2, reg, Areg, fn, sz);
+						compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
+						compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
+						return CompilationToken{ Pointer("["+ string(reg->reg) + "]",sz).ptr, COMPILETIME_PTR };
+					}
+					return CompilationToken{ Pointer("[" + string(Areg->reg) + "]",sz).ptr, COMPILETIME_PTR };
+					// rr.A()//DUMB
 				}
 	}
 	case MULTI_OPERATION: {
@@ -511,13 +532,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					Register* Areg = rr.A(sz);
 					for (const auto & invoperand : mo->invoperands)
 					{
-						if (rr.getRegIdx() != 0) {
+						if (rr.regIdx != 0) {
 							compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 							compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 							compileInstruction(MOV2, Areg, reg, fn, sz);
 						}
 						Register* diver = rr.alloc(sz);
-						if (rr.getRegIdx() == 2) {
+						if (rr.regIdx == 2) {
 							Register* diver2 = rr.alloc(sz);
 							compileInstruction(MOV2, diver2, invoperand, fn, sz);
 							compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
@@ -531,7 +552,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 						}
 						rr.free(diver);
 
-						if (rr.getRegIdx() != 0) {
+						if (rr.regIdx != 0) {
 							compileInstruction(MOV2, reg, Areg, fn, sz);
 							compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 							compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
@@ -554,13 +575,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 
 			for (size_t i = 1; i < mo->operands.size(); i++)
 			{
-				if (rr.getRegIdx() != 0) {
+				if (rr.regIdx != 0) {
 					compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 					compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 					compileInstruction(MOV2, Areg, reg, fn, sz);
 				}
 				Register* diver = rr.alloc(sz);
-				if (rr.getRegIdx() == 2) {
+				if (rr.regIdx == 2) {
 					Register* diver2 = rr.alloc(sz);
 					compileInstruction(MOV2, diver2, mo->operands[i], fn, sz);
 					compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
@@ -575,7 +596,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				compileInstruction(MOV2, reg, Dreg, fn, sz);
 				rr.free(diver);
 
-				if (rr.getRegIdx() != 0) {
+				if (rr.regIdx != 0) {
 					compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 					compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
 				}

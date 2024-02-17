@@ -32,7 +32,7 @@ struct Variable {
 		this->size = size;
 		this->name = std::move(name);
 
-		this->share = share-size.sz;
+		this->share = max(share-size.sz,0);
 	}
 };
 
