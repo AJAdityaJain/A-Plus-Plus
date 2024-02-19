@@ -1,11 +1,21 @@
 // ReSharper disable CppDFATimeOver
 #include "Compiler.h"
 
-void Compiler::compile(const vector<Statement*>& tree, const string& loc) {
+void Compiler::compile(const vector<Statement*>& tree, const string& loc)
+{
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
-	File << "  macro callerpush{\n      push rax  \n      push rcx  \n      push rdx  \n      push r8  \n      push r9  \n      push r10  \n      push r11  \n}  \n    \n  macro callerpop{\n      pop r11  \n      pop r10  \n      pop r9  \n      pop r8  \n      pop rdx  \n      pop rcx  \n      pop rax  \n}\n    \n  macro printint[int]{\n      callerpush  \n      invoke printf, intfmt,int  \n      callerpop  \n}  \n    \n  macro printstr[string]{\n      callerpush  \n      invoke printf, string  \n      callerpop  \n}  \n    \n  macro printdouble[xmm]{\n      callerpush  \n        \n      sub rsp, 8  \n      movsd QWORD[rsp], xmm0  \n        \n      movsd xmm0, xmm  \n      movq rdx, xmm0          \n      invoke printf, doublefmt  \n    \n      movsd xmm0, QWORD[rsp]  \n      add rsp, 8  \n    \n      callerpop  \n}  \n  macro printfloat[dwrd]{\n		sub rsp, 8\n		movsd QWORD[rsp], xmm0\n		cvtss2sd xmm0, dwrd\n		printdouble xmm0\n		movsd xmm0, QWORD[rsp]\n		add rsp, 8\n}\n\n\n\n";
+	File <<
+		"macro callerpush{\npush rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11\n}\n  "
+		"macro callerpop{\npop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax\n}\n  "
+		"macro printint[int]{\ncallerpush\ninvoke printf,intfmt,int\ncallerpop\n}\n"
+		"macro printstr[string]{\ncallerpush\ninvoke printf, string\ncallerpop\n}\n"
+		"macro printdouble[xmm]{\ncallerpush\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\nmovsd xmm0, xmm\nmovq rdx, xmm0\ninvoke printf, doublefmt\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\ncallerpop\n}\n"
+		"macro printfloat[dwrd]{\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\ncvtss2sd xmm0, dwrd\nprintdouble xmm0\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\n}\n"
+		"macro scanstr[dwrd]{\ncallerpush\ninvoke  scanf, scanfmt, dwrd\ninvoke  scanf, '%c', charfmt\ncallerpop\n}\n"
+		"macro scanint[dwrd]{\ncallerpush\nlea rax, dwrd\ninvoke  scanf, intfmt , rax\ncallerpop\n}\n"
+	;
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -14,7 +24,7 @@ void Compiler::compile(const vector<Statement*>& tree, const string& loc) {
 	File << data.str();
 
 
-	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess'\nimport msvcrt,\\printf, 'printf'";
+	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
 	File.close();
 }
 
@@ -63,29 +73,58 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 		return;
 	}
-	case FUNC_CALL: {
-		if (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value == PRINT)
-			for (Value* v : fc->params) {
-				auto [sz, prec] = getSize(v, fn, false);
-				CompilationToken ct = compileValue(v, fn);
-				switch (prec) {
-				case 0:
-					switch (sz) {
+	case FUNC_CALL:{
+		switch  (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value ){
+		case PRINT:{
+				for (Value* v : fc->params) {
+					auto [sz, prec] = getSize(v, fn, false);
+					CompilationToken ct = compileValue(v, fn);
+					switch (prec) {
+					case 0:
+						switch (sz) {
 					case 8:
 						fn->fbody << "printstr " << ct.line << endl; break;
 					case 4:
 						fn->fbody << "printint " << ct.line << endl; break;
 					default: break;
-					}break;
-				case 1: fn->fbody << "printfloat " << ct.line << endl; break;
-				case 2: fn->fbody << "printdouble " << ct.line << endl; break;
+						}break;
+					case 1: fn->fbody << "printfloat " << ct.line << endl; break;
+					case 2: fn->fbody << "printdouble " << ct.line << endl; break;
 					default:break;
+					}
 				}
-			}
-		else {
-			saveScratch(fn);
-			fn->fbody << "call LABFUNC" + to_string(fc->name.value) << endl;
-			restoreScratch(fn);
+				break;
+		}
+		case SCAN: {
+				for (Value* v : fc->params) {
+					auto [sz, prec] = getSize(v, fn, false);
+					CompilationToken ct = compileValue(v, fn);
+					switch (sz) {
+						case 8:
+							{
+								auto label = "SCANSTR"+to_string(dataLabelIdx);
+								dataLabelIdx++;
+								addToData(label+" db 'Umm this text should not exist. i dont know why it is here? Help',0");
+								fn->fbody << "scanstr " << label << endl;
+								const Register *reg = rr.alloc(PTR_SIZE);
+								fn->fbody << "mov " << reg->reg << "," << label << endl;
+								fn->fbody << "mov " << ct.line << "," << reg->reg << endl;
+								rr.free(reg);
+								break;
+							}
+						case 4:
+							fn->fbody << "scanint " << ct.line << endl; break;
+						default: break;
+					}
+				}
+				break;
+		}
+		default:{
+				saveScratch(fn);
+				fn->fbody << "call LABFUNC" + to_string(fc->name.value) << endl;
+				restoreScratch(fn);
+				break;
+		}
 		}
 
 		return;
@@ -148,7 +187,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		const AsmSize sz = getSize(a->value, fn, false);
 
 		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i]->name.value == a->name.value && fn->varsStack[i]->size.sz == sz.sz) {
+			if (fn->varsStack[i]->name.value == a->name.value ) {
+				if(fn->varsStack[i]->size.sz != sz.sz || fn->varsStack[i]->size.prec != sz.prec)aThrowError(3, -1);
 				INSTRUCTION ins = MOV2;
 				switch (a->type)
 				{

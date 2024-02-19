@@ -106,7 +106,8 @@ enum MultipleOperatorType {
 
 enum InBuiltIds {
 	MAIN,
-	PRINT
+	PRINT,
+	SCAN
 
 };
 
