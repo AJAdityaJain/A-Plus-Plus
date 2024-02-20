@@ -74,14 +74,14 @@ struct StringToken final: Token {
 		this->value = std::move(value);
 	}
 };
-struct BitToken final : Token {
+struct BooleanToken final : Token {
 	bool value;
 
 	TokenType getType()override {
-		return BIT;
+		return BOOL;
 	}
 
-	explicit BitToken(const bool value){
+	explicit BooleanToken(const bool value){
 		this->value = value;
 	}
 };
@@ -115,6 +115,28 @@ struct DoubleToken final: Token {
 	}
 
 	explicit DoubleToken(const double value){
+		this->value = value;
+	}
+};
+struct ShortToken final: Token {
+	short value;
+
+	TokenType getType()override {
+		return SHORT;
+	}
+
+	explicit ShortToken(const short value){
+		this->value = value;
+	}
+};
+struct LongToken final: Token {
+	long value;
+
+	TokenType getType()override {
+		return LONG;
+	}
+
+	explicit LongToken(const long value){
 		this->value = value;
 	}
 };
@@ -154,5 +176,5 @@ struct Lexer {
 	}
 
 	void tokenize(const vector<string>& lines);
-	static int isNumeric(const std::string& str);
+	static TokenType isNumeric(const std::string& str);
 };

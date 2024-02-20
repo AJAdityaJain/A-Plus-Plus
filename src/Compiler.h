@@ -73,20 +73,20 @@ struct RegisterRegister {
 
 	Register* regs1[14] = {
 
-		new Register("al",BIT_SIZE,false),
-		new Register("cl",BIT_SIZE,false),
-		new Register("dl",BIT_SIZE,false),
-		new Register("r8b",BIT_SIZE,false),
-		new Register("r9b",BIT_SIZE,false),
-		new Register("r10b",BIT_SIZE,false),
-		new Register("r11b",BIT_SIZE,false),
-		new Register("bl",BIT_SIZE),
-		new Register("sil",BIT_SIZE),
-		new Register("dil",BIT_SIZE),
-		new Register("r12b",BIT_SIZE),
-		new Register("r13b",BIT_SIZE),
-		new Register("r14b",BIT_SIZE),
-		new Register("r15b",BIT_SIZE)
+		new Register("al",BOOL_SIZE,false),
+		new Register("cl",BOOL_SIZE,false),
+		new Register("dl",BOOL_SIZE,false),
+		new Register("r8b",BOOL_SIZE,false),
+		new Register("r9b",BOOL_SIZE,false),
+		new Register("r10b",BOOL_SIZE,false),
+		new Register("r11b",BOOL_SIZE,false),
+		new Register("bl",BOOL_SIZE),
+		new Register("sil",BOOL_SIZE),
+		new Register("dil",BOOL_SIZE),
+		new Register("r12b",BOOL_SIZE),
+		new Register("r13b",BOOL_SIZE),
+		new Register("r14b",BOOL_SIZE),
+		new Register("r15b",BOOL_SIZE)
 	};
 
 	Register* regs2[14] = {

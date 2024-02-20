@@ -2,10 +2,12 @@
 enum TokenType {
 	NONE,
 	SIZE_T,
-	BIT,
+	BOOL,
+	SHORT,
 	INT,
 	FLOAT,
 	DOUBLE,
+	LONG,
 	STRING,
 
 	ID,
@@ -33,10 +35,12 @@ enum TokenType {
 
 enum StatementType {
 	NONE_STMT,
-	BIT_STMT,
+	BOOL_STMT,
+	SHORT_STMT,
 	INT_STMT,
 	FLOAT_STMT,
 	DOUBLE_STMT,
+	LONG_STMT,
 	STRING_STMT,
 	SIZE,
 	ARRAY,
@@ -157,7 +161,7 @@ struct AsmSize {
 	int prec;
 };
 constexpr AsmSize VOID_SIZE = { 0 ,0 };
-constexpr AsmSize BIT_SIZE = { 1,0 };
+constexpr AsmSize BOOL_SIZE = { 1,0 };
 constexpr AsmSize SHORT_SIZE = { 2,0 };
 constexpr AsmSize INT_SIZE = { 4,0 };
 constexpr AsmSize LONG_SIZE = { 8,0 };

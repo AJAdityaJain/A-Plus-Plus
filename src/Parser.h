@@ -110,15 +110,35 @@ struct Double final: Value
 
 	explicit Double(const double val):value(val) {}
 };
-struct Bit final: Value
+struct Boolean final: Value
 {
 	bool value;
 
 	StatementType getType()override {
-		return BIT_STMT;
+		return BOOL_STMT;
 	}
 
-	explicit Bit(const bool val) : value(val) {}
+	explicit Boolean(const bool val) : value(val) {}
+};
+struct Short final: Value
+{
+	short value;
+
+	StatementType getType()override {
+		return SHORT_STMT;
+	}
+
+	explicit Short(const short val) : value(val) {}
+};
+struct Long final: Value
+{
+	long value;
+
+	StatementType getType()override {
+		return LONG_STMT;
+	}
+
+	explicit Long(const long val) : value(val) {}
 };
 struct String final : Value
 {

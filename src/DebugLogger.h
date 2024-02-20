@@ -66,10 +66,12 @@ inline void printToken(Token* token)
 
     switch (token->getType())
     {
-    case BIT:cout << "{ BIT : " << dynamic_cast<BitToken*>(token)->value << " }" << endl;           break;
+    case BOOL:cout << "{ BOOL : " << dynamic_cast<BooleanToken*>(token)->value << "b }" << endl;          break;
     case INT:cout << "{ INT : " << dynamic_cast<IntToken*>(token)->value << " }" << endl;           break;
-    case FLOAT:cout << "{ FLOAT : " << dynamic_cast<FloatToken*>(token)->value << " }" << endl;     break;
-    case DOUBLE:cout << "{ DOUBLE : " << dynamic_cast<DoubleToken*>(token)->value << " }" << endl;  break;
+    case SHORT:cout << "{ SHORT : " << dynamic_cast<ShortToken*>(token)->value << ":shrt }" << endl;break;
+    case LONG:cout << "{ LONG : " << dynamic_cast<LongToken*>(token)->value << ":long }" << endl;   break;
+    case FLOAT:cout << "{ FLOAT : " << dynamic_cast<FloatToken*>(token)->value << ":f }" << endl;   break;
+    case DOUBLE:cout << "{ DOUBLE : " << dynamic_cast<DoubleToken*>(token)->value << ":d }" << endl;break;
     case STRING:cout << "{ STRING : `" << dynamic_cast<StringToken*>(token)->value << "` }" << endl;break;
     case ID:cout << "{ ID : v" << dynamic_cast<IdentifierToken*>(token)->value << " }" << endl;     break;
     case FUNC:cout << "{ FUNC }" << endl;                                                           break;
@@ -103,9 +105,11 @@ inline void printStatement(Statement* stmt, const int depth = 0) // NOLINT(*-no-
     {
     case SIZE: cout << dynamic_cast<Size*>(stmt)->value.sz;break;
     case INT_STMT:cout << dynamic_cast<Int*>(stmt)->value;break;
-    case BIT_STMT:cout << dynamic_cast<Bit*>(stmt)->value;break;
-    case FLOAT_STMT:cout << dynamic_cast<Float*>(stmt)->value;break;
-    case DOUBLE_STMT:cout << dynamic_cast<Double*>(stmt)->value;break;
+    case BOOL_STMT:cout << dynamic_cast<Boolean*>(stmt)->value<<"b";break;
+    case SHORT_STMT:cout << dynamic_cast<Short*>(stmt)->value<<"s";break;
+    case LONG_STMT:cout << dynamic_cast<Long*>(stmt)->value<<"l";break;
+    case FLOAT_STMT:cout << dynamic_cast<Float*>(stmt)->value<<"f";break;
+    case DOUBLE_STMT:cout << dynamic_cast<Double*>(stmt)->value<<"d";break;
     case STRING_STMT:cout << "`" << dynamic_cast<String*>(stmt)->value << "`";break;
     case ARRAY:
         {

@@ -221,12 +221,12 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		dataLabelIdx++;
 
 		fn->fbody << label << ":" << endl;
-		compileInstruction(CMP2, whils->condition, new Bit(true), fn, BIT_SIZE);
-		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn, BIT_SIZE);
+		compileInstruction(CMP2, whils->condition, new Boolean(true), fn, BOOL_SIZE);
+		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn, BOOL_SIZE);
 
 		compileStatement(whils->whileBlock, fn);
 
-		compileInstruction(JMP1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
+		compileInstruction(JMP1, new CompilationToken(label), nullptr, fn, BOOL_SIZE);
 
 		fn->fbody << label2 << ":" << endl;
 		return;
@@ -239,12 +239,12 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			const string label2 = ".LABBRNCH" + to_string(dataLabelIdx);
 			if(ifs->elseBlock != nullptr)
 				dataLabelIdx++;
-			compileInstruction(CMP2, ifs->condition, new Bit(true), fn, BIT_SIZE);
-			compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn, BIT_SIZE);
+			compileInstruction(CMP2, ifs->condition, new Boolean(true), fn, BOOL_SIZE);
+			compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn, BOOL_SIZE);
 
 			compileStatement(ifs->ifBlock, fn);
 			if(ifs->elseBlock != nullptr)
-				compileInstruction(JMP1, new CompilationToken(label2), nullptr, fn, BIT_SIZE);
+				compileInstruction(JMP1, new CompilationToken(label2), nullptr, fn, BOOL_SIZE);
 
 			fn->fbody << label << ":" << endl;
 			if(ifs->elseBlock != nullptr)
@@ -479,6 +479,8 @@ Register* Compiler::cast(Value* v, const AsmSize from, const AsmSize to, Func* f
 		cvt = "cvtsd2si ";
 	else if (from.prec == 2 && to.prec == 1)
 		cvt = "cvtsd2ss ";
+	if(from.sz == 2 )
+		r1 = rr.regs4[rr.regIdx.back()];
 
 	fn->fbody << cvt << compileValue(r2,fn).line << ", " << compileValue(r1, fn).line << endl;
 	if(regRe)
@@ -493,8 +495,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 	case COMPILETIME_TOKEN: return CompilationToken( dynamic_cast<CompilationToken*>(v)->line );
 	case PTR: return CompilationToken{dynamic_cast<Pointer*>(v)->ptr , COMPILETIME_PTR };
 	case REGISTER: return CompilationToken{ dynamic_cast<Register*>(v)->reg, COMPILETIME_REGISTER };
+	case SHORT_STMT: return CompilationToken{ to_string(dynamic_cast<Short*>(v)->value) };
 	case INT_STMT: return CompilationToken{ to_string(dynamic_cast<Int*>(v)->value) };
-	case BIT_STMT: return CompilationToken{ to_string(dynamic_cast<Bit*>(v)->value ? 1 : 0) };
+	case LONG_STMT: return CompilationToken{ to_string(dynamic_cast<Long*>(v)->value) };
+	case BOOL_STMT: return CompilationToken{ to_string(dynamic_cast<Boolean*>(v)->value ? 1 : 0) };
 	case FLOAT_STMT: {
 		auto* fpt = dynamic_cast<Float*>(v);
 		string label = "LABDAT" + to_string(fpt->label);
@@ -552,9 +556,9 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		switch (auto* uo = dynamic_cast<UnaryOperation*>(v); uo->op)
 		{
 		case NOT: {
-			Register* reg = rr.alloc(BIT_SIZE);
+			Register* reg = rr.alloc(BOOL_SIZE);
 			compileInstruction(MOV2, reg, uo->right, fn,reg->size);
-			compileInstruction(XOR2, reg, new Bit(true), fn, reg->size);
+			compileInstruction(XOR2, reg, new Boolean(true), fn, reg->size);
 			rr.free(reg);
 			return CompilationToken{ reg->reg,COMPILETIME_REGISTER };
 		}
@@ -720,7 +724,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		case OR: {
 			const unsigned int lidx = operationLabelIdx;
 			operationLabelIdx++;
-			Register* reg = rr.alloc(BIT_SIZE);
+			Register* reg = rr.alloc(BOOL_SIZE);
 			for (Value* s : mo->operands) {
 				compileInstruction(MOV2, reg, s, fn, sz);
 				compileInstruction(TEST2, reg, reg, fn, sz);
@@ -729,7 +733,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 
 			compileInstruction(JMP1, new CompilationToken(".LABOP_E" + to_string(lidx)), nullptr, fn, sz);
 			fn->fbody << ".LABOP_S" << lidx << ":" << endl;
-			compileInstruction(MOV2, reg, new Bit(true), fn, sz);
+			compileInstruction(MOV2, reg, new Boolean(true), fn, sz);
 			fn->fbody << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
@@ -738,7 +742,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		case AND: {
 			const unsigned int lidx = operationLabelIdx;
 			operationLabelIdx++;
-			Register* reg = rr.alloc(BIT_SIZE);
+			Register* reg = rr.alloc(BOOL_SIZE);
 			for (Value* s : mo->operands) {
 				compileInstruction(MOV2, reg, s, fn, sz);
 				compileInstruction(TEST2, reg, reg, fn, sz);
@@ -747,7 +751,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 
 			compileInstruction(JMP1, new CompilationToken(".LABOP_E" + to_string(lidx)), nullptr, fn, sz);
 			fn->fbody << ".LABOP_S" << lidx << ":" << endl;
-			compileInstruction(MOV2, reg, new Bit(false), fn, sz);
+			compileInstruction(MOV2, reg, new Boolean(false), fn, sz);
 			fn->fbody << ".LABOP_E" << lidx << ":" << endl;
 
 			rr.free(reg);
@@ -851,7 +855,7 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 
 	case MULTI_OPERATION: {
 			auto* mop = dynamic_cast<MultipleOperation*>(v);
-			if (mop->op == OR || mop->op == AND) return BIT_SIZE;
+			if (mop->op == OR || mop->op == AND) return BOOL_SIZE;
 			if (!inp)
 				if (
 					mop->op == COMPARISON ||
@@ -861,7 +865,7 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 					mop->op == GREATER_THAN_EQUAL ||
 					mop->op == SMALLER_THAN_EQUAL
 					)
-					return BIT_SIZE;
+					return BOOL_SIZE;
 
 			AsmSize sz = VOID_SIZE;
 
@@ -887,27 +891,19 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 	case UN_OPERATION:{
 			const auto uop = dynamic_cast<UnaryOperation*>(v);
 			switch (uop->op) {
-			case NOT:return BIT_SIZE;
+			case NOT:return BOOL_SIZE;
 			case BITWISE_NOT:return getSize(uop->right, fn, inp);
 			default: break;
 			}
 			return getSize(uop->right, fn, inp);
 	}
-	case INT_STMT: {
-			return INT_SIZE;
-	}
-	case FLOAT_STMT: {
-			return FLOAT_SIZE;
-	}
-	case DOUBLE_STMT: {
-			return DOUBLE_SIZE;
-	}
-	case STRING_STMT: {
-			return PTR_SIZE;
-	}
-	case BIT_STMT: {
-			return BIT_SIZE;
-	}
+	case INT_STMT: return INT_SIZE;
+	case FLOAT_STMT: return FLOAT_SIZE;
+	case SHORT_STMT : return SHORT_SIZE;
+	case DOUBLE_STMT: return DOUBLE_SIZE;
+	case LONG_STMT: return LONG_SIZE;
+	case STRING_STMT: return PTR_SIZE;
+	case BOOL_STMT: return BOOL_SIZE;
 	case ARRAY:{
 			const auto arr = dynamic_cast<Array*>(v);
 			if(!inp)

@@ -158,17 +158,18 @@ void Lexer::tokenize(const vector<string>& lines)
 					else if (sub == "and")		tokens.push_back(new OperatorToken{ AND  });
 					else if (sub == "or")		tokens.push_back(new OperatorToken{ OR  });
 					else if (sub == "xor")		tokens.push_back(new OperatorToken{ XOR });
-					else if (sub == "true")		tokens.push_back(new BitToken{ true  });
-					else if (sub == "false")	tokens.push_back(new BitToken{ false  });
+					else if (sub == "true")		tokens.push_back(new BooleanToken{ true  });
+					else if (sub == "false")	tokens.push_back(new BooleanToken{ false  });
 					else if (sub == "int")		tokens.push_back(new SizeToken{ INT_SIZE  });
 					else if (sub == "float")	tokens.push_back(new SizeToken{ FLOAT_SIZE });
 					else if (sub == "double")	tokens.push_back(new SizeToken{ DOUBLE_SIZE });
 					else if (sub == "short")	tokens.push_back(new SizeToken{ SHORT_SIZE });
+					else if (sub == "long")	tokens.push_back(new SizeToken{ LONG_SIZE });
 					else if (sub == "string")	tokens.push_back(new SizeToken{ PTR_SIZE });
 					else {
 						switch (isNumeric(sub))
 						{
-						case 0:
+						case ID:
 							{
 								for (const char subc : sub)
 									if (!isalnum(subc))
@@ -183,10 +184,12 @@ void Lexer::tokenize(const vector<string>& lines)
 								}
 								break;
 							}
-						case 1:tokens.push_back(new IntToken{ stoi(sub)  });	break;
-						case 2:tokens.push_back(new FloatToken{ stof(sub)  });	break;
-						case 3:tokens.push_back(new DoubleToken{ stod(sub)  });break;
-						default:aThrowError(3,lineIdx);						break;
+						case INT:tokens.push_back(new IntToken{ stoi(sub)  });						break;
+						case SHORT:tokens.push_back(new ShortToken{ static_cast<short>(stoi(sub))  });	break;
+						case LONG:tokens.push_back(new LongToken{ stol(sub)  });					break;
+						case FLOAT:tokens.push_back(new FloatToken{ stof(sub)  });					break;
+						case DOUBLE:tokens.push_back(new DoubleToken{ stod(sub)  });				break;
+						default:aThrowError(3,lineIdx);											break;
 						}
 					}
 					tempString = "";
@@ -206,39 +209,35 @@ void Lexer::tokenize(const vector<string>& lines)
 }
 
 
-int Lexer::isNumeric(const std::string& str) {
-	if (str.empty()) {
-		return false;  // Empty string is not numeric
-	}
-
+TokenType Lexer::isNumeric(const std::string& str) {
 	size_t i = 0;
-
-	// Check for an optional sign
 	if (str[i] == '+' || str[i] == '-') {
 		++i;
 	}
 
 	bool decimalPointFound = false;
-	bool isDouble = false;
+	TokenType type = FLOAT;
 
-	// Check for digits and at most one decimal point
 	while (i < str.length() && (str[i] >= '0' && str[i] <= '9' || (str[i] == '.' && !decimalPointFound))) {
 		if (str[i] == '.') {
 			decimalPointFound = true;
 		}
 		++i;
 	}
-	if (str[i] == 'd' || str[i] == 'D') {
-		isDouble = true;
+		if (str[i] == 'd' || str[i] == 'D') type = DOUBLE;
+		if (str[i] == 's' || str[i] == 'S') type = SHORT;
+		if (str[i] == 'l' || str[i] == 'L') type = LONG;
+	if(type != FLOAT)
 		++i;
-	}
 
-	if (i != str.length())return 0;
-	if (decimalPointFound && !isDouble) return 2;
-	if (isDouble)
+	if (i != str.length())return ID;
+	if (type == FLOAT)
 	{
-		if(str.length() >1)	return 3;
-		return 0;
+		if(decimalPointFound)return FLOAT;
+		return INT;
 	}
-	return 1;
+	if(str.length() >1){
+		return type;
+	}
+	return ID;
 }
