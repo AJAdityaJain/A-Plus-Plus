@@ -6,19 +6,6 @@
 
 using namespace std;
 
-constexpr static int ALIGN = 16;
-struct AsmSize {
-	int sz;
-	int prec;
-};
-constexpr AsmSize VOID_SIZE = { 0 ,0 };
-constexpr AsmSize BIT_SIZE = { 1,0 };
-constexpr AsmSize SHORT_SIZE = { 2,0 };
-constexpr AsmSize INT_SIZE = { 4,0 };
-constexpr AsmSize LONG_SIZE = { 8,0 };
-constexpr AsmSize PTR_SIZE = { 8,0 };
-constexpr AsmSize FLOAT_SIZE = { 4,1 };
-constexpr AsmSize DOUBLE_SIZE = { 8,2 };
 struct Variable {
 	void* val;
 	unsigned int off;
@@ -60,6 +47,11 @@ struct CodeBlock final : Statement {
 	explicit CodeBlock(const vector<Statement*>& code) {
 		this->code = code;
 	}
+
+	explicit CodeBlock() {
+		this->code = vector<Statement*>();
+	}
+
 	explicit CodeBlock(Statement* line) {
 		if (line->getType() == SCOPE) {
 			this->code = dynamic_cast<CodeBlock*>(line)->code;
@@ -77,7 +69,14 @@ struct CodeBlock final : Statement {
 	}
 };
 
+struct Size final: Value {
+	AsmSize value;
+	StatementType getType()override {
+		return SIZE;
+	}
 
+	explicit Size(const AsmSize val):value(val) {}
+};
 
 struct Int final: Value
 {
@@ -210,11 +209,11 @@ struct FuncCall final: Statement {
 	}
 };
 struct Func final: Statement {
-	IdentifierToken name;	
+	IdentifierToken name;
+	int params;
 	CodeBlock* body;
 
-
-	vector<Variable*> varsStack;
+	vector<Variable> varsStack;
 	vector<int> scopesStack;
 	stringstream fbody;
 
@@ -226,8 +225,9 @@ struct Func final: Statement {
 	~Func () override {
 		delete body;
 	}
-	Func(IdentifierToken nam , CodeBlock* val) : name(std::move(nam)) {
+	Func(IdentifierToken nam , CodeBlock* val, const int params = 0) : name(std::move(nam)) {
 		body = val;
+		this->params = params;
 	}	
 };
 

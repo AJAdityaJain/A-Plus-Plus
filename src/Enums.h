@@ -1,7 +1,7 @@
 #pragma once
 enum TokenType {
 	NONE,
-
+	SIZE_T,
 	BIT,
 	INT,
 	FLOAT,
@@ -38,6 +38,7 @@ enum StatementType {
 	FLOAT_STMT,
 	DOUBLE_STMT,
 	STRING_STMT,
+	SIZE,
 	ARRAY,
 	ARRAY_ACCESS,
 	REFERENCE,
@@ -103,14 +104,12 @@ enum MultipleOperatorType {
 	MODULO,
 };
 
-
 enum InBuiltIds {
 	MAIN,
 	PRINT,
-	SCAN
-
+	SCAN,
+	BEEP
 };
-
 
 enum INSTRUCTION {
 	CDQ0,
@@ -143,6 +142,7 @@ enum INSTRUCTION {
 	OR2,
 	XOR2,
 };
+
 enum CompilationTokenType {
 	COMPILETIME_NONE,
 	COMPILETIME_IGNORE,
@@ -150,3 +150,17 @@ enum CompilationTokenType {
 	COMPILETIME_REGISTER
 
 };
+
+constexpr static int ALIGN = 16;
+struct AsmSize {
+	int sz;
+	int prec;
+};
+constexpr AsmSize VOID_SIZE = { 0 ,0 };
+constexpr AsmSize BIT_SIZE = { 1,0 };
+constexpr AsmSize SHORT_SIZE = { 2,0 };
+constexpr AsmSize INT_SIZE = { 4,0 };
+constexpr AsmSize LONG_SIZE = { 8,0 };
+constexpr AsmSize PTR_SIZE = { 8,0 };
+constexpr AsmSize FLOAT_SIZE = { 4,1 };
+constexpr AsmSize DOUBLE_SIZE = { 8,2 };

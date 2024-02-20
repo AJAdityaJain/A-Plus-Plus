@@ -59,13 +59,18 @@ inline const char* getOperator(const MultipleOperatorType type)
 
 inline void printToken(Token* token)
 {
+    if(token == nullptr)
+    {
+        cout << "null";return;
+    }
+
     switch (token->getType())
     {
     case BIT:cout << "{ BIT : " << dynamic_cast<BitToken*>(token)->value << " }" << endl;           break;
     case INT:cout << "{ INT : " << dynamic_cast<IntToken*>(token)->value << " }" << endl;           break;
     case FLOAT:cout << "{ FLOAT : " << dynamic_cast<FloatToken*>(token)->value << " }" << endl;     break;
     case DOUBLE:cout << "{ DOUBLE : " << dynamic_cast<DoubleToken*>(token)->value << " }" << endl;  break;
-    case STRING:cout << "{ STRING : `" << dynamic_cast<StringToken*>(token)->value << "` }" << endl;  break;
+    case STRING:cout << "{ STRING : `" << dynamic_cast<StringToken*>(token)->value << "` }" << endl;break;
     case ID:cout << "{ ID : v" << dynamic_cast<IdentifierToken*>(token)->value << " }" << endl;     break;
     case FUNC:cout << "{ FUNC }" << endl;                                                           break;
     case IF:cout << "{ IF }" << endl;                                                               break;
@@ -90,10 +95,15 @@ inline void printToken(Token* token)
 
 inline void printStatement(Statement* stmt, const int depth = 0) // NOLINT(*-no-recursion)
 {
+    if(stmt == nullptr)
+    {
+        cout << "null";return;
+    }
     switch (stmt->getType())
     {
-        case BIT_STMT:cout << dynamic_cast<Bit*>(stmt)->value;break;
+    case SIZE: cout << dynamic_cast<Size*>(stmt)->value.sz;break;
     case INT_STMT:cout << dynamic_cast<Int*>(stmt)->value;break;
+    case BIT_STMT:cout << dynamic_cast<Bit*>(stmt)->value;break;
     case FLOAT_STMT:cout << dynamic_cast<Float*>(stmt)->value;break;
     case DOUBLE_STMT:cout << dynamic_cast<Double*>(stmt)->value;break;
     case STRING_STMT:cout << "`" << dynamic_cast<String*>(stmt)->value << "`";break;

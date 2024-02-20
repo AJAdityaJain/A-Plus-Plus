@@ -7,15 +7,16 @@ void Compiler::compile(const vector<Statement*>& tree, const string& loc)
 
 	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
 	File <<
-		"macro callerpush{\npush rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11\n}\n  "
-		"macro callerpop{\npop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax\n}\n  "
-		"macro printint[int]{\ncallerpush\ninvoke printf,intfmt,int\ncallerpop\n}\n"
-		"macro printstr[string]{\ncallerpush\ninvoke printf, string\ncallerpop\n}\n"
-		"macro printdouble[xmm]{\ncallerpush\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\nmovsd xmm0, xmm\nmovq rdx, xmm0\ninvoke printf, doublefmt\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\ncallerpop\n}\n"
+		// "macro callerpush{\npush rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11\n}\n  "
+		// "macro callerpop{\npop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax\n}\n  "
+		"macro printint[int]{\ninvoke printf,intfmt,int\n}\n"
+		"macro printstr[string]{\ninvoke printf, string\n}\n"
+		"macro printdouble[xmm]{\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\nmovsd xmm0, xmm\nmovq rdx, xmm0\ninvoke printf, doublefmt\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\n}\n"
 		"macro printfloat[dwrd]{\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\ncvtss2sd xmm0, dwrd\nprintdouble xmm0\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\n}\n"
-		"macro scanstr[dwrd]{\ncallerpush\ninvoke  scanf, scanfmt, dwrd\ninvoke  scanf, '%c', charfmt\ncallerpop\n}\n"
-		"macro scanint[dwrd]{\ncallerpush\nlea rax, dwrd\ninvoke  scanf, intfmt , rax\ncallerpop\n}\n"
-	;
+		"macro scanstr[dwrd]{\ninvoke  scanf, scanfmt, dwrd\ninvoke  scanf, '%c', charfmt\n}\n"
+		"macro scanint[dwrd]{\nlea rax, dwrd\ninvoke  scanf, intfmt , rax\n}\n"
+		"macro strlen[ptr, ptr]{\npush rdx\npush rax\npush rcx\nmov rdx ,0\nmov rcx, ptr\n.loop:\ninc rcx\ninc rdx\nmov al, byte[rcx]\ntest al, al\njnz .loop\npush rdx\nadd rsp, 8\npop rcx\npop rax\npop rdx\nsub rsp, 32\npop reg\nadd rsp, 24\n}\n"
+		"\n\n\n\n";
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -24,7 +25,7 @@ void Compiler::compile(const vector<Statement*>& tree, const string& loc)
 	File << data.str();
 
 
-	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
+	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess',\\beep,'Beep'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
 	File.close();
 }
 
@@ -35,9 +36,25 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		return;
 	switch (statementtype)
 	{
-	case FUNC_DEFINITION: {
+	case FUNC_DEFINITION:
+	{
 		const auto fun = dynamic_cast<Func*>(b);
+		rr.regIdx.push_back(-1);
+		auto regs = vector<Register*>();
+		for (int i = 0; i < fun->params; i++)
+		{
+			auto a = dynamic_cast<Assignment*>(fun->body->code[i]);
+			auto sz = dynamic_cast<Size*>(a->value)->value;
 
+			printStatement(a);
+			Register* reg = rr.alloc(sz);
+			a->value = reg;
+			regs.push_back(reg);
+		}
+		for (auto reg : regs)
+			rr.free(reg);
+
+		rr.regIdx.pop_back() ;
 		compileStatement(fun->body, fun);
 
 		if (fun->name.value == MAIN) {
@@ -73,33 +90,35 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 		return;
 	}
-	case FUNC_CALL:{
-		switch  (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value ){
-		case PRINT:{
-				for (Value* v : fc->params) {
-					auto [sz, prec] = getSize(v, fn, false);
-					CompilationToken ct = compileValue(v, fn);
-					switch (prec) {
-					case 0:
-						switch (sz) {
-					case 8:
-						fn->fbody << "printstr " << ct.line << endl; break;
-					case 4:
-						fn->fbody << "printint " << ct.line << endl; break;
-					default: break;
-						}break;
-					case 1: fn->fbody << "printfloat " << ct.line << endl; break;
-					case 2: fn->fbody << "printdouble " << ct.line << endl; break;
-					default:break;
+	case FUNC_CALL:
+		{
+			saveScratch(fn);
+			switch  (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value ){
+			case PRINT:{
+					for (Value* v : fc->params) {
+						auto [sz, prec] = getSize(v, fn, false);
+						CompilationToken ct = compileValue(v, fn);
+						switch (prec) {
+						case 0:
+							switch (sz) {
+						case 8:
+							fn->fbody << "printstr " << ct.line << endl; break;
+						case 4:
+							fn->fbody << "printint " << ct.line << endl; break;
+						default: break;
+							}break;
+						case 1: fn->fbody << "printfloat " << ct.line << endl; break;
+						case 2: fn->fbody << "printdouble " << ct.line << endl; break;
+						default:break;
+						}
 					}
-				}
-				break;
-		}
-		case SCAN: {
-				for (Value* v : fc->params) {
-					auto [sz, prec] = getSize(v, fn, false);
-					CompilationToken ct = compileValue(v, fn);
-					switch (sz) {
+					break;
+			}
+			case SCAN: {
+					for (Value* v : fc->params) {
+						auto [sz, prec] = getSize(v, fn, false);
+						CompilationToken ct = compileValue(v, fn);
+						switch (sz) {
 						case 8:
 							{
 								auto label = "SCANSTR"+to_string(dataLabelIdx);
@@ -115,20 +134,73 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 						case 4:
 							fn->fbody << "scanint " << ct.line << endl; break;
 						default: break;
+						}
 					}
+					break;
+			}
+			case BEEP:
+				{
+					if(fc->params.empty())
+					{
+						fn->fbody << "invoke beep, 650, 350" << endl;
+					}
+					else if(fc->params.size() == 1)
+					{
+						auto [sz, prec] = getSize(fc->params[0], fn, false);
+						CompilationToken ct = compileValue(fc->params[0], fn);
+						if(sz == 4)
+							fn->fbody << "invoke beep, " << ct.line << ", 100" << endl;
+					}
+					else if(fc->params.size() == 2)
+					{
+						auto [sz, prec] = getSize(fc->params[0], fn, false);
+						CompilationToken ct = compileValue(fc->params[0], fn);
+						if(sz == 4)
+						{
+							auto [sz2, prec2] = getSize(fc->params[1], fn, false);
+							CompilationToken ct2 = compileValue(fc->params[1], fn);
+							if(sz2 == 4)
+								fn->fbody << "invoke beep, " << ct.line << ", " << ct2.line << endl;
+						}
+					}
+					break;
 				}
-				break;
-		}
-		default:{
-				saveScratch(fn);
-				fn->fbody << "call LABFUNC" + to_string(fc->name.value) << endl;
-				restoreScratch(fn);
-				break;
-		}
-		}
+			default:{
+					int i =0;
+					int r = 0;
+					int x = 0;
+					for (auto par : fc->params)
+					{
+						AsmSize sz = getSize(par,fn,false);
+						Register* reg;
+						if(sz.prec == 0)
+						{
+							switch(sz.sz){
+								case 1:reg = rr.regs1[r];break;
+								case 2:reg = rr.regs2[r];break;
+								case 4:reg = rr.regs4[r];break;
+								case 8:reg = rr.regs8[r];break;
+							default: aThrowError(5,5);
+							}
+							r++;
+						}
+						else
+						{
+							reg = rr.regsXMM[x];
+							x++;
+						}
 
-		return;
-	}
+						compileInstruction(MOV2,reg,par,fn,sz);
+						i++;
+					}
+					fn->fbody << "call LABFUNC" + to_string(fc->name.value) << endl;
+					break;
+			}
+			}
+			restoreScratch(fn);
+
+			return;
+		}
 
 
 	case SCOPE: {
@@ -187,8 +259,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		const AsmSize sz = getSize(a->value, fn, false);
 
 		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i]->name.value == a->name.value ) {
-				if(fn->varsStack[i]->size.sz != sz.sz || fn->varsStack[i]->size.prec != sz.prec)aThrowError(3, -1);
+			if (fn->varsStack[i].name.value == a->name.value ) {
+				if(fn->varsStack[i].size.sz != sz.sz || fn->varsStack[i].size.prec != sz.prec)aThrowError(3, -1);
 				INSTRUCTION ins = MOV2;
 				switch (a->type)
 				{
@@ -219,7 +291,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 				default: break;
 				}
 
-				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i]->off) + "]", fn->varsStack[i]->size), a->value, fn, sz);
+				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i].off) + "]", fn->varsStack[i].size), a->value, fn, sz);
 				return;
 			}
 
@@ -231,18 +303,18 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
 			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
 			rr.rspOff.back() += szonstack;
-			fn->varsStack.push_back(new Variable(a->value, sz.sz, sz, a->name));
+			fn->varsStack.emplace_back(a->value, sz.sz, sz, a->name);
 			return;
 		}
-		if (const Variable* v = fn->varsStack.back(); v->size.sz == sz.sz && v->share > 0) {
-			compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v->share-sz.sz) + "]", sz), a->value, fn, sz);
-			fn->varsStack.push_back(new Variable(a->value,v->off+sz.sz, sz, a->name, v->share));
+		if (const Variable v = fn->varsStack.back(); v.size.sz == sz.sz && v.share > 0) {
+			compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v.share-sz.sz) + "]", sz), a->value, fn, sz);
+			fn->varsStack.emplace_back(a->value,v.off+sz.sz, sz, a->name, v.share);
 		}
 		else {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
 			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
 			rr.rspOff.back() += szonstack;
-			fn->varsStack.push_back(new Variable(a->value,v->off + sz.sz + v->share, sz, a->name));
+			fn->varsStack.emplace_back(a->value,v.off + sz.sz + v.share, sz, a->name);
 		}
 
 		return;
@@ -470,8 +542,8 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 	case REFERENCE: {
 		const auto* id = dynamic_cast<Reference*>(v);
 		for (const auto & i : fn->varsStack)
-			if (i->name.value == id->value) {
-				const auto p = Pointer("[rbp - " + to_string(i->off) + "]", i->size);
+			if (i.name.value == id->value) {
+				const auto p = Pointer("[rbp - " + to_string(i.off) + "]", i.size);
 				return CompilationToken{ p.ptr, COMPILETIME_PTR };
 			}
 		break;
@@ -514,18 +586,18 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		}
 	case ARRAY_ACCESS:{
 		const auto aa = dynamic_cast<ArrayAccess*>(v);
-			for (const auto var : fn->varsStack)
-				if (var->name.value == aa->name.value)
+			for (const auto& var : fn->varsStack)
+				if (var.name.value == aa->name.value)
 				{
 					auto sz = getSize(aa, fn, false);
 					if(aa->index->getType() == INT_STMT)
 					{
 						const auto ind = compileValue(aa->index, fn);
-						return CompilationToken{  Pointer("[rbp - "+to_string(var->off - sz.sz*dynamic_cast<Int*>(aa->index)->value)+"]", sz).ptr,COMPILETIME_PTR };
+						return CompilationToken{  Pointer("[rbp - "+to_string(var.off - sz.sz*dynamic_cast<Int*>(aa->index)->value)+"]", sz).ptr,COMPILETIME_PTR };
 					}
 					Register* reg = rr.alloc(sz);
 					Register* Areg = rr.A(sz);
-					if (rr.regIdx != 0) {
+					if (rr.regIdx.back() != 0) {
 						compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 						compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 						compileInstruction(MOV2, Areg, reg, fn, sz);
@@ -533,9 +605,9 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					Register *AregSz = rr.A(getSize(aa->index,fn, false));
 					compileInstruction(MOV2, AregSz,aa->index, fn, sz);
 					compileInstruction(MUL2, Areg, new Int(sz.sz),fn,sz);
-					compileInstruction(SUB2, Areg,new Int(static_cast<int>(var->off)),fn,sz);
+					compileInstruction(SUB2, Areg,new Int(static_cast<int>(var.off)),fn,sz);
 					compileInstruction(ADD2,Areg,rr.rbp,fn,sz);
-					if (rr.regIdx != 0) {
+					if (rr.regIdx.back() != 0) {
 						compileInstruction(MOV2, reg, Areg, fn, sz);
 						compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 						compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
@@ -572,13 +644,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					Register* Areg = rr.A(sz);
 					for (const auto & invoperand : mo->invoperands)
 					{
-						if (rr.regIdx != 0) {
+						if (rr.regIdx.back() != 0) {
 							compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 							compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 							compileInstruction(MOV2, Areg, reg, fn, sz);
 						}
 						Register* diver = rr.alloc(sz);
-						if (rr.regIdx == 2) {
+						if (rr.regIdx.back() == 2) {
 							Register* diver2 = rr.alloc(sz);
 							compileInstruction(MOV2, diver2, invoperand, fn, sz);
 							compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
@@ -592,7 +664,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 						}
 						rr.free(diver);
 
-						if (rr.regIdx != 0) {
+						if (rr.regIdx.back() != 0) {
 							compileInstruction(MOV2, reg, Areg, fn, sz);
 							compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 							compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
@@ -615,13 +687,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 
 			for (size_t i = 1; i < mo->operands.size(); i++)
 			{
-				if (rr.regIdx != 0) {
+				if (rr.regIdx.back() != 0) {
 					compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 					compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 					compileInstruction(MOV2, Areg, reg, fn, sz);
 				}
 				Register* diver = rr.alloc(sz);
-				if (rr.regIdx == 2) {
+				if (rr.regIdx.back() == 2) {
 					Register* diver2 = rr.alloc(sz);
 					compileInstruction(MOV2, diver2, mo->operands[i], fn, sz);
 					compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
@@ -636,7 +708,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				compileInstruction(MOV2, reg, Dreg, fn, sz);
 				rr.free(diver);
 
-				if (rr.regIdx != 0) {
+				if (rr.regIdx.back() != 0) {
 					compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 					compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
 				}
@@ -770,8 +842,8 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 	case REFERENCE: {
 			for (const auto & i : fn->varsStack)
 			{
-				if (i->name.value == dynamic_cast<Reference*>(v)->value) {
-					return i->size;
+				if (i.name.value == dynamic_cast<Reference*>(v)->value) {
+					return i.size;
 				}
 			}
 			break;
@@ -850,10 +922,10 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 	case ARRAY_ACCESS:
 		{
 			const auto arr = dynamic_cast<ArrayAccess*>(v);
-			for (const auto var : fn->varsStack)
-				if (var->name.value == arr->name.value)
+			for (const auto& var : fn->varsStack)
+				if (var.name.value == arr->name.value)
 				{
-					const auto arrptr = static_cast<Array*>(var->val);
+					const auto arrptr = static_cast<Array*>(var.val);
 					return getSize(arrptr->values[0], fn, inp);
 				}
 		}

@@ -51,26 +51,34 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 
 	///Func Definition
 	if (st0 == FUNC && st1 == ID) {
-		//vector<IdentifierToken> params;
-
+		auto body = new CodeBlock();
+		SizeToken* sizeToken = nullptr;
+		int params = 0;
 		int bi = -1;
 		int depth = 0;
 		for (int i = 2; i < stack.size(); i++) {
 			const TokenType t = stack[i]->getType();
-			checkDepth(t,depth);
-			//if (depth == 1 && t == ID && bi == -1) {
-				//params.push_back(*(IdentifierToken*)stack[i]);
-			//} 
-
-			if (t == CURLY_OPEN) {
+			if (t == CURLY_OPEN && depth == 0) {
 				bi = i;
-				break;
 			}
+			if (depth == 1 && bi == -1)
+			{
+				if(stack[i]->getType() == SIZE_T){
+					sizeToken = dynamic_cast<SizeToken*>(stack[i]);
+				}
+				if(stack[i]->getType() == ID && sizeToken != nullptr){
+					auto idt = dynamic_cast<IdentifierToken*>(stack[i]);
+					body->code.push_back(new Assignment(*idt,new Size(sizeToken->value),EQUALS));
+					params++;
+				}
+			}
+			checkDepth(t,depth);
 		}
-
-		const auto body = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line));
-		return new Func(*dynamic_cast<IdentifierToken*>(stack[1]), body);
-		
+		for(auto bd = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line)); auto ln : bd->code)
+		{
+			body->code.push_back(ln);
+		}
+		return new Func(*dynamic_cast<IdentifierToken*>(stack[1]), body,params);
 	}
 
 	//Array def

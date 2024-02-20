@@ -129,6 +129,17 @@ struct IdentifierToken final: Token {
 		this->value = value;
 	}
 };
+struct SizeToken final: Token {
+	AsmSize value{};
+
+	TokenType getType()override {
+		return SIZE_T;
+	}
+
+	explicit SizeToken(const AsmSize value){
+		this->value = value;
+	}
+};
 
 
 struct Lexer {

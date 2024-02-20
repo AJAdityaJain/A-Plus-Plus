@@ -16,6 +16,8 @@ void Lexer::tokenize(const vector<string>& lines)
 	idMap.insert({ "main", idx++ });
 	idMap.insert({ "write", idx++ });
 	idMap.insert({ "read", idx++ });
+	idMap.insert({ "beep", idx++ });
+
 
 	for (string line : lines) {
 		for (size_t i = 0; i < line.size(); i++)
@@ -158,6 +160,11 @@ void Lexer::tokenize(const vector<string>& lines)
 					else if (sub == "xor")		tokens.push_back(new OperatorToken{ XOR });
 					else if (sub == "true")		tokens.push_back(new BitToken{ true  });
 					else if (sub == "false")	tokens.push_back(new BitToken{ false  });
+					else if (sub == "int")		tokens.push_back(new SizeToken{ INT_SIZE  });
+					else if (sub == "float")	tokens.push_back(new SizeToken{ FLOAT_SIZE });
+					else if (sub == "double")	tokens.push_back(new SizeToken{ DOUBLE_SIZE });
+					else if (sub == "short")	tokens.push_back(new SizeToken{ SHORT_SIZE });
+					else if (sub == "string")	tokens.push_back(new SizeToken{ PTR_SIZE });
 					else {
 						switch (isNumeric(sub))
 						{

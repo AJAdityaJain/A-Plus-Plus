@@ -56,6 +56,7 @@ struct Pointer final: Value {
 		return PTR;
 	}
 };
+
 struct CompilationToken final:Value {
 	string line;
 	CompilationTokenType type;
@@ -67,7 +68,6 @@ struct CompilationToken final:Value {
 		this->type = type;
 	}
 };
-
 
 struct RegisterRegister {
 
@@ -169,8 +169,8 @@ struct RegisterRegister {
 	vector<Register*> saves = vector<Register*>();
 	vector<int> scratches = vector<int>();
 
-	int regIdx = -1;
-	int xmmIdx = -1;
+	vector<int> regIdx = vector<int>();
+	vector<int> xmmIdx = vector<int>();
 
 
 	[[nodiscard]] Register* A(const AsmSize sz) const {
@@ -199,14 +199,14 @@ struct RegisterRegister {
 	Register* alloc(const AsmSize sz) {
 		Register* rptr;
 		if (sz.prec == 0) {
-			regIdx++;
-			if (regIdx >= 14) aThrowError(6, -1);
-			rptr = regs8[regIdx];
+			regIdx.back()++;
+			if (regIdx.back() >= 14) aThrowError(6, -1);
+			rptr = regs8[regIdx.back()];
 		}
 		else {
-			xmmIdx++;
-			if (xmmIdx >= 16) aThrowError(6, -1);
-			rptr = regsXMM[xmmIdx];
+			xmmIdx.back()++;
+			if (xmmIdx.back() >= 16) aThrowError(6, -1);
+			rptr = regsXMM[xmmIdx.back()];
 		}
 
 		if (rptr != nullptr) if (rptr->isPreserved) {
@@ -226,21 +226,21 @@ struct RegisterRegister {
 	}
 	void free(const Register* r) {
 		if (r->size.prec != 0)
-			xmmIdx--;
+			xmmIdx.back()--;
 		else
-			regIdx--;
+			regIdx.back()--;
 	}
 	[[nodiscard]] Register* realloc(const AsmSize sz) const {
 		if (sz.prec != 0) {
-			Register* r = regsXMM[xmmIdx];
+			Register* r = regsXMM[xmmIdx.back()];
 			r->size = sz;
 			return r;
 		}
 		switch (sz.sz) {
-		case 1: return regs1[regIdx];
-		case 2: return regs2[regIdx];
-		case 4: return regs4[regIdx];
-		case 8: return regs8[regIdx];
+		case 1: return regs1[regIdx.back()];
+		case 2: return regs2[regIdx.back()];
+		case 4: return regs4[regIdx.back()];
+		case 8: return regs8[regIdx.back()];
 			default:aThrowError(5, -1);
 		}
 
@@ -263,8 +263,8 @@ struct Compiler {
 	Compiler() {
 		addToData("intfmt db '%d'");
 		addToData("doublefmt db '%f'");
-		addToData("scanfmt db '%[^',10,']s',0");
-		addToData("charfmt db '?',0");
+		addToData("scanfmt db '%[^',10,']s'");
+		addToData("charfmt db '?'");
 		rr = RegisterRegister();
 	}
 
@@ -274,6 +274,8 @@ struct Compiler {
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		rr.rspOff.push_back(0);
+		rr.regIdx.push_back(-1);
+		rr.xmmIdx.push_back(-1);
 	}
 	void epilogue(Func* fn) {
 		for (int i = 0; i < fn->scopesStack.back(); i++)
@@ -282,10 +284,11 @@ struct Compiler {
 		}
 		fn->fbody << "add rsp," << rr.rspOff.back() << endl;
 
+		rr.regIdx.pop_back();
+		rr.xmmIdx.pop_back();
 		rr.rspOff.pop_back();
 		fn->scopesStack.pop_back();
 
-		rr.rspOff.shrink_to_fit();
 		fn->varsStack.shrink_to_fit();
 		fn->scopesStack.shrink_to_fit();
 	}
@@ -320,13 +323,13 @@ struct Compiler {
 		rr.saves.shrink_to_fit();
 	}
 	void saveScratch(Func* fn) {
-		for (int i = 0; i <= rr.regIdx; i++) {
+		for (int i = 0; i <= rr.regIdx.back(); i++) {
 			if (!rr.regs8[i]->isPreserved)
 				fn->fbody << "push " << rr.regs8[i]->reg << endl;
 			else
 				break;
 		}
-		for (int i = 0; i <= rr.xmmIdx; i++) {
+		for (int i = 0; i <= rr.xmmIdx.back(); i++) {
 			if (!rr.regsXMM[i]->isPreserved) {
 
 				fn->fbody << "sub rsp, 8" << endl;
@@ -336,17 +339,17 @@ struct Compiler {
 				break;
 		}
 
-		rr.scratches.push_back(rr.regIdx);
-		rr.scratches.push_back(rr.xmmIdx);
-		rr.regIdx = -1;
-		rr.xmmIdx = -1;
+		rr.scratches.push_back(rr.regIdx.back());
+		rr.scratches.push_back(rr.xmmIdx.back());
+		rr.regIdx.back() = -1;
+		rr.xmmIdx.back() = -1;
 	}
 	void restoreScratch(Func* fn) {
-		rr.xmmIdx = rr.scratches.back();
+		rr.xmmIdx.back() = rr.scratches.back();
 		rr.scratches.pop_back();
-		rr.regIdx = rr.scratches.back();
+		rr.regIdx.back() = rr.scratches.back();
 		rr.scratches.pop_back();
-		for (int i = rr.xmmIdx; i >= 0 ; i--)
+		for (int i = rr.xmmIdx.back(); i >= 0 ; i--)
 			if (!rr.regsXMM[i]->isPreserved) {
 				fn->fbody << "movsd " << rr.regsXMM[i]->reg << ", QWORD[rsp]" << endl;
 				fn->fbody << "add rsp, 8" << endl;
@@ -354,7 +357,7 @@ struct Compiler {
 			else
 				break;
 
-		for (int i = rr.regIdx; i >= 0 ; i--)
+		for (int i = rr.regIdx.back(); i >= 0 ; i--)
 			if (!rr.regs8[i]->isPreserved)
 				fn->fbody << "pop " << rr.regs8[i]->reg << endl;
 			else
