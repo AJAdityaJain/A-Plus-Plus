@@ -4,7 +4,6 @@
 #include <sstream>
 #include <utility>
 
-using namespace std;
 
 struct Variable {
 	void* val;

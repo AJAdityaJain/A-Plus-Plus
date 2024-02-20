@@ -96,20 +96,15 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			switch  (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value ){
 			case PRINT:{
 					for (Value* v : fc->params) {
-						auto [sz, prec] = getSize(v, fn, false);
 						CompilationToken ct = compileValue(v, fn);
-						switch (prec) {
-						case 0:
-							switch (sz) {
-						case 8:
-							fn->fbody << "printstr " << ct.line << endl; break;
-						case 4:
-							fn->fbody << "printint " << ct.line << endl; break;
-						default: break;
-							}break;
-						case 1: fn->fbody << "printfloat " << ct.line << endl; break;
-						case 2: fn->fbody << "printdouble " << ct.line << endl; break;
-						default:break;
+						switch (v->getType())
+						{
+						case STRING_STMT:fn->fbody << "printstr " << ct.line << endl;break;
+							case INT_STMT:case LONG_STMT:case SHORT_STMT:
+							fn->fbody << "printint " << ct.line << endl;break;
+							case FLOAT_STMT:fn->fbody << "printfloat " << ct.line << endl;break;
+							case DOUBLE_STMT:fn->fbody << "printdouble " << ct.line << endl;break;
+							default:break;
 						}
 					}
 					break;
@@ -180,7 +175,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 								case 2:reg = rr.regs2[r];break;
 								case 4:reg = rr.regs4[r];break;
 								case 8:reg = rr.regs8[r];break;
-							default: aThrowError(5,5);
+							default: aThrowError(OVERSIZED_VALUE,-1);
 							}
 							r++;
 						}
@@ -260,7 +255,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 		for (int i = 0; i < fn->varsStack.size(); i++)
 			if (fn->varsStack[i].name.value == a->name.value ) {
-				if(fn->varsStack[i].size.sz != sz.sz || fn->varsStack[i].size.prec != sz.prec)aThrowError(3, -1);
+				if(fn->varsStack[i].size.sz != sz.sz || fn->varsStack[i].size.prec != sz.prec)aThrowError(ASSIGNED_WRONG_TYPE, -1);
 				INSTRUCTION ins = MOV2;
 				switch (a->type)
 				{
@@ -319,7 +314,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 		return;
 	}
-	default: aThrowError(2, -1);
+	default: aThrowError(UNKNOWN_STATEMENT, -1);
 	}
 }
 
@@ -578,10 +573,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 		{
 			const auto arr = dynamic_cast<Array*>(v);
 			if(arr->values.empty())
-				aThrowError(101, -1);
+				aThrowError(REDUNDANT_IMMUTABLE_ARRAY, -1);
 			const auto sz = getSize(arr->values[0], fn, true);
-			int i;
-			int itlen = arr->values.size(); // NOLINT(*-narrowing-conversions)
+			size_t i;
+			size_t itlen = arr->values.size();
 			for(i = 0; i < itlen; i++)
 			{
 				compileInstruction(MOV2, new Pointer("[rsp - " + to_string(sz.sz * (itlen-i)) + "]", sz), arr->values[i], fn, sz);
@@ -829,7 +824,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				if (regRe) rr.free(reg2);
 				return CompilationToken { reg2->reg  , COMPILETIME_REGISTER };}}
 	default: break;}
-	aThrowError(5, -1);
+	aThrowError(UNKNOWN_VALUE, -1);
 	return CompilationToken{ "" };
 }
 
@@ -928,6 +923,6 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 	default: break;
 	}
 
-	aThrowError(2, -1);
+	aThrowError(UNKNOWN_VALUE, -1);
 	return VOID_SIZE;
 }

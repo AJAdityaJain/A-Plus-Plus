@@ -179,7 +179,7 @@ struct RegisterRegister {
 		case 2: return regs2[0];
 		case 4: return regs4[0];
 		case 8: return regs8[0];
-		default:aThrowError(5, -1);
+		default:aThrowError(OVERSIZED_VALUE, -1);
 		}
 		return nullptr;
 	}
@@ -190,7 +190,7 @@ struct RegisterRegister {
 		case 2: return regs2[2];
 		case 4: return regs4[2];
 		case 8: return regs8[2];
-		default:		aThrowError(5, -1);
+		default:aThrowError(OVERSIZED_VALUE, -1);
 		}
 		return nullptr;
 	}
@@ -200,12 +200,12 @@ struct RegisterRegister {
 		Register* rptr;
 		if (sz.prec == 0) {
 			regIdx.back()++;
-			if (regIdx.back() >= 14) aThrowError(6, -1);
+			if (regIdx.back() >= 14) aThrowError(OVERFLOW_REGISTER,-1);
 			rptr = regs8[regIdx.back()];
 		}
 		else {
 			xmmIdx.back()++;
-			if (xmmIdx.back() >= 16) aThrowError(6, -1);
+			if (xmmIdx.back() >= 16) aThrowError(OVERFLOW_REGISTER, -1);
 			rptr = regsXMM[xmmIdx.back()];
 		}
 
@@ -241,7 +241,7 @@ struct RegisterRegister {
 		case 2: return regs2[regIdx.back()];
 		case 4: return regs4[regIdx.back()];
 		case 8: return regs8[regIdx.back()];
-			default:aThrowError(5, -1);
+			default:aThrowError(OVERSIZED_VALUE, -1);
 		}
 
 

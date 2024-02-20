@@ -96,13 +96,13 @@ void Lexer::tokenize(const vector<string>& lines)
 								case SMALLER_THAN:replace = new OperatorToken(SMALLER_THAN_EQUAL); break;
 								case BITWISE_AND:replace = new AssignToken(BITWISE_AND_EQUAL); break;
 								case BITWISE_OR:replace = new AssignToken(BITWISE_OR_EQUAL); break;
-								default:aThrowError(7,lineIdx);
+								default:aThrowError(UNKNOWN_OPERATION,lineIdx);
 								}
 							else if(tokenun != NONE_UN_OPERATOR)
 								switch (tokenun)
 								{
 								case NOT:replace = new OperatorToken(NOT_EQUAL); break;
-								default:aThrowError(7,lineIdx);
+								default:aThrowError(UNKNOWN_OPERATION,lineIdx);
 								}
 
 							if(replace != nullptr)
@@ -130,7 +130,7 @@ void Lexer::tokenize(const vector<string>& lines)
 						else if(line[i] == '\'')tempString.pop_back(),tempString += '\'';
 						else if(line[i] == '"') tempString.pop_back(),tempString += '"';
 						else if(line[i] == '`') tempString.pop_back(),tempString += '`';
-						else aThrowError(2,lineIdx);
+						else aThrowError(UNKNOWN_ESCAPE_SEQUENCE,lineIdx);
 					}
 					break;
 				}
@@ -173,7 +173,7 @@ void Lexer::tokenize(const vector<string>& lines)
 							{
 								for (const char subc : sub)
 									if (!isalnum(subc))
-										aThrowError(3,lineIdx);
+										aThrowError(ILLEGAL_CHARACTER,lineIdx);
 
 								if (idMap.contains(sub))
 									tokens.push_back(new IdentifierToken{ idMap[sub]  });
@@ -189,7 +189,7 @@ void Lexer::tokenize(const vector<string>& lines)
 						case LONG:tokens.push_back(new LongToken{ stol(sub)  });					break;
 						case FLOAT:tokens.push_back(new FloatToken{ stof(sub)  });					break;
 						case DOUBLE:tokens.push_back(new DoubleToken{ stod(sub)  });				break;
-						default:aThrowError(3,lineIdx);											break;
+						default:aThrowError(ILLEGAL_CHARACTER,lineIdx);											break;
 						}
 					}
 					tempString = "";

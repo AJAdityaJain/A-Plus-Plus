@@ -4,7 +4,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 
 	const size_t size = stack.size();
 
-	if (size == 0)aThrowError(2, -1);
+	if (size == 0)aThrowError(ILLEGAL_EXPRESSION, line);
 
 	const TokenType st0 = stack[0]->getType();
 	const TokenType stb = stack.back()->getType();
@@ -19,7 +19,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 		case DOUBLE:return new Double(dynamic_cast<DoubleToken*>(stack[0])->value);
 		case BOOL:return new Boolean(dynamic_cast<BooleanToken*>(stack[0])->value);
 		case STRING:return new String(dynamic_cast<StringToken*>(stack[0])->value);
-		default:aThrowError(0,line);
+		default:aThrowError(ILLEGAL_EXPRESSION,line);
 		}
 
 	}
@@ -217,7 +217,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 			}
 			if (depth == 0)
 				return parseStatement(vector(stack.begin() + 1, stack.end() - 1),line);
-			aThrowError(4,line);
+			aThrowError(MISMATCHED_BRACKET,line);
 	}
 
 
@@ -299,7 +299,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 		}
 		return new UnaryOperation(uop,dynamic_cast<Value*>( parseStatement(vector(stack.begin() + 1, stack.end()),line)));
 	}
-	aThrowError(1,line);
+	aThrowError(UNKNOWN_STATEMENT,line);
 	return nullptr;
 }
 

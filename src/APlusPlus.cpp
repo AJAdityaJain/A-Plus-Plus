@@ -73,7 +73,7 @@ int main(const int argc, char* argv[])
 
 	if(midput.empty())
 	{
-		srand ( time(nullptr) ); // NOLINT(*-msc51-cpp)
+		srand ( static_cast<unsigned int>(time(nullptr)) );
 		midput = TEMPFOLDER.string() + to_string(rand()) +".asm"; // NOLINT(*-msc50-cpp)
 	}
 	if(output.empty())
