@@ -165,7 +165,7 @@ void Lexer::tokenize(const vector<string>& lines)
 					else if (sub == "double")	tokens.push_back(new SizeToken{ DOUBLE_SIZE });
 					else if (sub == "short")	tokens.push_back(new SizeToken{ SHORT_SIZE });
 					else if (sub == "long")	tokens.push_back(new SizeToken{ LONG_SIZE });
-					else if (sub == "string")	tokens.push_back(new SizeToken{ PTR_SIZE });
+					else if (sub == "string")	tokens.push_back(new SizeToken{ STRPTR_SIZE });
 					else {
 						switch (isNumeric(sub))
 						{

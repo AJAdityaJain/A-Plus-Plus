@@ -67,6 +67,8 @@ struct CompilationToken final:Value {
 		this->line = line;
 		this->type = type;
 	}
+
+	CompilationToken(): type(COMPILETIME_NONE) {}
 };
 
 struct RegisterRegister {
@@ -162,8 +164,8 @@ struct RegisterRegister {
 		new Register("xmm15",DOUBLE_SIZE)
 	};
 
-	Register* rsp = new Register("rsp", PTR_SIZE);
-	Register* rbp = new Register("rbp", PTR_SIZE);
+	Register* rsp = new Register("rsp", LONG_SIZE);
+	Register* rbp = new Register("rbp", LONG_SIZE);
 	vector<int> rspOff = vector<int>();
 
 	vector<Register*> saves = vector<Register*>();
@@ -198,7 +200,7 @@ struct RegisterRegister {
 
 	Register* alloc(const AsmSize sz) {
 		Register* rptr;
-		if (sz.prec == 0) {
+		if (sz.prec <= 0) {
 			regIdx.back()++;
 			if (regIdx.back() >= 14) aThrowError(OVERFLOW_REGISTER,-1);
 			rptr = regs8[regIdx.back()];
@@ -225,13 +227,13 @@ struct RegisterRegister {
 		return realloc(sz);
 	}
 	void free(const Register* r) {
-		if (r->size.prec != 0)
+		if (r->size.prec > 0)
 			xmmIdx.back()--;
 		else
 			regIdx.back()--;
 	}
 	[[nodiscard]] Register* realloc(const AsmSize sz) const {
-		if (sz.prec != 0) {
+		if (sz.prec > 0) {
 			Register* r = regsXMM[xmmIdx.back()];
 			r->size = sz;
 			return r;
@@ -297,7 +299,7 @@ struct Compiler {
 	void savePreserved() {
 		for (const Register* rptr : rr.saves)
 		{
-			if (rptr->size.prec == 0) {
+			if (rptr->size.prec <= 0) {
 				File << "push " << rptr->reg << endl;
 			}
 			else {
@@ -310,7 +312,7 @@ struct Compiler {
 	void restorePreserved() {
 		for (const Register* rptr : rr.saves)
 		{
-			if (rptr->size.prec == 0) {
+			if (rptr->size.prec <= 0) {
 				File << "pop " << rptr->reg << endl;
 			}
 			else {

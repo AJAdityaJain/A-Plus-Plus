@@ -5,18 +5,9 @@ void Compiler::compile(const vector<Statement*>& tree, const string& loc)
 {
 	File = ofstream(loc);
 
-	File << "format PE64 console\nentry start\n\ninclude 'WIN64A.inc'\n\nsection '.text' code readable executable\n\n\n";
-	File <<
-		// "macro callerpush{\npush rax\npush rcx\npush rdx\npush r8\npush r9\npush r10\npush r11\n}\n  "
-		// "macro callerpop{\npop r11\npop r10\npop r9\npop r8\npop rdx\npop rcx\npop rax\n}\n  "
-		"macro printint[int]{\ninvoke printf,intfmt,int\n}\n"
-		"macro printstr[string]{\ninvoke printf, string\n}\n"
-		"macro printdouble[xmm]{\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\nmovsd xmm0, xmm\nmovq rdx, xmm0\ninvoke printf, doublefmt\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\n}\n"
-		"macro printfloat[dwrd]{\nsub rsp, 8\nmovsd QWORD[rsp], xmm0\ncvtss2sd xmm0, dwrd\nprintdouble xmm0\nmovsd xmm0, QWORD[rsp]\nadd rsp, 8\n}\n"
-		"macro scanstr[dwrd]{\ninvoke  scanf, scanfmt, dwrd\ninvoke  scanf, '%c', charfmt\n}\n"
-		"macro scanint[dwrd]{\nlea rax, dwrd\ninvoke  scanf, intfmt , rax\n}\n"
-		"macro strlen[ptr, ptr]{\npush rdx\npush rax\npush rcx\nmov rdx ,0\nmov rcx, ptr\n.loop:\ninc rcx\ninc rdx\nmov al, byte[rcx]\ntest al, al\njnz .loop\npush rdx\nadd rsp, 8\npop rcx\npop rax\npop rdx\nsub rsp, 32\npop reg\nadd rsp, 24\n}\n"
-		"\n\n\n\n";
+	File << "format PE64 console\nentry start\ninclude 'MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
+	// File <<
+		// "macro strlen[ptr, ptr]{\npush rdx\npush rax\npush rcx\nmov rdx ,0\nmov rcx, ptr\n.loop:\ninc rcx\ninc rdx\nmov al, byte[rcx]\ntest al, al\njnz .loop\npush rdx\nadd rsp, 8\npop rcx\npop rax\npop rdx\nsub rsp, 32\npop reg\nadd rsp, 24\n}\n"// "\n\n\n\n";
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -69,7 +60,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			restorePreserved();
 			File << "mov rsp, rbp" << endl;
 			File << "pop rbp;" << endl;
-			File << "\n\ninvoke  exit, rax" << endl;
+			File << "\nmov rcx,0\ncall [exit]" << endl;
 		}
 		else {
 			File << "LABFUNC" + to_string(fun->name.value) << ":" << endl;
@@ -96,20 +87,71 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			switch  (const auto fc = dynamic_cast<FuncCall*>(b); fc->name.value ){
 			case PRINT:{
 					for (Value* v : fc->params) {
-						CompilationToken ct = compileValue(v, fn);
-						switch (v->getType())
+						compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
+						switch (auto [sz, prec] = getSize(v, fn, false); sz)
 						{
-						case STRING_STMT:fn->fbody << "printstr " << ct.line << endl;break;
-							case INT_STMT:case LONG_STMT:case SHORT_STMT:
-							fn->fbody << "printint " << ct.line << endl;break;
-							case FLOAT_STMT:fn->fbody << "printfloat " << ct.line << endl;break;
-							case DOUBLE_STMT:fn->fbody << "printdouble " << ct.line << endl;break;
-							default:break;
+						case 2:
+							{
+								compileInstruction(MOV2, rr.regs8[1], new CompilationToken("intfmt",COMPILETIME_PTR), fn, LONG_SIZE);
+								compileInstruction(XOR2,	rr.regs8[2],rr.regs8[2],fn,LONG_SIZE);
+								compileInstruction(MOV2, rr.regs2[2], v, fn, SHORT_SIZE);
+								fn->fbody << "call [printf]" << endl;
+							}break;
+						case 4:
+							if(prec == 0)
+							{
+								compileInstruction(MOV2, rr.regs8[1], new CompilationToken("intfmt",COMPILETIME_PTR), fn, LONG_SIZE);
+								compileInstruction(MOV2, rr.regs4[2], v, fn, INT_SIZE);
+								fn->fbody << "call [printf]" << endl;
+							}
+							if(prec == 1)
+							{
+								compileInstruction(SUB2, rr.rsp, new Int(8), fn, LONG_SIZE);
+								compileInstruction(MOV2, new Pointer("[rsp]", DOUBLE_SIZE), rr.regsXMM[0], fn, DOUBLE_SIZE);
+								// compileInstruction(MOV2, rr.regsXMM[0], v, fn, FLOAT_SIZE);
+								fn->fbody << "cvtss2sd xmm0, "<< compileValue(v,fn).line << endl;
+								fn->fbody << "movq rdx, xmm0" << endl;
+								compileInstruction(MOV2, rr.regs8[1], new CompilationToken("doublefmt",COMPILETIME_PTR), fn, LONG_SIZE);
+								fn->fbody << "call [printf]" << endl;
+								compileInstruction(MOV2, rr.regsXMM[0], new Pointer("[rsp]", DOUBLE_SIZE), fn, DOUBLE_SIZE);
+								compileInstruction(ADD2, rr.rsp, new Int(8), fn, LONG_SIZE);
+
+								// fn->fbody << "printfloat " << ct.line << endl;
+							}
+							break;
+						case 8:
+							if(prec == -1)
+							{
+								compileInstruction(MOV2, rr.regs8[1], v, fn, LONG_SIZE);
+								fn->fbody << "call [printf]" << endl;
+							}
+							if(prec == 0)
+							{
+								compileInstruction(MOV2, rr.regs8[1], new CompilationToken("intfmt",COMPILETIME_PTR), fn, LONG_SIZE);
+								compileInstruction(MOV2, rr.regs8[2], v, fn, LONG_SIZE);
+								fn->fbody << "call [printf]" << endl;
+							}
+							if(prec == 2)
+							{
+								compileInstruction(SUB2, rr.rsp, new Int(8), fn, LONG_SIZE);
+								compileInstruction(MOV2, new Pointer("[rsp]", DOUBLE_SIZE), rr.regsXMM[0], fn, DOUBLE_SIZE);
+								compileInstruction(MOV2, rr.regsXMM[0], v, fn, DOUBLE_SIZE);
+								fn->fbody << "movq rdx, xmm0" << endl;
+								compileInstruction(MOV2, rr.regs8[1], new CompilationToken("doublefmt",COMPILETIME_PTR), fn, LONG_SIZE);
+								fn->fbody << "call [printf]" << endl;
+								compileInstruction(MOV2, rr.regsXMM[0], new Pointer("[rsp]", DOUBLE_SIZE), fn, DOUBLE_SIZE);
+								compileInstruction(ADD2, rr.rsp, new Int(8), fn, LONG_SIZE);
+							}
+							break;
+
+						default:break;
 						}
+						compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					}
 					break;
 			}
 			case SCAN: {
+					compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					for (Value* v : fc->params) {
 						auto [sz, prec] = getSize(v, fn, false);
 						CompilationToken ct = compileValue(v, fn);
@@ -118,46 +160,64 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 							{
 								auto label = "SCANSTR"+to_string(dataLabelIdx);
 								dataLabelIdx++;
-								addToData(label+" db 'Umm this text should not exist. i dont know why it is here? Help',0");
-								fn->fbody << "scanstr " << label << endl;
-								const Register *reg = rr.alloc(PTR_SIZE);
+								addToData(label+" db '????????????????????????????????????????????????????????????????',0");
+								compileInstruction(MOV2, rr.regs8[1],new CompilationToken("scanfmt",COMPILETIME_PTR),fn,LONG_SIZE);
+								compileInstruction(MOV2, rr.regs8[2],new CompilationToken(label,COMPILETIME_PTR),fn,LONG_SIZE);
+								fn->fbody << "call [scanf]"<<endl;
+
+								const Register *reg = rr.alloc(STRPTR_SIZE);
 								fn->fbody << "mov " << reg->reg << "," << label << endl;
 								fn->fbody << "mov " << ct.line << "," << reg->reg << endl;
 								rr.free(reg);
 								break;
 							}
 						case 4:
-							fn->fbody << "scanint " << ct.line << endl; break;
+							fn->fbody << "lea "<<rr.regs8[0]->reg<<"," << ct.line << endl;
+							compileInstruction(MOV2, rr.regs8[1],new CompilationToken("intfmt",COMPILETIME_PTR),fn,LONG_SIZE);
+							compileInstruction(MOV2, rr.regs8[2],rr.regs8[0],fn,LONG_SIZE);
+							fn->fbody << "call [scanf]"<<endl;
+
+							// fn->fbody << "scanint " << ct.line << endl; break;
 						default: break;
 						}
 					}
+					compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					break;
 			}
 			case BEEP:
 				{
+					compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					if(fc->params.empty())
 					{
-						fn->fbody << "invoke beep, 650, 350" << endl;
+
+						fn->fbody << "mov rcx, 640\nmov rdx, 350\n call [beep]"<< endl;
 					}
 					else if(fc->params.size() == 1)
 					{
 						auto [sz, prec] = getSize(fc->params[0], fn, false);
-						CompilationToken ct = compileValue(fc->params[0], fn);
 						if(sz == 4)
-							fn->fbody << "invoke beep, " << ct.line << ", 100" << endl;
+						{
+							compileInstruction(MOV2, rr.regs4[1], fc->params[0], fn, INT_SIZE);
+							compileInstruction(MOV2, rr.regs4[2], new Int(350), fn, INT_SIZE);
+							fn->fbody << "call [beep]" << endl;
+						}
 					}
 					else if(fc->params.size() == 2)
 					{
 						auto [sz, prec] = getSize(fc->params[0], fn, false);
-						CompilationToken ct = compileValue(fc->params[0], fn);
 						if(sz == 4)
 						{
 							auto [sz2, prec2] = getSize(fc->params[1], fn, false);
-							CompilationToken ct2 = compileValue(fc->params[1], fn);
 							if(sz2 == 4)
-								fn->fbody << "invoke beep, " << ct.line << ", " << ct2.line << endl;
+							{
+								compileInstruction(MOV2, rr.regs4[1], fc->params[0], fn, INT_SIZE);
+								compileInstruction(MOV2, rr.regs4[2], fc->params[1], fn, INT_SIZE);
+								fn->fbody << "call [beep]" << endl;
+
+							}
 						}
 					}
+					compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					break;
 				}
 			default:{
@@ -168,7 +228,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 					{
 						AsmSize sz = getSize(par,fn,false);
 						Register* reg;
-						if(sz.prec == 0)
+						if(sz.prec <= 0)
 						{
 							switch(sz.sz){
 								case 1:reg = rr.regs1[r];break;
@@ -296,7 +356,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		fn->scopesStack.back()++;
 		if (fn->varsStack.empty()) {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
-			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
+			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
 			rr.rspOff.back() += szonstack;
 			fn->varsStack.emplace_back(a->value, sz.sz, sz, a->name);
 			return;
@@ -307,7 +367,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		}
 		else {
 			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
-			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, PTR_SIZE);
+			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
 			rr.rspOff.back() += szonstack;
 			fn->varsStack.emplace_back(a->value,v.off + sz.sz + v.share, sz, a->name);
 		}
@@ -321,7 +381,6 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Func* fn, const AsmSize sz) // NOLINT(*-no-recursion)
 {
-
 	if (op == nullptr) {
 		switch (i)
 		{
@@ -331,7 +390,21 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 		return;
 	}
 
-	CompilationToken o1 = compileValue(op, fn);
+	CompilationToken o1;
+	if(op->getType() == COMPILETIME_TOKEN) o1 = *dynamic_cast<CompilationToken*>(op);
+	else o1 = compileValue(op, fn);
+
+	if(o1.type == COMPILETIME_IGNORE)return;
+	if(o1.type != COMPILETIME_PTR)
+		if (const AsmSize o1sz = getSize(op, fn, false); o1sz.prec != sz.prec && o1sz.prec + sz.prec > -1) {
+			Register* r = cast(op, o1sz, sz, fn);
+			op  = r;
+			o1  = compileValue(op, fn);
+			rr.free(r);
+		}
+
+
+
 	if (op2 == nullptr) {
 		switch (i)
 		{
@@ -350,20 +423,6 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 		}
 		return;
 	}
-
-	if (const AsmSize o1sz = getSize(op, fn, false); o1sz.prec != sz.prec) {
-		Register* r = cast(op, o1sz, sz, fn);
-		op  = r;
-		o1  = compileValue(op, fn);
-		rr.free(r);
-	}
-	if (const AsmSize o2sz = getSize(op2, fn, false); o2sz.prec != sz.prec) {
-		Register* r = cast(op2, o2sz, sz, fn);
-		op2 = r;
-		rr.free(r);
-	}
-
-
 	auto suffix = "";
 	if (sz.prec == 1) {
 		suffix = "ss";
@@ -371,81 +430,89 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 	else if (sz.prec == 2) {
 		suffix = "sd";
 	}
+	CompilationToken o2;
+	if(op2->getType() == COMPILETIME_TOKEN) o2 = *dynamic_cast<CompilationToken*>(op2);
+	else o2 = compileValue(op2, fn);
 
-	CompilationToken o2 = compileValue(op2, fn);
+	if(o2.type == COMPILETIME_IGNORE)return;
+	if(o2.type != COMPILETIME_PTR)
+		if (const AsmSize o2sz = getSize(op2, fn, false); o2sz.prec != sz.prec && o2sz.prec + sz.prec > -1) {
+			Register* r = cast(op2, o2sz, sz, fn);
+			op2 = r;
+			rr.free(r);
+		}
+
 
 	switch (i)
 	{
-	case MOV2: {
-			if(o1.type == COMPILETIME_IGNORE || o2.type == COMPILETIME_IGNORE)
-				return;
-		if (o1.type == COMPILETIME_PTR && o2.type == COMPILETIME_PTR) {
-			Register* reg = rr.alloc(getSize(op, fn, false));
+		case MOV2: {
 
-			compileInstruction(MOV2, reg, op2, fn, sz);
-			compileInstruction(MOV2, op, reg, fn, sz);
-			rr.free(reg);
-			return;
-		}
-		fn->fbody << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case ADD2: {
-		fn->fbody << "add" << suffix << " " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case SUB2: {
-		fn->fbody << "sub" << suffix << " " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case MUL2: {
-		if (sz.prec == 0)
-			fn->fbody << "imul " << o1.line << ", " << o2.line << endl;
-		else
-			fn->fbody << "mul" << suffix << " " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case DIV2: {
-		if (sz.prec != 0)
-			fn->fbody << "div" << suffix << " " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case XOR2: {
-		fn->fbody << "xor " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case AND2: {
-		fn->fbody << "and " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case OR2: {
-		fn->fbody << "or " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	case CMP2: {
-		if (o1.type == COMPILETIME_REGISTER || o2.type == COMPILETIME_REGISTER) {
-			if (sz.prec == 0)
-				fn->fbody << "cmp " << o1.line << ", " << o2.line << endl;
-			else
-				fn->fbody << "comi" << suffix << " " << o1.line << ", " << o2.line << endl;
+				if (o1.type == COMPILETIME_PTR && o2.type == COMPILETIME_PTR) {
+					Register* reg = rr.alloc(getSize(op, fn, false));
 
+					compileInstruction(MOV2, reg, op2, fn, sz);
+					compileInstruction(MOV2, op, reg, fn, sz);
+					rr.free(reg);
+					return;
+				}
+				fn->fbody << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
+				break;
 		}
-		else {
-			Register* reg = rr.alloc(getSize(op, fn, false));
-			compileInstruction(MOV2, reg, &o1, fn, sz);
-			compileInstruction(CMP2, reg, &o2, fn, sz);
-			rr.free(reg);
+		case ADD2: {
+				fn->fbody << "add" << suffix << " " << o1.line << ", " << o2.line << endl;
+				break;
 		}
-		break;
-	}
-	case TEST2: {
-		fn->fbody << "test " << o1.line << ", " << o2.line << endl;
-		break;
-	}
-	default: break;
+		case SUB2: {
+				fn->fbody << "sub" << suffix << " " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		case MUL2: {
+				if (sz.prec == 0)
+					fn->fbody << "imul " << o1.line << ", " << o2.line << endl;
+				else
+					fn->fbody << "mul" << suffix << " " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		case DIV2: {
+				if (sz.prec != 0)
+					fn->fbody << "div" << suffix << " " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		case XOR2: {
+				fn->fbody << "xor " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		case AND2: {
+				fn->fbody << "and " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		case OR2: {
+				fn->fbody << "or " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		case CMP2: {
+				if (o1.type == COMPILETIME_REGISTER || o2.type == COMPILETIME_REGISTER) {
+					if (sz.prec == 0)
+						fn->fbody << "cmp " << o1.line << ", " << o2.line << endl;
+					else
+						fn->fbody << "comi" << suffix << " " << o1.line << ", " << o2.line << endl;
+
+				}
+				else {
+					Register* reg = rr.alloc(getSize(op, fn, false));
+					compileInstruction(MOV2, reg, &o1, fn, sz);
+					compileInstruction(CMP2, reg, &o2, fn, sz);
+					rr.free(reg);
+				}
+				break;
+		}
+		case TEST2: {
+				fn->fbody << "test " << o1.line << ", " << o2.line << endl;
+				break;
+		}
+		default: break;
 	}
 }
-
 
 
 Register* Compiler::cast(Value* v, const AsmSize from, const AsmSize to, Func* fn){ // NOLINT(*-no-recursion)
@@ -897,7 +964,7 @@ AsmSize Compiler::getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-rec
 	case SHORT_STMT : return SHORT_SIZE;
 	case DOUBLE_STMT: return DOUBLE_SIZE;
 	case LONG_STMT: return LONG_SIZE;
-	case STRING_STMT: return PTR_SIZE;
+	case STRING_STMT: return STRPTR_SIZE;
 	case BOOL_STMT: return BOOL_SIZE;
 	case ARRAY:{
 			const auto arr = dynamic_cast<Array*>(v);

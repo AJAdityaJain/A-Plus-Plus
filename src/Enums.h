@@ -161,10 +161,14 @@ struct AsmSize {
 	int prec;
 };
 constexpr AsmSize VOID_SIZE = { 0 ,0 };
+
 constexpr AsmSize BOOL_SIZE = { 1,0 };
+
 constexpr AsmSize SHORT_SIZE = { 2,0 };
+
 constexpr AsmSize INT_SIZE = { 4,0 };
-constexpr AsmSize LONG_SIZE = { 8,0 };
-constexpr AsmSize PTR_SIZE = { 8,0 };
 constexpr AsmSize FLOAT_SIZE = { 4,1 };
+
+constexpr AsmSize STRPTR_SIZE = { 8,-1 };
+constexpr AsmSize LONG_SIZE = { 8,0 };
 constexpr AsmSize DOUBLE_SIZE = { 8,2 };

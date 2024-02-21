@@ -134,11 +134,14 @@ inline void printStatement(Statement* stmt, const int depth = 0) // NOLINT(*-no-
         {
             const auto fc = dynamic_cast<FuncCall*>(stmt);
             cout << "{ v" << fc->name.value << " (";
-            printStatement(fc->params[0]);
-            for (int i = 1; i < fc->params.size(); i++)
+            if(!fc->params.empty())
             {
-                cout << ", ";
-                printStatement(fc->params[i]);
+                printStatement(fc->params[0]);
+                for (int i = 1; i < fc->params.size(); i++)
+                {
+                    cout << ", ";
+                    printStatement(fc->params[i]);
+                }
             }
             cout << ") }";
             break;
