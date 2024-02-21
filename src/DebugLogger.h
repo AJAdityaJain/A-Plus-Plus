@@ -79,6 +79,8 @@ inline void printToken(Token* token)
     case ELSE:cout << "{ ELSE }" << endl;                                                           break;
     case WHILE:cout << "{ WHILE }" << endl;                                                         break;
     case RETURN:cout << "{ RETURN }" << endl;                                                       break;
+    case STOP:cout << "{ STOP }" << endl;                                                       break;
+    case SKIP:cout << "{ SKIP }" << endl;                                                       break;
     case BRACKET_OPEN:cout << "{ [ }" << endl;                                                      break;
     case BRACKET_CLOSE:cout << "{ ] }" << endl;                                                     break;
     case PARENTHESIS_OPEN:cout << "{ ( }" << endl;                                                  break;
@@ -170,6 +172,13 @@ inline void printStatement(Statement* stmt, const int depth = 0) // NOLINT(*-no-
             break;
 
         }
+    case INTERUPT:
+        {
+            if(const auto type = dynamic_cast<Interupt*>(stmt)->type; type == STOP)cout << "STOP";
+            else if(type == SKIP)cout << "SKIP";
+            else cout << "UNKNOWN_INTERUPT";
+        }
+        break;
     case WHILE_STMT:
         {
             const auto w = dynamic_cast<WhileStatement*>(stmt);

@@ -155,6 +155,8 @@ void Lexer::tokenize(const vector<string>& lines)
 					else if (sub == "else")		tokens.push_back(new KeyWordToken{ ELSE  });
 					else if (sub == "while")	tokens.push_back(new KeyWordToken{ WHILE  });
 					else if (sub == "return")	tokens.push_back(new KeyWordToken{ RETURN  });
+					else if (sub == "stop")		tokens.push_back(new KeyWordToken{ STOP  });
+					else if (sub == "skip")		tokens.push_back(new KeyWordToken{ SKIP  });
 					else if (sub == "and")		tokens.push_back(new OperatorToken{ AND  });
 					else if (sub == "or")		tokens.push_back(new OperatorToken{ OR  });
 					else if (sub == "xor")		tokens.push_back(new OperatorToken{ XOR });
@@ -164,7 +166,7 @@ void Lexer::tokenize(const vector<string>& lines)
 					else if (sub == "float")	tokens.push_back(new SizeToken{ FLOAT_SIZE });
 					else if (sub == "double")	tokens.push_back(new SizeToken{ DOUBLE_SIZE });
 					else if (sub == "short")	tokens.push_back(new SizeToken{ SHORT_SIZE });
-					else if (sub == "long")	tokens.push_back(new SizeToken{ LONG_SIZE });
+					else if (sub == "long")		tokens.push_back(new SizeToken{ LONG_SIZE });
 					else if (sub == "string")	tokens.push_back(new SizeToken{ STRPTR_SIZE });
 					else {
 						switch (isNumeric(sub))

@@ -11,6 +11,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 
 	if (size == 1) {
 		switch (st0) {
+		case STOP:return new Interupt(STOP);
+		case SKIP:return new Interupt(SKIP);
 		case ID:return new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value);
 		case SHORT:return new Short(dynamic_cast<ShortToken*>(stack[0])->value);
 		case LONG:return new Long(dynamic_cast<LongToken*>(stack[0])->value);

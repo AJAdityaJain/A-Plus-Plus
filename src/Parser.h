@@ -36,7 +36,9 @@ struct Value : Statement {};
 
 
 struct CodeBlock final : Statement {
-	vector<Statement*> code; 
+	vector<Statement*> code;
+	string stopPtr;
+	string skipPtr;
 
 	~CodeBlock() override {
 		code.clear();
@@ -250,7 +252,18 @@ struct Func final: Statement {
 	}	
 };
 
+struct Interupt final: Statement {
+	TokenType type;
 
+	StatementType getType()override {
+		return INTERUPT;
+	}
+
+	explicit Interupt(const TokenType type) {
+		this->type = type;
+	}
+
+};
 struct Assignment final: Statement {
 	
 	AssignmentType type;
@@ -297,6 +310,16 @@ struct IfStatement final: Statement {
 	Value* condition;
 	CodeBlock* ifBlock;
     CodeBlock* elseBlock = nullptr;
+
+	void SetParentLoop(const string& stopPtr,const string& skipPtr) const {
+		ifBlock->stopPtr = stopPtr;
+		ifBlock->skipPtr = skipPtr;
+		if (elseBlock != nullptr)
+		{
+			elseBlock->stopPtr = stopPtr;
+			elseBlock->skipPtr = skipPtr;
+		}
+	}
 
 	StatementType getType()override {
 		return IF_STMT;

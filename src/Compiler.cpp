@@ -8,6 +8,7 @@ void Compiler::compile(const vector<Statement*>& tree, const string& loc)
 	File << "format PE64 console\nentry start\ninclude 'MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
 	// File <<
 		// "macro strlen[ptr, ptr]{\npush rdx\npush rax\npush rcx\nmov rdx ,0\nmov rcx, ptr\n.loop:\ninc rcx\ninc rdx\nmov al, byte[rcx]\ntest al, al\njnz .loop\npush rdx\nadd rsp, 8\npop rcx\npop rax\npop rdx\nsub rsp, 32\npop reg\nadd rsp, 24\n}\n"// "\n\n\n\n";
+	File <<"strlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n";
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -269,7 +270,21 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		prologue(fn);
 
 		for (const auto* scope = dynamic_cast<CodeBlock*>(b); const auto i : scope->code)
-			compileStatement(i, fn);
+		{
+			if(i->getType() == IF_STMT)
+				dynamic_cast<IfStatement*>(i)->SetParentLoop(scope->stopPtr,scope->skipPtr);
+
+			if(i->getType() == INTERUPT)
+			{
+				switch(dynamic_cast<Interupt*>(i)->type)
+				{
+				case STOP:fn->fbody << "jmp " << scope->stopPtr << endl;break;
+				case SKIP:fn->fbody << "jmp " << scope->skipPtr << endl;break;
+				default: aThrowError(UNKNOWN_STATEMENT,-1);break;
+				}
+			}
+			else compileStatement(i, fn);
+		}
 
 		epilogue(fn);
 
@@ -286,6 +301,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		compileInstruction(CMP2, whils->condition, new Boolean(true), fn, BOOL_SIZE);
 		compileInstruction(JNZ1, new CompilationToken(label2,COMPILETIME_PTR), nullptr, fn, BOOL_SIZE);
 
+			whils->whileBlock->stopPtr = label2;
+			whils->whileBlock->skipPtr = label;
 		compileStatement(whils->whileBlock, fn);
 
 		compileInstruction(JMP1, new CompilationToken(label,COMPILETIME_PTR), nullptr, fn, BOOL_SIZE);
@@ -498,6 +515,16 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 				break;
 		}
 		case CMP2: {
+				if(sz.prec == -1)
+				{
+					saveScratch(fn);
+					compileInstruction(MOV2, rr.regs8[1], op, fn, sz);
+					compileInstruction(MOV2, rr.regs8[2], op2, fn, sz);
+					fn->fbody << "call strcmp" << endl;
+
+					restoreScratch(fn);
+					break;
+				}
 				if (o1.type == COMPILETIME_REGISTER || o2.type == COMPILETIME_REGISTER) {
 					if (sz.prec == 0)
 						fn->fbody << "cmp " << o1.line << ", " << o2.line << endl;
