@@ -181,30 +181,41 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 
 	///If
 	if (st0 == IF) {
-		Value* con = nullptr;
-		CodeBlock* ifb = nullptr;
+		Value* con;
+		CodeBlock* ifb;
+		CodeBlock* elseb = nullptr;
 
+
+		int ifstart = -1;
+		int elsestart = -1;
 		if (st1 == PARENTHESIS_OPEN) {
 			int depth = 0;
 			for (int i = 1; i < stack.size() - 1; i++) {
 				checkDepth(stack[i]->getType(),depth);
 				depth = abs(depth);
 				if (depth == 0) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i),line));
-					ifb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
-					break;
+					if(ifstart == -1)
+						ifstart = i;
+					else if(stack[i]->getType() == ELSE)
+					{
+						elsestart = i;
+						break;
+					}
 				}
-
 			}
 		}
+		con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + ifstart),line));
+		if(elsestart == -1)
+			ifb = new CodeBlock(parseStatement(vector(stack.begin() + ifstart + 1, stack.end()),line));
+		else
+		{
+			ifb = new CodeBlock(parseStatement(vector(stack.begin() + ifstart + 1, stack.begin() + elsestart),line));
+			elseb = new CodeBlock(parseStatement(vector(stack.begin() + elsestart + 1, stack.end()),line));
+		}
 
-		if(con != nullptr && ifb != nullptr)
-			return new IfStatement(con, ifb);
-	}
 
-	///Else
-	if (st0 == ELSE) {
-		return new ElseStatement(new CodeBlock(parseStatement(vector(stack.begin() + 1, stack.end()),line)));
+		if(con != nullptr)
+			return new IfStatement(con, ifb, elseb);
 	}
 
 	///Parenthesis
@@ -314,37 +325,38 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 	unsigned int line = -1;
 	int depth = 0;
 	bool shouldParse = false;
-	bool elseplz = false;
+	int i =0;
 
-	for (auto i : stack) {
-		const TokenType sti = i->getType();
+	for (auto stackItem : stack) {
+		const TokenType sti = stackItem->getType();
 
 		checkDepth(sti, depth);
 
 		if (sti == LINE_END && depth == 0)
 		{
-			line = dynamic_cast<LineToken*>(i)->line;
+			line = dynamic_cast<LineToken*>(stackItem)->line;
 			shouldParse = true;
 		}
-		else {
-			subStack.push_back(i);
-			if (sti == CURLY_CLOSE && depth == 0)shouldParse = true;
+		else
+		{
+			subStack.push_back(stackItem);
+			if (sti == CURLY_CLOSE && depth == 0){
+				shouldParse = true;
+			}
 		}
-
-
+		if(!subStack.empty() )
+			if( subStack[0]->getType() == IF && i+1<stack.size())
+				if(stack[i+1]->getType() == ELSE)
+					shouldParse = false;
 		if (shouldParse) {
 			shouldParse = false;
 			if (!subStack.empty()) {
-				if(Statement* ret = parseStatement(subStack,line); elseplz && ret->getType() == ELSE_STMT)
-					dynamic_cast<IfStatement*>(statements.back())->elseBlock =dynamic_cast<ElseStatement*>(ret)->elseBlock;
-				else
-				{
-					statements.push_back(ret);
-					elseplz = ret->getType() == IF_STMT;
-				}
+				Statement* ret = parseStatement(subStack,line);
+				statements.push_back(ret);
 			}
 			subStack.clear();
 		}
+		i++;
 	}
 
 	return statements;

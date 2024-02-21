@@ -194,7 +194,6 @@ inline void printStatement(Statement* stmt, const int depth = 0) // NOLINT(*-no-
             }
             break;
         }
-    case ELSE_STMT:cout << "{ ELSE ERROR }";break;
     case MULTI_OPERATION:
         {
             const auto mo = dynamic_cast<MultipleOperation*>(stmt);

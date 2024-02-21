@@ -266,7 +266,8 @@ struct Compiler {
 		addToData("intfmt db '%d'");
 		addToData("doublefmt db '%f'");
 		addToData("scanfmt db '%[^',10,']s'");
-		addToData("charfmt db '?'");
+		addToData("charfmt db '%c'");
+		addToData("chardiscard db '?'");
 		rr = RegisterRegister();
 	}
 

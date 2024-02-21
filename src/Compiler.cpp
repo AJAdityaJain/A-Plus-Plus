@@ -37,7 +37,6 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			auto a = dynamic_cast<Assignment*>(fun->body->code[i]);
 			auto sz = dynamic_cast<Size*>(a->value)->value;
 
-			printStatement(a);
 			Register* reg = rr.alloc(sz);
 			a->value = reg;
 			regs.push_back(reg);
@@ -151,8 +150,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 					break;
 			}
 			case SCAN: {
-					compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
-					for (Value* v : fc->params) {
+						for (Value* v : fc->params) {
 						auto [sz, prec] = getSize(v, fn, false);
 						CompilationToken ct = compileValue(v, fn);
 						switch (sz) {
@@ -161,9 +159,16 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 								auto label = "SCANSTR"+to_string(dataLabelIdx);
 								dataLabelIdx++;
 								addToData(label+" db '????????????????????????????????????????????????????????????????',0");
+
+								compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 								compileInstruction(MOV2, rr.regs8[1],new CompilationToken("scanfmt",COMPILETIME_PTR),fn,LONG_SIZE);
 								compileInstruction(MOV2, rr.regs8[2],new CompilationToken(label,COMPILETIME_PTR),fn,LONG_SIZE);
 								fn->fbody << "call [scanf]"<<endl;
+
+								compileInstruction(MOV2, rr.regs8[1],new CompilationToken("charfmt",COMPILETIME_PTR),fn,LONG_SIZE);
+								compileInstruction(MOV2, rr.regs8[2],new CompilationToken("chardiscard",COMPILETIME_PTR),fn,LONG_SIZE);
+								fn->fbody << "call [scanf]"<<endl;
+								compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 
 								const Register *reg = rr.alloc(STRPTR_SIZE);
 								fn->fbody << "mov " << reg->reg << "," << label << endl;
@@ -173,20 +178,22 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 							}
 						case 4:
 							fn->fbody << "lea "<<rr.regs8[0]->reg<<"," << ct.line << endl;
+							compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
+
 							compileInstruction(MOV2, rr.regs8[1],new CompilationToken("intfmt",COMPILETIME_PTR),fn,LONG_SIZE);
 							compileInstruction(MOV2, rr.regs8[2],rr.regs8[0],fn,LONG_SIZE);
 							fn->fbody << "call [scanf]"<<endl;
+							compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 
 							// fn->fbody << "scanint " << ct.line << endl; break;
 						default: break;
 						}
 					}
-					compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					break;
 			}
 			case BEEP:
 				{
-					compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
+					compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					if(fc->params.empty())
 					{
 
@@ -217,7 +224,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 							}
 						}
 					}
-					compileInstruction(SUB2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
+					compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					break;
 				}
 			default:{
@@ -277,11 +284,11 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 		fn->fbody << label << ":" << endl;
 		compileInstruction(CMP2, whils->condition, new Boolean(true), fn, BOOL_SIZE);
-		compileInstruction(JNZ1, new CompilationToken(label2), nullptr, fn, BOOL_SIZE);
+		compileInstruction(JNZ1, new CompilationToken(label2,COMPILETIME_PTR), nullptr, fn, BOOL_SIZE);
 
 		compileStatement(whils->whileBlock, fn);
 
-		compileInstruction(JMP1, new CompilationToken(label), nullptr, fn, BOOL_SIZE);
+		compileInstruction(JMP1, new CompilationToken(label,COMPILETIME_PTR), nullptr, fn, BOOL_SIZE);
 
 		fn->fbody << label2 << ":" << endl;
 		return;
@@ -295,11 +302,11 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			if(ifs->elseBlock != nullptr)
 				dataLabelIdx++;
 			compileInstruction(CMP2, ifs->condition, new Boolean(true), fn, BOOL_SIZE);
-			compileInstruction(JNZ1, new CompilationToken(label), nullptr, fn, BOOL_SIZE);
+			compileInstruction(JNZ1, new CompilationToken(label, COMPILETIME_PTR), nullptr, fn, BOOL_SIZE);
 
 			compileStatement(ifs->ifBlock, fn);
 			if(ifs->elseBlock != nullptr)
-				compileInstruction(JMP1, new CompilationToken(label2), nullptr, fn, BOOL_SIZE);
+				compileInstruction(JMP1, new CompilationToken(label2, COMPILETIME_PTR), nullptr, fn, BOOL_SIZE);
 
 			fn->fbody << label << ":" << endl;
 			if(ifs->elseBlock != nullptr)
@@ -500,8 +507,8 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 				}
 				else {
 					Register* reg = rr.alloc(getSize(op, fn, false));
-					compileInstruction(MOV2, reg, &o1, fn, sz);
-					compileInstruction(CMP2, reg, &o2, fn, sz);
+					compileInstruction(MOV2, reg, op, fn, sz);
+					compileInstruction(CMP2, reg, op2, fn, sz);
 					rr.free(reg);
 				}
 				break;

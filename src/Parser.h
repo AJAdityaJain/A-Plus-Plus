@@ -308,24 +308,9 @@ struct IfStatement final: Statement {
 		delete elseBlock;
 	}
 
-	IfStatement(Value* con, CodeBlock* ifb) {
+	IfStatement(Value* con, CodeBlock* ifb, CodeBlock* elseb) {
 		condition = con;
 		ifBlock = ifb;
-	}
-
-};
-struct ElseStatement final: Statement {
-	CodeBlock* elseBlock;
-
-	StatementType getType()override {
-		return ELSE_STMT;
-	}
-
-	~ElseStatement() override {
-		delete elseBlock;
-	}
-
-	explicit ElseStatement(CodeBlock* elseb) {
 		elseBlock = elseb;
 	}
 
