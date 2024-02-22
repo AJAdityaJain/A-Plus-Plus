@@ -60,12 +60,24 @@ struct Pointer final: Value {
 struct CompilationToken final:Value {
 	string line;
 	CompilationTokenType type;
+	AsmSize sz{};
 	StatementType getType()override {
 		return COMPILETIME_TOKEN;
 	}
-	explicit CompilationToken(const string& line,const  CompilationTokenType type=COMPILETIME_NONE) {
+	explicit CompilationToken(const string& line, const AsmSize sz ,const  CompilationTokenType type=COMPILETIME_NONE) {
 		this->line = line;
+		this->sz = sz;
 		this->type = type;
+	}
+	explicit CompilationToken(const Pointer* ptr) {
+		this->line = ptr->ptr;
+		this->sz = ptr->size;
+		this->type = COMPILETIME_PTR;
+	}
+	explicit CompilationToken(const Register* reg) {
+		this->line = reg->reg;
+		this->sz = reg->size;
+		this->type = COMPILETIME_REGISTER;
 	}
 
 	CompilationToken(): type(COMPILETIME_NONE) {}
@@ -253,14 +265,14 @@ struct RegisterRegister {
 };
 
 struct Compiler {
-
-	
 	unsigned int operationLabelIdx = 0;
 	unsigned int dataLabelIdx = 0;
 
 	RegisterRegister rr;
 	ofstream File;
 	stringstream data;
+
+	vector<Variable> globalRefs;
 
 	Compiler() {
 		addToData("intfmt db '%d'");
@@ -388,5 +400,5 @@ struct Compiler {
 
 	CompilationToken compileValue(Value* v, Func* fn);
 
-	static AsmSize getSize(Value* v, Func* fn, bool inp);
+	AsmSize getSize(Value* v, Func* fn, bool inp);
 };

@@ -120,6 +120,7 @@ enum InBuiltIds {
 enum INSTRUCTION {
 	CDQ0,
 
+	NOT1,
 	NEG1,
 	IDIV1,
 
@@ -131,8 +132,12 @@ enum INSTRUCTION {
 	SETNE1,
 	SETG1,
 	SETGE1,
+	SETA1,
+	SETAE1,
 	SETL1,
 	SETLE1,
+	SETB1,
+	SETBE1,
 
 	MOV2,
 

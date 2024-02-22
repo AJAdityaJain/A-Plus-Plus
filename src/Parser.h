@@ -39,6 +39,7 @@ struct CodeBlock final : Statement {
 	vector<Statement*> code;
 	string stopPtr;
 	string skipPtr;
+	string returnPtr;
 
 	~CodeBlock() override {
 		code.clear();
@@ -208,7 +209,7 @@ struct Reference final: Value
 	}
 
 };
-struct FuncCall final: Statement {
+struct FuncCall final: Value {
 	IdentifierToken name;
 	vector<Value*> params;
 
@@ -233,6 +234,7 @@ struct Func final: Statement {
 	IdentifierToken name;
 	int params;
 	CodeBlock* body;
+	AsmSize returns{};
 
 	vector<Variable> varsStack;
 	vector<int> scopesStack;
@@ -246,21 +248,24 @@ struct Func final: Statement {
 	~Func () override {
 		delete body;
 	}
-	Func(IdentifierToken nam , CodeBlock* val, const int params = 0) : name(std::move(nam)) {
+	Func(IdentifierToken nam , CodeBlock* val, const AsmSize returns, const int params = 0) : name(std::move(nam)) {
 		body = val;
 		this->params = params;
+		this->returns = returns;
 	}	
 };
 
 struct Interupt final: Statement {
 	TokenType type;
+	Value* value;
 
 	StatementType getType()override {
 		return INTERUPT;
 	}
 
-	explicit Interupt(const TokenType type) {
+	explicit Interupt(const TokenType type, Value* value = nullptr) {
 		this->type = type;
+		this->value = value;
 	}
 
 };
@@ -290,6 +295,10 @@ struct WhileStatement final: Statement {
 	Value* condition;
 	CodeBlock* whileBlock;
 
+	void SetParentLoop(const string&returnPtr) const
+	{
+		whileBlock->returnPtr = returnPtr;
+	}
 
 	StatementType getType()override {
 		return WHILE_STMT;
@@ -311,13 +320,15 @@ struct IfStatement final: Statement {
 	CodeBlock* ifBlock;
     CodeBlock* elseBlock = nullptr;
 
-	void SetParentLoop(const string& stopPtr,const string& skipPtr) const {
+	void SetParentLoop(const string& stopPtr,const string& skipPtr, const string&returnPtr) const {
 		ifBlock->stopPtr = stopPtr;
 		ifBlock->skipPtr = skipPtr;
+		ifBlock->returnPtr = returnPtr;
 		if (elseBlock != nullptr)
 		{
 			elseBlock->stopPtr = stopPtr;
 			elseBlock->skipPtr = skipPtr;
+			elseBlock->returnPtr = returnPtr;
 		}
 	}
 

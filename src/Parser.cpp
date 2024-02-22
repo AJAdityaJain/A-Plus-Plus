@@ -11,6 +11,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 
 	if (size == 1) {
 		switch (st0) {
+		case RETURN:return new Interupt(RETURN);
 		case STOP:return new Interupt(STOP);
 		case SKIP:return new Interupt(SKIP);
 		case ID:return new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value);
@@ -27,6 +28,11 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 	}
 
 	const TokenType st1 = stack[1]->getType();
+
+	///Return with Val;
+	if(st0 == RETURN){
+		return new Interupt(RETURN,dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.end()),line)));
+	}
 
 	///Scope Definition
 	if (size >= 2 && st0 == CURLY_OPEN && stb == CURLY_CLOSE) {
@@ -57,6 +63,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 	if (st0 == FUNC && st1 == ID) {
 		auto body = new CodeBlock();
 		SizeToken* sizeToken = nullptr;
+		AsmSize returns{};
 		int params = 0;
 		int bi = -1;
 		int depth = 0;
@@ -64,6 +71,10 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 			const TokenType t = stack[i]->getType();
 			if (t == CURLY_OPEN && depth == 0) {
 				bi = i;
+			}
+			if(t == COLON && depth == 0 && bi == -1)
+			{
+				returns = dynamic_cast<SizeToken*>(stack[i+1])->value;
 			}
 			if (depth == 1 && bi == -1)
 			{
@@ -82,7 +93,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 		{
 			body->code.push_back(ln);
 		}
-		return new Func(*dynamic_cast<IdentifierToken*>(stack[1]), body,params);
+		return new Func(*dynamic_cast<IdentifierToken*>(stack[1]), body,returns,params);
 	}
 
 	//Array def
