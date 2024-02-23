@@ -181,10 +181,9 @@ struct RegisterRegister {
 	vector<int> rspOff = vector<int>();
 
 	vector<Register*> saves = vector<Register*>();
-	vector<int> scratches = vector<int>();
 
-	vector<int> regIdx = vector<int>();
-	vector<int> xmmIdx = vector<int>();
+	int regIdx = -1;
+	int xmmIdx = -1;
 
 
 	[[nodiscard]] Register* A(const AsmSize sz) const {
@@ -213,14 +212,14 @@ struct RegisterRegister {
 	Register* alloc(const AsmSize sz) {
 		Register* rptr;
 		if (sz.prec <= 0) {
-			regIdx.back()++;
-			if (regIdx.back() >= 14) aThrowError(OVERFLOW_REGISTER,-1);
-			rptr = regs8[regIdx.back()];
+			regIdx++;
+			if (regIdx >= 14) aThrowError(OVERFLOW_REGISTER,-1);
+			rptr = regs8[regIdx];
 		}
 		else {
-			xmmIdx.back()++;
-			if (xmmIdx.back() >= 16) aThrowError(OVERFLOW_REGISTER, -1);
-			rptr = regsXMM[xmmIdx.back()];
+			xmmIdx++;
+			if (xmmIdx >= 16) aThrowError(OVERFLOW_REGISTER, -1);
+			rptr = regsXMM[xmmIdx];
 		}
 
 		if (rptr != nullptr) if (rptr->isPreserved) {
@@ -240,21 +239,21 @@ struct RegisterRegister {
 	}
 	void free(const Register* r) {
 		if (r->size.prec > 0)
-			xmmIdx.back()--;
+			xmmIdx--;
 		else
-			regIdx.back()--;
+			regIdx--;
 	}
 	[[nodiscard]] Register* realloc(const AsmSize sz) const {
 		if (sz.prec > 0) {
-			Register* r = regsXMM[xmmIdx.back()];
+			Register* r = regsXMM[xmmIdx];
 			r->size = sz;
 			return r;
 		}
 		switch (sz.sz) {
-		case 1: return regs1[regIdx.back()];
-		case 2: return regs2[regIdx.back()];
-		case 4: return regs4[regIdx.back()];
-		case 8: return regs8[regIdx.back()];
+		case 1: return regs1[regIdx];
+		case 2: return regs2[regIdx];
+		case 4: return regs4[regIdx];
+		case 8: return regs8[regIdx];
 			default:aThrowError(OVERSIZED_VALUE, -1);
 		}
 
@@ -289,8 +288,6 @@ struct Compiler {
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		rr.rspOff.push_back(0);
-		rr.regIdx.push_back(-1);
-		rr.xmmIdx.push_back(-1);
 	}
 	void epilogue(Func* fn) {
 		for (int i = 0; i < fn->scopesStack.back(); i++)
@@ -299,8 +296,6 @@ struct Compiler {
 		}
 		fn->fbody << "add rsp," << rr.rspOff.back() << endl;
 
-		rr.regIdx.pop_back();
-		rr.xmmIdx.pop_back();
 		rr.rspOff.pop_back();
 		fn->scopesStack.pop_back();
 
@@ -338,13 +333,13 @@ struct Compiler {
 		rr.saves.shrink_to_fit();
 	}
 	void saveScratch(Func* fn) {
-		for (int i = 0; i <= rr.regIdx.back(); i++) {
+		for (int i = 0; i <= rr.regIdx; i++) {
 			if (!rr.regs8[i]->isPreserved)
 				fn->fbody << "push " << rr.regs8[i]->reg << endl;
 			else
 				break;
 		}
-		for (int i = 0; i <= rr.xmmIdx.back(); i++) {
+		for (int i = 0; i <= rr.xmmIdx; i++) {
 			if (!rr.regsXMM[i]->isPreserved) {
 
 				fn->fbody << "sub rsp, 8" << endl;
@@ -354,17 +349,9 @@ struct Compiler {
 				break;
 		}
 
-		rr.scratches.push_back(rr.regIdx.back());
-		rr.scratches.push_back(rr.xmmIdx.back());
-		rr.regIdx.back() = -1;
-		rr.xmmIdx.back() = -1;
 	}
 	void restoreScratch(Func* fn) {
-		rr.xmmIdx.back() = rr.scratches.back();
-		rr.scratches.pop_back();
-		rr.regIdx.back() = rr.scratches.back();
-		rr.scratches.pop_back();
-		for (int i = rr.xmmIdx.back(); i >= 0 ; i--)
+		for (int i = rr.xmmIdx; i >= 0 ; i--)
 			if (!rr.regsXMM[i]->isPreserved) {
 				fn->fbody << "movsd " << rr.regsXMM[i]->reg << ", QWORD[rsp]" << endl;
 				fn->fbody << "add rsp, 8" << endl;
@@ -372,7 +359,7 @@ struct Compiler {
 			else
 				break;
 
-		for (int i = rr.regIdx.back(); i >= 0 ; i--)
+		for (int i = rr.regIdx; i >= 0 ; i--)
 			if (!rr.regs8[i]->isPreserved)
 				fn->fbody << "pop " << rr.regs8[i]->reg << endl;
 			else
@@ -389,7 +376,7 @@ struct Compiler {
 
 
 
-	void compile(const vector<Statement*>& tree, const string& loc);
+	void compile(const vector<Statement*>& tree,int stack, const string& loc, const string& fasmdir);
 
 	void compileStatement(Statement* b, Func* fn);
 

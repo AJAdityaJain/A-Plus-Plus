@@ -1,8 +1,10 @@
 // ReSharper disable CppDFATimeOver
 #include "Compiler.h"
 
-void Compiler::compile(const vector<Statement*>& tree, const string& loc)
+void Compiler::compile(const vector<Statement*>& tree, const int stack, const string& loc, const string& fasmdir)
 {
+	globalRefs.emplace_back(nullptr, 0, INT_SIZE, IdentifierToken(LEN), 0);
+	globalRefs.emplace_back(nullptr, 0, INT_SIZE, IdentifierToken(SIZEOF), 0);
 	for (const auto st : tree)
 		if (st->getType() == FUNC_DEFINITION)
 		{
@@ -11,7 +13,7 @@ void Compiler::compile(const vector<Statement*>& tree, const string& loc)
 		}
 	File = ofstream(loc);
 
-	File << "format PE64 console\nentry LABFUNC" + to_string(MAIN)+"\ninclude 'MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
+	File << "format PE64 console\nentry LABFUNC" + to_string(MAIN)+"\nstack "+to_string(stack*1024)+"\ninclude '" + fasmdir + "INCLUDE\\MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
 	File <<"strlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n";
 
 	for (Statement* st : tree)
@@ -35,8 +37,6 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 	case FUNC_DEFINITION:
 	{
 		const auto fun = dynamic_cast<Func*>(b);
-		rr.regIdx.push_back(-1);
-		auto regs = vector<Register*>();
 			auto off = 16;
 		for (int i = 0; i < fun->params; i++)
 		{
@@ -45,10 +45,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			off += sz.sz;
 			a->value = new Pointer("[rbp+" + to_string(off)+"]",sz);
 		}
-		for (const auto reg : regs)
-			rr.free(reg);
 
-		rr.regIdx.pop_back() ;
 			fun->body->returnPtr = "LABFUNCEND" + to_string(fun->name.value);
 		compileStatement(fun->body, fun);
 
@@ -414,7 +411,7 @@ Register* Compiler::cast(Value* v, const AsmSize from, const AsmSize to, Func* f
 	else if (from.prec == 2 && to.prec == 1)
 		cvt = "cvtsd2ss ";
 	if(from.sz == 2 )
-		r1 = rr.regs4[rr.regIdx.back()];
+		r1 = rr.regs4[rr.regIdx];
 
 	fn->fbody << cvt << compileValue(r2,fn).line << ", " << compileValue(r1, fn).line << endl;
 	if(regRe)
@@ -582,6 +579,28 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					compileInstruction(ADD2, rr.rsp, new Int(0x20), fn, LONG_SIZE);
 					break;
 				}
+			case LEN:
+				{
+					compileInstruction(MOV2, rr.regs8[1], fc->params[0],fn, STRPTR_SIZE);
+					returnreg = rr.regs4[0];
+					fn->fbody << "	call strlen" << endl;
+					Register* temp = rr.alloc(returnreg->size);
+					compileInstruction(MOV2, temp, returnreg, fn, returnreg->size);
+					rr.free(temp);
+					returnreg = temp;
+					break;
+				}
+				case SIZEOF:
+				{
+					returnreg = rr.regs4[0];
+					int totalsz = 0;
+					for (Value* params : fc->params) {
+						auto [sz, prec] = getSize(params, fn, false);
+						totalsz += sz;
+					}
+					compileInstruction(MOV2, returnreg, new Int(totalsz), fn, returnreg->size);
+					break;
+				}
 			default:{
 
 					int off = 0;
@@ -592,23 +611,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 						compileInstruction(MOV2, new Pointer("[rsp - " + to_string(off) + "]", sz), &ct, fn, sz);
 						off += sz.sz;
 					}
-					// for (const auto param : fc->params)
-					// {
-					// 	AsmSize sz = getSize(param, fn, false);
-					// 	compileInstruction(MOV2, new Pointer("[rsp - " + to_string(off) + "]", sz), param, fn, sz);
-					// 	off += sz.sz;
-					// }
-
-					compileInstruction(SUB2, rr.rsp, new Int(off), fn, LONG_SIZE);
-
-					fn->fbody << "	call LABFUNC" + to_string(fc->name.value) << endl;
-
-					compileInstruction(ADD2, rr.rsp, new Int(off), fn, LONG_SIZE);
-
-					const auto [sz, prec] = getSize(fc,fn,false);
-					if(prec <= 0)
+					const auto sz = getSize(fc,fn,false);
+					if(sz.prec <= 0)
 					{
-						switch(sz)
+						switch(sz.sz)
 						{
 						case 0:;break;
 						case 1:returnreg = rr.regs1[0];break;
@@ -619,6 +625,22 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 						}
 					}
 					else returnreg = rr.regsXMM[0];
+
+					// off += returnreg->size.sz;
+
+					if(off != 0)
+						compileInstruction(SUB2, rr.rsp, new Int(off), fn, LONG_SIZE);
+
+					fn->fbody << "	call LABFUNC" + to_string(fc->name.value) << endl;
+					Register* temp = rr.alloc(sz);
+					compileInstruction(MOV2, temp, returnreg, fn, sz);
+					rr.free(temp);
+					returnreg = temp;
+
+					if(off != 0)
+						compileInstruction(ADD2, rr.rsp, new Int(off), fn, LONG_SIZE);
+
+
 
 				break;
 			}
@@ -742,7 +764,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					}
 					Register* reg = rr.alloc(sz);
 					Register* Areg = rr.A(sz);
-					if (rr.regIdx.back() != 0) {
+					if (rr.regIdx != 0) {
 						compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 						compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 						compileInstruction(MOV2, Areg, reg, fn, sz);
@@ -752,7 +774,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					compileInstruction(MUL2, Areg, new Int(sz.sz),fn,sz);
 					compileInstruction(SUB2, Areg,new Int(static_cast<int>(var.off)),fn,sz);
 					compileInstruction(ADD2,Areg,rr.rbp,fn,sz);
-					if (rr.regIdx.back() != 0) {
+					if (rr.regIdx != 0) {
 						compileInstruction(MOV2, reg, Areg, fn, sz);
 						compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 						compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
@@ -789,13 +811,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					Register* Areg = rr.A(sz);
 					for (const auto & invoperand : mo->invoperands)
 					{
-						if (rr.regIdx.back() != 0) {
+						if (rr.regIdx != 0) {
 							compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 							compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 							compileInstruction(MOV2, Areg, reg, fn, sz);
 						}
 						Register* diver = rr.alloc(sz);
-						if (rr.regIdx.back() == 2) {
+						if (rr.regIdx == 2) {
 							Register* diver2 = rr.alloc(sz);
 							compileInstruction(MOV2, diver2, invoperand, fn, sz);
 							compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
@@ -809,7 +831,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 						}
 						rr.free(diver);
 
-						if (rr.regIdx.back() != 0) {
+						if (rr.regIdx != 0) {
 							compileInstruction(MOV2, reg, Areg, fn, sz);
 							compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 							compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
@@ -832,13 +854,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 
 			for (size_t i = 1; i < mo->operands.size(); i++)
 			{
-				if (rr.regIdx.back() != 0) {
+				if (rr.regIdx != 0) {
 					compileInstruction(SUB2, rr.rsp, new Int(sz.sz), fn, sz);
 					compileInstruction(MOV2, new Pointer("[rsp]", sz), Areg, fn, sz);
 					compileInstruction(MOV2, Areg, reg, fn, sz);
 				}
 				Register* diver = rr.alloc(sz);
-				if (rr.regIdx.back() == 2) {
+				if (rr.regIdx == 2) {
 					Register* diver2 = rr.alloc(sz);
 					compileInstruction(MOV2, diver2, mo->operands[i], fn, sz);
 					compileInstruction(CDQ0, nullptr, nullptr, fn, sz);
@@ -853,7 +875,7 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				compileInstruction(MOV2, reg, Dreg, fn, sz);
 				rr.free(diver);
 
-				if (rr.regIdx.back() != 0) {
+				if (rr.regIdx != 0) {
 					compileInstruction(MOV2, Areg, new Pointer("[rsp]", sz), fn, sz);
 					compileInstruction(ADD2, rr.rsp, new Int(sz.sz), fn, sz);
 				}

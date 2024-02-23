@@ -3,6 +3,7 @@
 Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line) { // NOLINT(*-no-recursion)
 
 	const size_t size = stack.size();
+	bool mismatched = false;
 
 	if (size == 0)aThrowError(ILLEGAL_EXPRESSION, line);
 
@@ -241,7 +242,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 			}
 			if (depth == 0)
 				return parseStatement(vector(stack.begin() + 1, stack.end() - 1),line);
-			aThrowError(MISMATCHED_BRACKET,line);
+		mismatched = true;
 	}
 
 
@@ -323,6 +324,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 		}
 		return new UnaryOperation(uop,dynamic_cast<Value*>( parseStatement(vector(stack.begin() + 1, stack.end()),line)));
 	}
+	if(mismatched)
+		aThrowError(MISMATCHED_BRACKET,line);
 	aThrowError(UNKNOWN_STATEMENT,line);
 	return nullptr;
 }

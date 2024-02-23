@@ -114,7 +114,9 @@ enum InBuiltIds {
 	MAIN,
 	PRINT,
 	SCAN,
-	BEEP
+	BEEP,
+	LEN,
+	SIZEOF
 };
 
 enum INSTRUCTION {

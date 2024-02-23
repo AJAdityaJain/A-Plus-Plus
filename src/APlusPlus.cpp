@@ -5,6 +5,7 @@ int main(const int argc, char* argv[])
 {
 	filesystem::path base = exeDirectory();
 	filesystem::path TEMPFOLDER = base.parent_path().string().append("\\TEMP\\");
+	filesystem::path fasmdir = base.parent_path().string().append("\\FASM\\");
 	string input;
 	string output;
 	string midput;
@@ -100,9 +101,9 @@ int main(const int argc, char* argv[])
 		if(isDebug)
 			printTree(tree);
 		auto compiler = Compiler();
-		compiler.compile(tree, midput);
+		compiler.compile(tree, 256, midput, fasmdir.string());
 		for (const Statement* s : tree) delete s;
-		system(("fasm "+ midput + " " + output).c_str());
+		system((fasmdir.string() + "FASM.exe "+ midput + " " + output).c_str());
 	}
 	for (const auto & entry : filesystem::directory_iterator(TEMPFOLDER))
 		if(filesystem::file_time_type::clock::now()-entry.last_write_time() > 5min)
