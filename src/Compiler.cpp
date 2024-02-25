@@ -14,7 +14,7 @@ void Compiler::compile(const vector<Statement*>& tree, const int stack, const st
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry LABFUNC" + to_string(MAIN)+"\nstack "+to_string(stack*1024)+"\ninclude '" + fasmdir + "INCLUDE\\MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
-	File <<"strlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n";
+	File <<"\nstrlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n\ngetchar:\ncmp edx, dword [rcx]\njge retnone\n	add rcx, rdx\n	add rcx,  8\n	mov al, byte [rcx]\n	ret\n	retnone:\n	mov al, -1\nret\n\naddchar:\n		mov eax, dword [rcx +4]\n		sub eax, dword [rcx]\n		cmp eax, 8\n		jne recharskip\n			push rdx\n				mov eax, dword [ecx + 4]\n				imul rax, 2\n				mov dword[ecx + 4], eax\n				sub rsp, 32\n					mov r9, rax\n					mov r8, rcx\n					mov rdx, 0\n					mov rcx, [hHeap]\n					call [HeapReAlloc]\n				add rsp, 32\n				mov rcx, rax\n			pop rdx\n		recharskip:\n		mov rax, rcx	\n		mov ecx, dword [rax]\n		add rax, rcx\n		add rax, 8\n		mov byte [rax+1], 0 \n		mov byte [rax], dl	\n		sub rax, 8\n		sub rax, rcx\n		add ecx, 1\n		mov dword [rax], ecx\nret\n\ngenstr:\n	push rcx\n	sub rsp, 32\n		mov r8, rcx\n		mov rcx, [hHeap]\n		mov rdx, 0\n		call [HeapAlloc]\n	add rsp, 32\n	pop rcx\n	mov dword [rax], 0\n	mov dword [rax+4], ecx\nret\n\ndelstr:\n	sub rsp, 32\n			mov r8, rcx \n			mov rdx, 0\n			mov rcx, [hHeap]\n			call [HeapFree]	\n	add rsp, 32\nret\n\n\n";
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -23,7 +23,7 @@ void Compiler::compile(const vector<Statement*>& tree, const int stack, const st
 	File << data.str();
 
 
-	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess',\\beep,'Beep'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
+	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess',\\beep,'Beep',\\HeapCreate, 'HeapCreate',\\HeapAlloc, 'HeapAlloc',\\HeapReAlloc, 'HeapReAlloc',\\HeapFree, 'HeapFree'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
 	File.close();
 }
 
@@ -53,7 +53,10 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		File << "LABFUNC" + to_string(fun->name.value) << ":" << endl;
 		File << "push rbp" << endl;
 		File << "mov rbp, rsp" << endl;
-		if (fun->name.value == MAIN) File << "and rsp, 0xFFFFFFFFFFFFFFF0" << endl;
+		if (fun->name.value == MAIN)
+		{
+			File << "and rsp, 0xFFFFFFFFFFFFFFF0\n;heapcreate\ncall [HeapCreate]\n mov [hHeap], rax" << endl;
+		}
 		savePreserved();
 		File << endl;
 		File << fun->fbody.str();
@@ -104,6 +107,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 
 							compileInstruction(MOV2,returnreg,inter->value,fn,returnreg->size);
 						}
+						fn->fbody << "add rsp," << rr.rspOff.back() << endl;
 						fn->fbody << "jmp " << scope->returnPtr << endl;
 						break;
 					}
@@ -114,6 +118,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			}
 			else compileStatement(i, fn);
 		}
+
+			fn->fbody << "add rsp," << rr.rspOff.back() << endl;
 
 		epilogue(fn);
 
@@ -603,7 +609,13 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 				}
 			default:{
 
-					int off = 0;
+					int align = 0;
+					for (int i = fc->params.size() - 1; i >= 0; --i) // NOLINT(*-narrowing-conversions)
+					{
+						auto [sz, prec] = getSize(fc->params[i], fn, false);
+						align += sz;
+					}
+					int off = ((align / ALIGN) * ALIGN)+ALIGN - align;
 					for (int i = fc->params.size() - 1; i >= 0; --i) // NOLINT(*-narrowing-conversions)
 					{
 						AsmSize sz = getSize(fc->params[i], fn, false);
@@ -627,15 +639,17 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 					else returnreg = rr.regsXMM[0];
 
 					// off += returnreg->size.sz;
-
 					if(off != 0)
 						compileInstruction(SUB2, rr.rsp, new Int(off), fn, LONG_SIZE);
 
 					fn->fbody << "	call LABFUNC" + to_string(fc->name.value) << endl;
-					Register* temp = rr.alloc(sz);
-					compileInstruction(MOV2, temp, returnreg, fn, sz);
-					rr.free(temp);
-					returnreg = temp;
+					if((returnreg->size.prec <= 0 && rr.regIdx != -1)||(returnreg->size.prec > 0 && rr.xmmIdx != -1))
+					{
+						Register* temp = rr.alloc(sz);
+						compileInstruction(MOV2, temp, returnreg, fn, sz);
+						rr.free(temp);
+						returnreg = temp;
+					}
 
 					if(off != 0)
 						compileInstruction(ADD2, rr.rsp, new Int(off), fn, LONG_SIZE);

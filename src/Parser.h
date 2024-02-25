@@ -30,7 +30,10 @@ struct Statement {
 };
 
 struct Value : Statement {};
-
+struct Heaped : Value
+{
+	int off = -1;
+};
 
 
 
@@ -142,7 +145,7 @@ struct Long final: Value
 
 	explicit Long(const long val) : value(val) {}
 };
-struct String final : Value
+struct String final : Heaped
 {
 
 	string value;

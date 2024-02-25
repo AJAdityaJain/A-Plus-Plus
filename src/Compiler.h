@@ -279,6 +279,7 @@ struct Compiler {
 		addToData("scanfmt db '%[^',10,']s'");
 		addToData("charfmt db '%c'");
 		addToData("chardiscard db '?'");
+		addToData("hHeap dq 0");
 		rr = RegisterRegister();
 	}
 
@@ -294,7 +295,6 @@ struct Compiler {
 		{
 			fn->varsStack.pop_back();
 		}
-		fn->fbody << "add rsp," << rr.rspOff.back() << endl;
 
 		rr.rspOff.pop_back();
 		fn->scopesStack.pop_back();
