@@ -14,7 +14,7 @@ void Compiler::compile(const vector<Statement*>& tree, const int stack, const st
 	File = ofstream(loc);
 
 	File << "format PE64 console\nentry LABFUNC" + to_string(MAIN)+"\nstack "+to_string(stack*1024)+"\ninclude '" + fasmdir + "INCLUDE\\MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
-	File <<"\nstrlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n\ngetchar:\ncmp edx, dword [rcx]\njge retnone\n	add rcx, rdx\n	add rcx,  8\n	mov al, byte [rcx]\n	ret\n	retnone:\n	mov al, -1\nret\n\naddchar:\n		mov eax, dword [rcx +4]\n		sub eax, dword [rcx]\n		cmp eax, 8\n		jne recharskip\n			push rdx\n				mov eax, dword [ecx + 4]\n				imul rax, 2\n				mov dword[ecx + 4], eax\n				sub rsp, 32\n					mov r9, rax\n					mov r8, rcx\n					mov rdx, 0\n					mov rcx, [hHeap]\n					call [HeapReAlloc]\n				add rsp, 32\n				mov rcx, rax\n			pop rdx\n		recharskip:\n		mov rax, rcx	\n		mov ecx, dword [rax]\n		add rax, rcx\n		add rax, 8\n		mov byte [rax+1], 0 \n		mov byte [rax], dl	\n		sub rax, 8\n		sub rax, rcx\n		add ecx, 1\n		mov dword [rax], ecx\nret\n\ngenstr:\n	push rcx\n	sub rsp, 32\n		mov r8, rcx\n		mov rcx, [hHeap]\n		mov rdx, 0\n		call [HeapAlloc]\n	add rsp, 32\n	pop rcx\n	mov dword [rax], 0\n	mov dword [rax+4], ecx\nret\n\ndelstr:\n	sub rsp, 32\n			mov r8, rcx \n			mov rdx, 0\n			mov rcx, [hHeap]\n			call [HeapFree]	\n	add rsp, 32\nret\n\n\n";
+	File <<"\nstrlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n\ngetchar:\nadd rcx, 8\ncmp edx, dword [rcx]\njge retnone\n	add rcx, rdx\n	add rcx,  8\n	mov al, byte [rcx]\n	ret\n	retnone:\n	mov al, -1\nret\n\naddchar:\n	sub rcx, 8\n		mov eax, dword [rcx +4]\n		sub eax, dword [rcx]\n		cmp eax, 8\n		jne recharskip\n			push rdx\n				mov eax, dword [ecx + 4]\n				imul rax, 2\n				mov dword[ecx + 4], eax\n				sub rsp, 32\n					mov r9, rax\n					mov r8, rcx\n					mov rdx, 0\n					mov rcx, [hHeap]\n					call [HeapReAlloc]\n				add rsp, 32\n				mov rcx, rax\n			pop rdx\n		recharskip:\n		mov rax, rcx	\n		mov ecx, dword [rax]\n		add rax, rcx\n		add rax, 8\n		mov byte [rax+1], 0 \n		mov byte [rax], dl	\n		sub rax, 8\n		sub rax, rcx\n		add ecx, 1\n		mov dword [rax], ecx\n		add rax, 8\nret\n\ngenstr:\n	push rcx\n	sub rsp, 32\n		mov r8, rcx\n		mov rcx, [hHeap]\n		mov rdx, 0\n		call [HeapAlloc]\n	add rsp, 32\n	pop rcx\n	mov dword [rax], 0\n	mov dword [rax+4], ecx\n	add rax, 8\nret\n\ngenstrlab: \n	push rcx\n		call strlen\n	pop rcx\n	push rcx\n		sub rsp, 32\n			mov r8, rax\n			mov rcx, [hHeap]\n			mov rdx, 0\n			call [HeapAlloc]\n		add rsp, 32\n	pop rcx\n\n	mov dword [rax], 0\n	mov dword [rax+4], ecx\n\n	add rax, 8\n	push rax\n		genloop:\n			mov dl, byte [rcx]\n			mov byte[rax], dl\n			inc rax\n			inc rcx\n			; mov dl, byte [rcx]\n			test dl, dl\n		jnz genloop\n	pop rax\n\nret\n\ndelstr:\n	sub rcx, 8\n	sub rsp, 32\n			mov r8, rcx \n			mov rdx, 0\n			mov rcx, [hHeap]\n			call [HeapFree]	\n	add rsp, 32\nret\n\n\n";
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -49,14 +49,14 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			fun->body->returnPtr = "LABFUNCEND" + to_string(fun->name.value);
 		compileStatement(fun->body, fun);
 
-
 		File << "LABFUNC" + to_string(fun->name.value) << ":" << endl;
+			if (fun->name.value == MAIN)
+				File << "mov     rax,rsp\nand     rax,0FFFFFFFFFFFFFFF0h\ntest    rsp,1111b\ncmovnz  rsp,rax" << endl;
+
 		File << "push rbp" << endl;
 		File << "mov rbp, rsp" << endl;
-		if (fun->name.value == MAIN)
-		{
-			File << "and rsp, 0xFFFFFFFFFFFFFFF0\n;heapcreate\ncall [HeapCreate]\n mov [hHeap], rax" << endl;
-		}
+			if (fun->name.value == MAIN)
+			File << "\nxor rcx, rcx\nxor rdx, rdx\nxor r8, r8\ncall [HeapCreate]\n mov [hHeap], rax" << endl;
 		savePreserved();
 		File << endl;
 		File << fun->fbody.str();
@@ -64,9 +64,9 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 		File << "LABFUNCEND" + to_string(fun->name.value) << ":" << endl;
 		restorePreserved();
 		File << "mov rsp, rbp" << endl;
-		File << "pop rbp;" << endl;
 		if (fun->name.value == MAIN) File << "\nmov rcx,0\ncall [exit]" << endl;
-		else File << "ret" << endl;
+		File << "pop rbp;" << endl;
+		File << "ret" << endl;
 
 		fun->fbody.str(std::string());
 		fun->fbody.clear();
@@ -89,6 +89,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 				{
 				case RETURN:
 					{
+						unsigned int returnvaraddrs = -1;
 						if(inter->value != nullptr)
 						{
 							Register* returnreg = nullptr;
@@ -106,8 +107,23 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 							else returnreg = rr.regsXMM[0];
 
 							compileInstruction(MOV2,returnreg,inter->value,fn,returnreg->size);
+
+							switch(inter->value->getType()){
+							case REFERENCE:
+								{
+									unsigned int name = dynamic_cast<Reference*>(inter->value)->value;
+									for(const auto& var : fn->varsStack)
+										if(var.name.value == name)
+										{
+											returnvaraddrs = var.off;
+											break;
+										}
+									break;
+								}
+							default: break;
+							}
 						}
-						fn->fbody << "add rsp," << rr.rspOff.back() << endl;
+						epiloguefree(fn,returnvaraddrs);
 						fn->fbody << "jmp " << scope->returnPtr << endl;
 						break;
 					}
@@ -119,10 +135,8 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			else compileStatement(i, fn);
 		}
 
-			fn->fbody << "add rsp," << rr.rspOff.back() << endl;
-
+			epiloguefree(fn, -1);
 		epilogue(fn);
-
 		return;
 	}
 	case WHILE_STMT: {
@@ -168,71 +182,61 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			}
 			return;
 		}
-	case ASSIGNMENT: {
-		const auto* a = dynamic_cast<Assignment*>(b);
-		const AsmSize sz = getSize(a->value, fn, false);
-
-		for (int i = 0; i < fn->varsStack.size(); i++)
-			if (fn->varsStack[i].name.value == a->name.value ) {
-				if(fn->varsStack[i].size.sz != sz.sz || fn->varsStack[i].size.prec != sz.prec)aThrowError(ASSIGNED_WRONG_TYPE, -1);
-				INSTRUCTION ins = MOV2;
-				switch (a->type)
+	case ASSIGNMENT:
+		{
+			const auto* a = dynamic_cast<Assignment*>(b);
+			AsmSize sz = getSize(a->value, fn, false);
+			//Re asssignment
+			for (int i = 0; i < fn->varsStack.size(); i++)
+				if (fn->varsStack[i].name.value == a->name.value )
 				{
-				case EQUALS: {
-					ins = MOV2;
-					break;
-				}
-				case PLUS_EQUAL: {
-					ins = ADD2;
-					break;
-				}
-				case MINUS_EQUAL: {
-					ins = SUB2;
-					break;
-				}
-				case MULTIPLY_EQUAL: {
-					ins = MUL2;
-					break;
-				}
-				case BITWISE_OR_EQUAL: {
-					ins = OR2;
-					break;
-				}
-				case BITWISE_AND_EQUAL: {
-					ins = AND2;
-					break;
-				}
-				default: break;
+					AsmSize vsz = fn->varsStack[i].size;
+					if(vsz.sz != sz.sz || vsz.prec != sz.prec)aThrowError(ASSIGNED_WRONG_TYPE, -1);
+					INSTRUCTION ins = MOV2;
+					switch (a->type)
+					{
+					case EQUALS:			ins = MOV2;break;
+					case PLUS_EQUAL:		ins = ADD2;break;
+					case MINUS_EQUAL:		ins = SUB2;break;
+					case MULTIPLY_EQUAL:	ins = MUL2;break;
+					case BITWISE_OR_EQUAL:	ins = OR2; break;
+					case BITWISE_AND_EQUAL: ins = AND2;break;
+					default: break;
+					}
+
+					compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i].off) + "]", fn->varsStack[i].size), a->value, fn, sz);
+					return;
 				}
 
-				compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i].off) + "]", fn->varsStack[i].size), a->value, fn, sz);
+
+			//actually doing the changes on stack
+			if(a->value->getType() == STRING_STMT)
+			{
+				a->value = new CompilationToken(compileValue(a->value,fn));
+			}
+			const int szonstack = static_cast<int>(ceil(static_cast<double>(sz.sz)/ALIGN)*ALIGN);
+			fn->scopesStack.back()++;
+			if (fn->varsStack.empty()) {
+				compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
+				compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
+				rr.rspOff.back() += szonstack;
+				fn->varsStack.emplace_back(a->value, sz.sz, sz, a->name);
 				return;
 			}
+			const Variable v = fn->varsStack.back();
+			if (v.size.sz == sz.sz && v.share > 0) {
+				compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v.share-sz.sz) + "]", sz), a->value, fn, sz);
+				fn->varsStack.emplace_back(a->value,v.off+sz.sz, sz, a->name, v.share);
+			}
+			else {
+				compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
+				compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
+				rr.rspOff.back() += szonstack;
+				fn->varsStack.emplace_back(a->value,v.off + sz.sz + v.share, sz, a->name);
+			}
 
-		//FUTURE PROOF THIS
-
-		const int szonstack = static_cast<int>(ceil(static_cast<double>(sz.sz)/ALIGN)*ALIGN);
-		fn->scopesStack.back()++;
-		if (fn->varsStack.empty()) {
-			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
-			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
-			rr.rspOff.back() += szonstack;
-			fn->varsStack.emplace_back(a->value, sz.sz, sz, a->name);
 			return;
 		}
-		if (const Variable v = fn->varsStack.back(); v.size.sz == sz.sz && v.share > 0) {
-			compileInstruction(MOV2, new Pointer("[rsp + "+to_string(v.share-sz.sz) + "]", sz), a->value, fn, sz);
-			fn->varsStack.emplace_back(a->value,v.off+sz.sz, sz, a->name, v.share);
-		}
-		else {
-			compileInstruction(MOV2, new Pointer("[rsp-" + to_string(sz.sz) + "]", sz), a->value, fn, sz);
-			compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
-			rr.rspOff.back() += szonstack;
-			fn->varsStack.emplace_back(a->value,v.off + sz.sz + v.share, sz, a->name);
-		}
-
-		return;
-	}
 	default: compileValue(dynamic_cast<Value*>(b),fn);// aThrowError(UNKNOWN_STATEMENT, -1);
 	}
 }
@@ -693,10 +697,10 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 	}
 	case STRING_STMT: {
 		auto* fpt = dynamic_cast<String*>(v);
-		string label = "LABDAT" + to_string(fpt->label);
-		if (fpt->label == -1) {
+		if (fpt->label == -1)
+		{
 			fpt->label = dataLabelIdx;
-			label = "LABDAT" + to_string(fpt->label);
+			string label = "LABDAT" + to_string(fpt->label);
 			stringstream fmt;
 			for (int i = 0; i < fpt->value.length(); i++)
 			{
@@ -710,8 +714,33 @@ CompilationToken Compiler::compileValue(Value* v, Func* fn) { // NOLINT(*-no-rec
 			}
 			addToData(label + " db '" + fmt.str() + '\'');
 			dataLabelIdx++;
+
+			saveScratch(fn);
+			fn->fbody << "mov rcx, " << label << endl;
+			fn->fbody << "call genstrlab" << endl;
+			fn->fbody << "sub rsp, " << ALIGN << endl;
+			fn->fbody << "mov qword[rsp+8], rax" << endl;
+
+			fpt->heapaddr = rr.rspOff.back()+ STRPTR_SIZE.sz;
+
+			fn->varsStack.emplace_back(nullptr, rr.rspOff.back()+ STRPTR_SIZE.sz, STRPTR_SIZE, IdentifierToken()	);
+			rr.rspOff.back() += ALIGN;
+			rr.heapDels.back()++;
+			rr.heaped.push_back(fpt);
+
+			Register* reg = rr.regs8[0];
+			if(rr.regIdx != -1)
+			{
+				reg = rr.alloc(STRPTR_SIZE);
+				compileInstruction(MOV2, reg, rr.regs8[0], fn, STRPTR_SIZE);
+				rr.free(reg);
+			}
+			restoreScratch(fn);
+
+
+			return CompilationToken{ reg };
 		}
-		return CompilationToken{ label, STRPTR_SIZE ,COMPILETIME_PTR };
+			return CompilationToken(new Pointer("[rbp - "+to_string(fpt->heapaddr)+"]", LONG_SIZE));
 	}
 	case REFERENCE: {
 		const auto* id = dynamic_cast<Reference*>(v);

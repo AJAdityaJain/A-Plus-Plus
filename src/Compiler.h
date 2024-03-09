@@ -1,4 +1,4 @@
-#pragma once 
+#pragma once
 
 #include <fstream>
 #include "DebugLogger.h"
@@ -179,6 +179,8 @@ struct RegisterRegister {
 	Register* rsp = new Register("rsp", LONG_SIZE);
 	Register* rbp = new Register("rbp", LONG_SIZE);
 	vector<int> rspOff = vector<int>();
+	vector<int> heapDels = vector<int>();
+	vector<Value*> heaped = vector<Value*>();
 
 	vector<Register*> saves = vector<Register*>();
 
@@ -289,18 +291,32 @@ struct Compiler {
 	void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		rr.rspOff.push_back(0);
+		rr.heapDels.push_back(0);
 	}
-	void epilogue(Func* fn) {
-		for (int i = 0; i < fn->scopesStack.back(); i++)
-		{
-			fn->varsStack.pop_back();
-		}
+	void epiloguefree(Func* fn, const unsigned int exclude) {
+		for (int i = 0; i < rr.heapDels.back(); i++)
+			if(rr.heaped[i]->heapaddr != -1 && rr.heaped[i]->heapaddr != exclude){
+				auto [sz, prec] = getSize(rr.heaped[i],fn, false);
+				if(sz == STRPTR_SIZE.sz && prec == STRPTR_SIZE.prec)
+				{
+					saveScratch(fn);
+					compileInstruction(MOV2, rr.regs8[1], new Pointer("[rbp - " + to_string(rr.heaped[i]->heapaddr) + "]", STRPTR_SIZE), fn, STRPTR_SIZE);
+					fn->fbody << "call delstr" << endl;
+					restoreScratch(fn);
+				}
+			}
+		fn->fbody << "add rsp," << rr.rspOff.back() << endl;}
 
-		rr.rspOff.pop_back();
+	void epilogue(Func* fn) {
+		for (int i = 0; i < rr.heapDels.back(); i++)
+				rr.heaped.pop_back();
+		rr.heapDels.pop_back();
+
+		for (int i = 0; i < fn->scopesStack.back(); i++)
+			fn->varsStack.pop_back();
 		fn->scopesStack.pop_back();
 
-		fn->varsStack.shrink_to_fit();
-		fn->scopesStack.shrink_to_fit();
+		rr.rspOff.pop_back();
 	}
 
 

@@ -29,10 +29,9 @@ struct Statement {
 	}
 };
 
-struct Value : Statement {};
-struct Heaped : Value
+struct Value : Statement
 {
-	int off = -1;
+	unsigned int heapaddr = -1;
 };
 
 
@@ -145,7 +144,7 @@ struct Long final: Value
 
 	explicit Long(const long val) : value(val) {}
 };
-struct String final : Heaped
+struct String final : Value
 {
 
 	string value;
@@ -276,7 +275,7 @@ struct Assignment final: Statement {
 	
 	AssignmentType type;
 	IdentifierToken name;
-	Value* value;
+	mutable Value* value;
 
 
 	StatementType getType()override {
