@@ -90,21 +90,26 @@ int main(const int argc, char* argv[])
 		AppFile.close();
 		tempString.clear();
 		tempString.shrink_to_fit();
+
 		auto lexer = Lexer();
 		lexer.tokenize(programString);
 		programString.clear();
 		programString.shrink_to_fit();
 		if(isLex)
 			printTokens(lexer.tokens);
+
 		auto parser = Parser(lexer.tokens);
 		const vector<Statement*> tree = parser.parse();
 		if(isDebug)
 			printTree(tree);
+
 		auto compiler = Compiler();
 		compiler.compile(tree, 256, midput, fasmdir.string());
+
 		for (const Statement* s : tree) delete s;
 		system((fasmdir.string() + "FASM.exe "+ midput + " " + output).c_str());
 	}
+
 	for (const auto & entry : filesystem::directory_iterator(TEMPFOLDER))
 		if(filesystem::file_time_type::clock::now()-entry.last_write_time() > 5min)
 			filesystem::remove(entry);

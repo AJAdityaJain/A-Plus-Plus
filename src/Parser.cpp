@@ -90,7 +90,8 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 			}
 			checkDepth(t,depth);
 		}
-		for(auto bd = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line)); auto ln : bd->code)
+		auto bd = dynamic_cast<CodeBlock*>(parseStatement(vector(stack.begin() + bi, stack.end()),line));
+		for(auto ln : bd->code)
 		{
 			body->code.push_back(ln);
 		}
