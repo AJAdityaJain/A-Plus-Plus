@@ -19,6 +19,7 @@ void aThrowError(const AXXCode code,const  unsigned int line) {
 	case MISMATCHED_BRACKET: cout << "Mismatched bracket/brace/parenthesis";break;
 	case ASSIGNED_WRONG_TYPE: cout << "Variable assigned to a different type from what it was defined with";break;
 	case REDUNDANT_IMMUTABLE_ARRAY: cout << "0 element immutable array. Why is it here?";break;
+	case UNDEFINED_FUNCTION: cout << "Can't find function definition. Try linking source file";break;
 	}
 	printf("\n\033[0m\t\t");
 

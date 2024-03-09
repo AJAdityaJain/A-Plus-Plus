@@ -1,8 +1,7 @@
 #include "Lexer.h"
 
-void tokenize(const vector<string>& lines, vector<Token*>& tokens)
+void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, unsigned int>& symbols)
 {
-	map<string, unsigned int> idMap;
 	string tempString;
 
 	unsigned int idx = 0;
@@ -13,12 +12,12 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens)
 	// 0:normal  1:string  2:literal   3:comment
 	int inwhat = 0;
 
-	idMap.insert({ "main", idx++ });
-	idMap.insert({ "write", idx++ });
-	idMap.insert({ "read", idx++ });
-	idMap.insert({ "beep", idx++ });
-	idMap.insert({ "len", idx++ });
-	idMap.insert({ "size", idx++ });
+	symbols.insert({ "main", idx++ });
+	symbols.insert({ "write", idx++ });
+	symbols.insert({ "read", idx++ });
+	symbols.insert({ "beep", idx++ });
+	symbols.insert({ "len", idx++ });
+	symbols.insert({ "size", idx++ });
 
 
 	for (string line : lines) {
@@ -184,10 +183,10 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens)
 									if (!isalnum(subc))
 										aThrowError(ILLEGAL_CHARACTER,lineIdx);
 
-								if (idMap.contains(sub))
-									tokens.push_back(new IdentifierToken{ idMap[sub]  });
+								if (symbols.contains(sub))
+									tokens.push_back(new IdentifierToken{ symbols[sub]  });
 								else {
-									idMap.insert({ sub, idx });
+									symbols.insert({ sub, idx });
 									tokens.push_back(new IdentifierToken{ idx  });
 									idx++;
 								}

@@ -411,7 +411,82 @@ struct UnaryOperation final: Value {
 
 };
 
+//Compiletime Values
+struct Register final: Value {
+	const char* reg;
+	bool isPreserved;
+	AsmSize size{};
+	Register(const char* reg, const AsmSize size, const bool isPreserved = true) {
+		this->reg = reg;
+		this->size = size;
+		this->isPreserved = isPreserved;
+	}
+	StatementType getType()override {
+		return REGISTER;
+	}
 
+};
+struct Pointer final: Value {
+	string ptr;
+	AsmSize size{};
+	Pointer(const string& ptr,const AsmSize size) {
+		string prefix;
+		switch (size.sz)
+		{
+		case 1:
+			prefix = "byte ";
+			break;
+		case 2:
+			prefix = "word ";
+			break;
+		case 4:
+			prefix = "dword ";
+			break;
+		case 8:
+			prefix = "qword ";
+			break;
+		case 16: {
+				if(size.prec == 1)
+					prefix = "dword ";
+				else
+					prefix = "qword ";
+				break;
+		}
+		default:
+			break;
+		}
+		this->ptr = prefix + ptr;
+		this->size = size;
+	}
+	StatementType getType()override {
+		return PTR;
+	}
+};
+struct CompilationToken final:Value {
+	string line;
+	CompilationTokenType type;
+	AsmSize sz{};
+	StatementType getType()override {
+		return COMPILETIME_TOKEN;
+	}
+	explicit CompilationToken(const string& line, const AsmSize sz ,const  CompilationTokenType type=COMPILETIME_NONE) {
+		this->line = line;
+		this->sz = sz;
+		this->type = type;
+	}
+	explicit CompilationToken(const Pointer* ptr) {
+		this->line = ptr->ptr;
+		this->sz = ptr->size;
+		this->type = COMPILETIME_PTR;
+	}
+	explicit CompilationToken(const Register* reg) {
+		this->line = reg->reg;
+		this->sz = reg->size;
+		this->type = COMPILETIME_REGISTER;
+	}
+
+	CompilationToken(): type(COMPILETIME_NONE) {}
+};
 
 	Statement* parseStatement(vector<Token*> stack, unsigned int line);
 

@@ -18,6 +18,8 @@ add_executable (appx "src/APlusPlus.cpp"  "src/Lexer.h" "src/Lexer.cpp" "src/Par
         src/DebugLogger.h
         src/FATMaker.h
         src/FATMaker.cpp
+        src/Linker.h
+        src/Linker.cpp
 )
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)

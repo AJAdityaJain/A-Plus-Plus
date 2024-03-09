@@ -3,88 +3,7 @@
 #include "DebugLogger.h"
 
 
-struct Register final: Value {
-	const char* reg;
-	bool isPreserved;
-	AsmSize size{};
-	Register(const char* reg, const AsmSize size, const bool isPreserved = true) {
-		this->reg = reg;
-		this->size = size;
-		this->isPreserved = isPreserved;
-	}
-	StatementType getType()override {
-		return REGISTER;
-	}
-
-};
-
-
-struct Pointer final: Value {
-	string ptr;
-	AsmSize size{};
-	Pointer(const string& ptr,const AsmSize size) {
-		string prefix;
-		switch (size.sz)
-		{
-		case 1:
-			prefix = "byte ";
-			break;
-		case 2:
-			prefix = "word ";
-			break;
-		case 4:
-			prefix = "dword ";
-			break;
-		case 8:
-			prefix = "qword ";
-			break;
-		case 16: {
-			if(size.prec == 1)
-				prefix = "dword ";
-			else
-				prefix = "qword ";
-			break;
-		}
-		default:
-			break;
-		}
-		this->ptr = prefix + ptr;
-		this->size = size;
-	}
-	StatementType getType()override {
-		return PTR;
-	}
-};
-
-struct CompilationToken final:Value {
-	string line;
-	CompilationTokenType type;
-	AsmSize sz{};
-	StatementType getType()override {
-		return COMPILETIME_TOKEN;
-	}
-	explicit CompilationToken(const string& line, const AsmSize sz ,const  CompilationTokenType type=COMPILETIME_NONE) {
-		this->line = line;
-		this->sz = sz;
-		this->type = type;
-	}
-	explicit CompilationToken(const Pointer* ptr) {
-		this->line = ptr->ptr;
-		this->sz = ptr->size;
-		this->type = COMPILETIME_PTR;
-	}
-	explicit CompilationToken(const Register* reg) {
-		this->line = reg->reg;
-		this->sz = reg->size;
-		this->type = COMPILETIME_REGISTER;
-	}
-
-	CompilationToken(): type(COMPILETIME_NONE) {}
-};
-
-struct RegisterRegister {
-
-	Register* regs1[14] = {
+inline Register* regs1[14] = {
 
 		new Register("al",BOOL_SIZE,false),
 		new Register("cl",BOOL_SIZE,false),
@@ -100,9 +19,9 @@ struct RegisterRegister {
 		new Register("r13b",BOOL_SIZE),
 		new Register("r14b",BOOL_SIZE),
 		new Register("r15b",BOOL_SIZE)
-	};
+};
 
-	Register* regs2[14] = {
+inline Register* regs2[14] = {
 
 		new Register("ax",SHORT_SIZE,false),
 		new Register("cx",SHORT_SIZE,false),
@@ -118,9 +37,9 @@ struct RegisterRegister {
 		new Register("r13w",SHORT_SIZE),
 		new Register("r14w",SHORT_SIZE),
 		new Register("r15w",SHORT_SIZE)
-	};
+};
 
-	Register* regs4[14] = {
+inline Register* regs4[14] = {
 		new Register("eax",INT_SIZE,false),
 		new Register("ecx",INT_SIZE,false),
 		new Register("edx",INT_SIZE,false),
@@ -135,9 +54,9 @@ struct RegisterRegister {
 		new Register("r13d",INT_SIZE),
 		new Register("r14d",INT_SIZE),
 		new Register("r15d",INT_SIZE)
-	};
+};
 
-	Register* regs8[14] = {
+inline Register* regs8[14] = {
 
 		new Register("rax",LONG_SIZE,false),
 		new Register("rcx",LONG_SIZE,false),
@@ -153,9 +72,9 @@ struct RegisterRegister {
 		new Register("r13",LONG_SIZE),
 		new Register("r14",LONG_SIZE),
 		new Register("r15",LONG_SIZE)
-	};
+};
 
-	Register* regsXMM[16] = {
+inline Register* regsXMM[16] = {
 
 		new Register("xmm0" ,DOUBLE_SIZE,false),
 		new Register("xmm1" ,DOUBLE_SIZE,false),
@@ -173,21 +92,42 @@ struct RegisterRegister {
 		new Register("xmm13",DOUBLE_SIZE),
 		new Register("xmm14",DOUBLE_SIZE),
 		new Register("xmm15",DOUBLE_SIZE)
-	};
+};
 
-	Register* rsp = new Register("rsp", LONG_SIZE);
-	Register* rbp = new Register("rbp", LONG_SIZE);
-	vector<int> rspOff = vector<int>();
-	vector<int> heapDels = vector<int>();
-	vector<Value*> heaped = vector<Value*>();
+inline auto rsp = new Register("rsp", LONG_SIZE);
+inline auto rbp = new Register("rbp", LONG_SIZE);
 
-	vector<Register*> saves = vector<Register*>();
+inline auto rspOff = vector<int>();
+inline auto heapDels = vector<int>();
 
-	int regIdx = -1;
-	int xmmIdx = -1;
+inline auto heaped = vector<Value*>();
+inline auto saves = vector<Register*>();
+
+inline vector<Variable> globalRefs;
+
+inline ofstream File;
+inline stringstream datarw;
+
+inline unsigned int operationLabelIdx = 0;
+inline unsigned int dataLabelIdx = 0;
+inline int regIdx = -1;
+inline int xmmIdx = -1;
+
+AsmSize getSize(Value* v, Func* fn, bool inp);
+
+Register* cast(Value* v, AsmSize from, AsmSize to, Func* fn);
+
+CompilationToken compileValue(Value* v, Func* fn);
+
+void compile(const vector<Statement*>& tree,int stack, const string& loc, const string& fasmdir);
+
+void compileStatement(Statement* b, Func* fn);
+
+void compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn, AsmSize sz);
 
 
-	[[nodiscard]] Register* A(const AsmSize sz) const {
+
+inline [[nodiscard]] Register* A(const AsmSize sz) {
 		switch (sz.sz) {
 		case 1: return regs1[0];
 		case 2: return regs2[0];
@@ -197,7 +137,7 @@ struct RegisterRegister {
 		}
 		return nullptr;
 	}
-	[[nodiscard]] Register* D(const AsmSize sz) const {
+inline [[nodiscard]] Register* D(const AsmSize sz) {
 		switch (sz.sz)
 		{
 		case 1: return regs1[2];
@@ -208,9 +148,25 @@ struct RegisterRegister {
 		}
 		return nullptr;
 	}
+inline[[nodiscard]] Register* realloc(const AsmSize sz)  {
+	if (sz.prec > 0) {
+		Register* r = regsXMM[xmmIdx];
+		r->size = sz;
+		return r;
+	}
+	switch (sz.sz) {
+	case 1: return regs1[regIdx];
+	case 2: return regs2[regIdx];
+	case 4: return regs4[regIdx];
+	case 8: return regs8[regIdx];
+	default:aThrowError(OVERSIZED_VALUE, -1);
+	}
 
 
-	Register* alloc(const AsmSize sz) {
+	return nullptr;
+}
+
+inline Register* alloc(const AsmSize sz) {
 		Register* rptr;
 		if (sz.prec <= 0) {
 			regIdx++;
@@ -238,89 +194,82 @@ struct RegisterRegister {
 
 		return realloc(sz);
 	}
-	void free(const Register* r) {
+inline void free(const Register* r) {
 		if (r->size.prec > 0)
 			xmmIdx--;
 		else
 			regIdx--;
 	}
-	[[nodiscard]] Register* realloc(const AsmSize sz) const {
-		if (sz.prec > 0) {
-			Register* r = regsXMM[xmmIdx];
-			r->size = sz;
-			return r;
+static void addToData(const string& s) {
+	datarw << s << ",0" << endl;
+}
+
+static void saveScratch(Func* fn) {
+	for (int i = 0; i <= regIdx; i++) {
+		if (!regs8[i]->isPreserved)
+			fn->fbody << "push " << regs8[i]->reg << endl;
+		else
+			break;
+	}
+	for (int i = 0; i <= xmmIdx; i++) {
+		if (!regsXMM[i]->isPreserved) {
+
+			fn->fbody << "sub rsp, 8" << endl;
+			fn->fbody << "movsd QWORD[rsp], " << regsXMM[i]->reg << endl;
 		}
-		switch (sz.sz) {
-		case 1: return regs1[regIdx];
-		case 2: return regs2[regIdx];
-		case 4: return regs4[regIdx];
-		case 8: return regs8[regIdx];
-			default:aThrowError(OVERSIZED_VALUE, -1);
+		else
+			break;
+	}
+
+}
+static void restoreScratch(Func* fn) {
+	for (int i = xmmIdx; i >= 0 ; i--)
+		if (!regsXMM[i]->isPreserved) {
+			fn->fbody << "movsd " << regsXMM[i]->reg << ", QWORD[rsp]" << endl;
+			fn->fbody << "add rsp, 8" << endl;
 		}
+		else
+			break;
 
+	for (int i = regIdx; i >= 0 ; i--)
+		if (!regs8[i]->isPreserved)
+			fn->fbody << "pop " << regs8[i]->reg << endl;
+		else
+			break;
+}
 
-		return nullptr;
-	}
-	
-};
-
-struct Compiler {
-	unsigned int operationLabelIdx = 0;
-	unsigned int dataLabelIdx = 0;
-
-	RegisterRegister rr;
-	ofstream File;
-	stringstream data;
-
-	vector<Variable> globalRefs;
-
-	Compiler() {
-		addToData("intfmt db '%d'");
-		addToData("doublefmt db '%f'");
-		addToData("scanfmt db '%[^',10,']s'");
-		addToData("charfmt db '%c'");
-		addToData("chardiscard db '?'");
-		addToData("hHeap dq 0");
-		rr = RegisterRegister();
-	}
-
-	void addToData(const string& s) {
-		data << s << ",0" << endl;
-	}
-	void prologue(Func* fn) {
+static void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
-		rr.rspOff.push_back(0);
-		rr.heapDels.push_back(0);
+		rspOff.push_back(0);
+		heapDels.push_back(0);
 	}
-	void epiloguefree(Func* fn, const unsigned int exclude) {
-		for (int i = 0; i < rr.heapDels.back(); i++)
-			if(rr.heaped[i]->heapaddr != -1 && rr.heaped[i]->heapaddr != exclude){
-				auto [sz, prec] = getSize(rr.heaped[i],fn, false);
+inline void epiloguefree(Func* fn, const unsigned int exclude) {
+		for (int i = 0; i < heapDels.back(); i++)
+			if(heaped[i]->heapaddr != -1 && heaped[i]->heapaddr != exclude){
+				auto [sz, prec] = getSize(heaped[i],fn, false);
 				if(sz == STRPTR_SIZE.sz && prec == STRPTR_SIZE.prec)
 				{
 					saveScratch(fn);
-					compileInstruction(MOV2, rr.regs8[1], new Pointer("[rbp - " + to_string(rr.heaped[i]->heapaddr) + "]", STRPTR_SIZE), fn, STRPTR_SIZE);
+					compileInstruction(MOV2, regs8[1], new Pointer("[rbp - " + to_string(heaped[i]->heapaddr) + "]", STRPTR_SIZE), fn, STRPTR_SIZE);
 					fn->fbody << "call delstr" << endl;
 					restoreScratch(fn);
 				}
 			}
-		fn->fbody << "add rsp," << rr.rspOff.back() << endl;}
-
-	void epilogue(Func* fn) {
-		for (int i = 0; i < rr.heapDels.back(); i++)
-				rr.heaped.pop_back();
-		rr.heapDels.pop_back();
+		fn->fbody << "add rsp," << rspOff.back() << endl;}
+static void epilogue(Func* fn) {
+		for (int i = 0; i < heapDels.back(); i++)
+				heaped.pop_back();
+		heapDels.pop_back();
 
 		for (int i = 0; i < fn->scopesStack.back(); i++)
 			fn->varsStack.pop_back();
 		fn->scopesStack.pop_back();
 
-		rr.rspOff.pop_back();
+		rspOff.pop_back();
 	}
 
-
-	void savePreserved() {
-		for (const Register* rptr : rr.saves)
+static void savePreserved() {
+		for (const Register* rptr : saves)
 		{
 			if (rptr->size.prec <= 0) {
 				File << "push " << rptr->reg << endl;
@@ -332,8 +281,8 @@ struct Compiler {
 			}
 		}
 	}
-	void restorePreserved() {
-		for (const Register* rptr : rr.saves)
+static void restorePreserved() {
+		for (const Register* rptr : saves)
 		{
 			if (rptr->size.prec <= 0) {
 				File << "pop " << rptr->reg << endl;
@@ -344,63 +293,6 @@ struct Compiler {
 			}
 		}
 
-		rr.saves.clear();
-		rr.saves.shrink_to_fit();
+		saves.clear();
+		saves.shrink_to_fit();
 	}
-	void saveScratch(Func* fn) {
-		for (int i = 0; i <= rr.regIdx; i++) {
-			if (!rr.regs8[i]->isPreserved)
-				fn->fbody << "push " << rr.regs8[i]->reg << endl;
-			else
-				break;
-		}
-		for (int i = 0; i <= rr.xmmIdx; i++) {
-			if (!rr.regsXMM[i]->isPreserved) {
-
-				fn->fbody << "sub rsp, 8" << endl;
-				fn->fbody << "movsd QWORD[rsp], " << rr.regsXMM[i]->reg << endl;
-			}
-			else
-				break;
-		}
-
-	}
-	void restoreScratch(Func* fn) {
-		for (int i = rr.xmmIdx; i >= 0 ; i--)
-			if (!rr.regsXMM[i]->isPreserved) {
-				fn->fbody << "movsd " << rr.regsXMM[i]->reg << ", QWORD[rsp]" << endl;
-				fn->fbody << "add rsp, 8" << endl;
-			}
-			else
-				break;
-
-		for (int i = rr.regIdx; i >= 0 ; i--)
-			if (!rr.regs8[i]->isPreserved)
-				fn->fbody << "pop " << rr.regs8[i]->reg << endl;
-			else
-				break;
-	}
-
-
-
-
-
-
-
-
-
-
-
-	void compile(const vector<Statement*>& tree,int stack, const string& loc, const string& fasmdir);
-
-	void compileStatement(Statement* b, Func* fn);
-
-	void compileInstruction(INSTRUCTION i, Value* op, Value* op2, Func* fn, AsmSize sz);
-
-	Register* cast(Value* v, AsmSize from, AsmSize to, Func* fn);
-
-
-	CompilationToken compileValue(Value* v, Func* fn);
-
-	AsmSize getSize(Value* v, Func* fn, bool inp);
-};

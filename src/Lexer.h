@@ -163,5 +163,5 @@ struct SizeToken final: Token {
 	}
 };
 
-	void tokenize(const vector<string>& lines, vector<Token*>& tokens);
-	static TokenType isNumeric(const std::string& str);
+void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, unsigned int>& symbols);
+static TokenType isNumeric(const std::string& str);
