@@ -51,6 +51,8 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens)
 					{
 						case '(': token = PARENTHESIS_OPEN;break;
 						case ')': token = PARENTHESIS_CLOSE;break;
+						case '@': token = ATR;break;
+						case '#': token = HASH;break;
 						case '{': token = CURLY_OPEN;break;
 						case '}': token = CURLY_CLOSE;break;
 						case '[': token = BRACKET_OPEN;break;

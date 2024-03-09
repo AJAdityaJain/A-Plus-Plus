@@ -13,6 +13,7 @@ void aThrowError(const AXXCode code,const  unsigned int line) {
 	case UNKNOWN_ESCAPE_SEQUENCE: cout << "Unknown escaped character";break;
 	case ILLEGAL_EXPRESSION: cout << "Illegal expression found";break;
 	case ILLEGAL_CHARACTER: cout << "Unexpected character found";break;
+	case ILLEGAL_OPERATION_ONCONST: cout << "Illegal operation on constant. They are Immutable.";break;
 	case OVERSIZED_VALUE: cout << "Oversized value. Fatal error";break;
 	case OVERFLOW_REGISTER: cout << "Now listen to me. Have you heard of 'CODE READABLITY'.\nWHAT THE HELL HAVE YOU WRITTEN.\nTry making more variables in your statements and not cram EVERY SINGLE OPERATION IN ONE LINE!!!\n";break;
 	case MISMATCHED_BRACKET: cout << "Mismatched bracket/brace/parenthesis";break;

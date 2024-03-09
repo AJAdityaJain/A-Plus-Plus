@@ -172,6 +172,21 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 		);
 	}
 
+	/// Variable Assignment
+	if (size >= 4 && st0 == ATR && st1 == ID) {
+		AssignmentType at = dynamic_cast<AssignToken*>(stack[2])->value;
+		if(at == EQUALS)
+		{
+			return new Assignment(
+			*dynamic_cast<IdentifierToken*>(stack[1]),
+			dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 3, stack.end()),line))
+			, at
+			, true
+			);
+		}
+		aThrowError(ILLEGAL_OPERATION_ONCONST,line);
+	}
+
 	//Looooooooooooop
 	if( st0 == LOOP)
 	{

@@ -190,22 +190,26 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 			for (int i = 0; i < fn->varsStack.size(); i++)
 				if (fn->varsStack[i].name.value == a->name.value )
 				{
-					AsmSize vsz = fn->varsStack[i].size;
-					if(vsz.sz != sz.sz || vsz.prec != sz.prec)aThrowError(ASSIGNED_WRONG_TYPE, -1);
-					INSTRUCTION ins = MOV2;
-					switch (a->type)
+					if(!fn->varsStack[i].isConst)
 					{
-					case EQUALS:			ins = MOV2;break;
-					case PLUS_EQUAL:		ins = ADD2;break;
-					case MINUS_EQUAL:		ins = SUB2;break;
-					case MULTIPLY_EQUAL:	ins = MUL2;break;
-					case BITWISE_OR_EQUAL:	ins = OR2; break;
-					case BITWISE_AND_EQUAL: ins = AND2;break;
-					default: break;
-					}
+						AsmSize vsz = fn->varsStack[i].size;
+						if(vsz.sz != sz.sz || vsz.prec != sz.prec)aThrowError(ASSIGNED_WRONG_TYPE, -1);
+						INSTRUCTION ins = MOV2;
+						switch (a->type)
+						{
+						case EQUALS:			ins = MOV2;break;
+						case PLUS_EQUAL:		ins = ADD2;break;
+						case MINUS_EQUAL:		ins = SUB2;break;
+						case MULTIPLY_EQUAL:	ins = MUL2;break;
+						case BITWISE_OR_EQUAL:	ins = OR2; break;
+						case BITWISE_AND_EQUAL: ins = AND2;break;
+						default: break;
+						}
 
-					compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i].off) + "]", fn->varsStack[i].size), a->value, fn, sz);
-					return;
+						compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i].off) + "]", fn->varsStack[i].size), a->value, fn, sz);
+						return;
+					}
+					aThrowError(ILLEGAL_OPERATION_ONCONST, -1);
 				}
 
 
@@ -221,6 +225,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 				compileInstruction(SUB2, rr.rsp, new Int(szonstack), fn, LONG_SIZE);
 				rr.rspOff.back() += szonstack;
 				fn->varsStack.emplace_back(a->value, sz.sz, sz, a->name);
+				fn->varsStack.back().isConst = a->isconst;
 				return;
 			}
 			const Variable v = fn->varsStack.back();
@@ -234,6 +239,7 @@ void Compiler::compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursi
 				rr.rspOff.back() += szonstack;
 				fn->varsStack.emplace_back(a->value,v.off + sz.sz + v.share, sz, a->name);
 			}
+			fn->varsStack.back().isConst = a->isconst;
 
 			return;
 		}
@@ -311,19 +317,18 @@ void Compiler::compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Fu
 			rr.free(r);
 		}
 
+	if (o1.type == COMPILETIME_PTR && o2.type == COMPILETIME_PTR) {
+		Register* reg = rr.alloc(getSize(op, fn, false));
+
+		compileInstruction(MOV2, reg, op2, fn, sz);
+		compileInstruction(i, op, reg, fn, sz);
+		rr.free(reg);
+		return;
+	}
 
 	switch (i)
 	{
 		case MOV2: {
-
-				if (o1.type == COMPILETIME_PTR && o2.type == COMPILETIME_PTR) {
-					Register* reg = rr.alloc(getSize(op, fn, false));
-
-					compileInstruction(MOV2, reg, op2, fn, sz);
-					compileInstruction(MOV2, op, reg, fn, sz);
-					rr.free(reg);
-					return;
-				}
 				fn->fbody << "mov" << suffix << " " << o1.line << ", " << o2.line << endl;
 				break;
 		}

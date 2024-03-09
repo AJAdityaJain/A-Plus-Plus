@@ -175,6 +175,8 @@ void addBytes(Statement* statement, ofstream& bytes) // NOLINT(*-no-recursion)
             bytes <<  static_cast<char>((_int >> (0)) & 0xff);
             const char atype = _assign->type;
             bytes << atype;
+            const char con = _assign->isconst?'1':'0';
+            bytes << con;
             addBytes(_assign->value,bytes);
             bytes << DELIM;
             break;

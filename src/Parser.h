@@ -272,7 +272,7 @@ struct Interupt final: Statement {
 
 };
 struct Assignment final: Statement {
-	
+	bool isconst = false;
 	AssignmentType type;
 	IdentifierToken name;
 	mutable Value* value;
@@ -286,10 +286,11 @@ struct Assignment final: Statement {
 		delete value;
 	}
 
-	Assignment(const IdentifierToken& name, Value* value,const AssignmentType type) {
+	Assignment(const IdentifierToken& name, Value* value,const AssignmentType type, const bool isconst = false) {
 		this -> name = name;
 		this->value = value;
 		this->type = type;
+		this->isconst = isconst;
 	}
 
 };
