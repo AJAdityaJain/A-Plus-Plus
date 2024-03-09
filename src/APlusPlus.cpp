@@ -91,17 +91,18 @@ int main(const int argc, char* argv[])
 		tempString.clear();
 		tempString.shrink_to_fit();
 
-		auto lexer = Lexer();
-		lexer.tokenize(programString);
+		vector<Token*> tokens;
+
+		tokenize(programString, tokens);
 		programString.clear();
 		programString.shrink_to_fit();
 		if(isLex)
-			printTokens(lexer.tokens);
+			printTokens(tokens);
 
-		auto parser = Parser(lexer.tokens);
-		const vector<Statement*> tree = parser.parse();
+		const vector<Statement*> tree = parse(tokens);
 		if(isDebug)
 			printTree(tree);
+
 
 		auto compiler = Compiler();
 		compiler.compile(tree, 256, midput, fasmdir.string());

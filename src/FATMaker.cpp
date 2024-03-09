@@ -83,7 +83,7 @@ void addBytes(Statement* statement, ofstream& bytes) // NOLINT(*-no-recursion)
         }
     case LONG_STMT:
         {
-            const auto _long = dynamic_cast<Long*>(statement)->value;
+            const long _long = dynamic_cast<Long*>(statement)->value;
             bytes <<  static_cast<char>((_long >> (56)) & 0xff);
             bytes <<  static_cast<char>((_long >> (48)) & 0xff);
             bytes <<  static_cast<char>((_long >> (40)) & 0xff);

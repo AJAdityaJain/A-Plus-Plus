@@ -5,6 +5,7 @@
 
 
 struct Variable {
+	bool isConst = false;
 	void* val;
 	unsigned int off;
 	int share;
@@ -410,17 +411,9 @@ struct UnaryOperation final: Value {
 };
 
 
-struct Parser {
-
-	vector<Token*> tks;
-
-	explicit Parser(const vector<Token*>& tks) {
-		this->tks = tks;
-	}
 
 	Statement* parseStatement(vector<Token*> stack, unsigned int line);
 
-	vector<Statement*> parse();
 	vector<Statement*> parse(const vector<Token*>& stack);
 
 	static void checkDepth(const TokenType tt, int&depth)
@@ -428,6 +421,3 @@ struct Parser {
 		if(tt == BRACKET_OPEN || tt == CURLY_OPEN || tt == PARENTHESIS_OPEN) depth++;
 		else if(tt == BRACKET_CLOSE || tt == CURLY_CLOSE || tt == PARENTHESIS_CLOSE) depth--;
 	}
-};
-
-

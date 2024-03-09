@@ -1,6 +1,6 @@
 #include "Parser.h"
 
-Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line) { // NOLINT(*-no-recursion)
+Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NOLINT(*-no-recursion)
 
 	const size_t size = stack.size();
 	bool mismatched = false;
@@ -172,6 +172,108 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 		);
 	}
 
+	//Looooooooooooop
+	if( st0 == LOOP)
+	{
+		int colon = -1;
+		Value* Start = nullptr;
+		Value* Till = nullptr;
+		IdentifierToken id;
+		CodeBlock* body = nullptr;
+
+		int depth = 0;
+		for (int i = 1; i < stack.size(); i++)
+		{
+			checkDepth(stack[i]->getType(),depth);
+			depth = abs(depth);
+			if(depth == 0)
+			{
+				if(stack[i]->getType() == COLON && Start == nullptr)
+				{
+					Start = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
+					colon = i;
+				}
+				if(Start != nullptr && stack[i]->getType() == WITH)
+				{
+					Till = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + colon + 1, stack.begin() + i),line));
+					id = *dynamic_cast<IdentifierToken*>(stack[i+1]);
+					body = new CodeBlock(parseStatement(vector(stack.begin() + i + 2, stack.end()),line));
+					break;
+				}
+			}
+		}
+		if(body != nullptr && Start != nullptr && Till != nullptr)
+		{
+			body->code.push_back(new Assignment(id,new Int(1),PLUS_EQUAL));
+
+			auto lines = vector<Statement*>();
+			lines.push_back(new Assignment(id,Start,EQUALS));
+			lines.push_back(
+				new WhileStatement(
+					new MultipleOperation(
+						SMALLER_THAN,
+						vector<Value*>{new Reference(id.value),Till},
+						vector<Value*>()
+					),
+					body
+				)
+			);
+
+			return new CodeBlock(lines);
+		}
+	}
+
+	//poooooooooooooL
+	if( st0 == POOL)
+	{
+		int colon = -1;
+		Value* Start = nullptr;
+		Value* Till = nullptr;
+		IdentifierToken id;
+		CodeBlock* body = nullptr;
+
+		int depth = 0;
+		for (int i = 1; i < stack.size(); i++)
+		{
+			checkDepth(stack[i]->getType(),depth);
+			depth = abs(depth);
+			if(depth == 0)
+			{
+				if(stack[i]->getType() == COLON && Start == nullptr)
+				{
+					Start = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
+					colon = i;
+				}
+				if(Start != nullptr && stack[i]->getType() == WITH)
+				{
+					Till = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + colon + 1, stack.begin() + i),line));
+					id = *dynamic_cast<IdentifierToken*>(stack[i+1]);
+					body = new CodeBlock(parseStatement(vector(stack.begin() + i + 2, stack.end()),line));
+					break;
+				}
+			}
+		}
+		if(body != nullptr && Start != nullptr && Till != nullptr)
+		{
+			body->code.push_back(new Assignment(id,new Int(1),MINUS_EQUAL));
+
+			auto lines = vector<Statement*>();
+			lines.push_back(new Assignment(id,Start,EQUALS));
+			lines.push_back(
+				new WhileStatement(
+					new MultipleOperation(
+						GREATER_THAN,
+						vector<Value*>{new Reference(id.value),Till},
+						vector<Value*>()
+					),
+					body
+				)
+			);
+
+			return new CodeBlock(lines);
+		}
+	}
+
 	///While
 	if (st0 == WHILE) {
 		Value* con = nullptr;
@@ -331,11 +433,7 @@ Statement* Parser::parseStatement(vector<Token*> stack, const unsigned int line)
 	return nullptr;
 }
 
-vector<Statement*> Parser::parse() {
-	return parse(tks);
-}
-
-vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-recursion)
+vector<Statement*> parse(const vector<Token*>& stack) { // NOLINT(*-no-recursion)
 	auto statements = vector<Statement*>();
 	auto subStack = vector<Token*>();
 
@@ -378,5 +476,3 @@ vector<Statement*> Parser::parse(const vector<Token*>& stack) { // NOLINT(*-no-r
 
 	return statements;
 }
-
-

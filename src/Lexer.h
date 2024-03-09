@@ -163,18 +163,5 @@ struct SizeToken final: Token {
 	}
 };
 
-
-struct Lexer {
-	vector<Token*> tokens;
-
-	~Lexer() {
-		for (const Token* t: tokens) {
-			delete t;
-		}
-		tokens.clear();
-		tokens.shrink_to_fit();
-	}
-
-	void tokenize(const vector<string>& lines);
+	void tokenize(const vector<string>& lines, vector<Token*>& tokens);
 	static TokenType isNumeric(const std::string& str);
-};

@@ -1,6 +1,6 @@
 #include "Lexer.h"
 
-void Lexer::tokenize(const vector<string>& lines)
+void tokenize(const vector<string>& lines, vector<Token*>& tokens)
 {
 	map<string, unsigned int> idMap;
 	string tempString;
@@ -156,6 +156,9 @@ void Lexer::tokenize(const vector<string>& lines)
 					else if (sub == "if")		tokens.push_back(new KeyWordToken{ IF  });
 					else if (sub == "else")		tokens.push_back(new KeyWordToken{ ELSE  });
 					else if (sub == "while")	tokens.push_back(new KeyWordToken{ WHILE  });
+					else if (sub == "loop")		tokens.push_back(new KeyWordToken{ LOOP  });
+					else if (sub == "pool")		tokens.push_back(new KeyWordToken{ POOL  });
+					else if (sub == "with")		tokens.push_back(new KeyWordToken{ WITH  });
 					else if (sub == "return")	tokens.push_back(new KeyWordToken{ RETURN  });
 					else if (sub == "stop")		tokens.push_back(new KeyWordToken{ STOP  });
 					else if (sub == "skip")		tokens.push_back(new KeyWordToken{ SKIP  });
@@ -213,7 +216,7 @@ void Lexer::tokenize(const vector<string>& lines)
 }
 
 
-TokenType Lexer::isNumeric(const std::string& str) {
+TokenType isNumeric(const std::string& str) {
 	size_t i = 0;
 	if (str[i] == '+' || str[i] == '-') {
 		++i;
