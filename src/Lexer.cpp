@@ -183,7 +183,7 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 									if (!isalnum(subc))
 										aThrowError(ILLEGAL_CHARACTER,lineIdx);
 
-								if (symbols.contains(sub))
+								if (symbols.find(sub) != symbols.end())
 									tokens.push_back(new IdentifierToken{ symbols[sub]  });
 								else {
 									symbols.insert({ sub, idx });

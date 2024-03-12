@@ -1,7 +1,7 @@
 // ReSharper disable CppDFATimeOver
 #include "Compiler.h"
 
-void compile(const vector<Statement*>& tree, const int stack, const string& loc, const string& fasmdir)
+void compile(const vector<Statement*>& tree, const int stack, const string& loc, const string& fasmdir, const string& msvcrt, const string& libd)
 {
 	addToData("intfmt db '%d'");
 	addToData("doublefmt db '%f'");
@@ -12,7 +12,11 @@ void compile(const vector<Statement*>& tree, const int stack, const string& loc,
 
 	File = ofstream(loc);
 	File << "format PE64 console\nentry LABFUNC" + to_string(MAIN)+"\nstack "+to_string(stack*1024)+"\ninclude '" + fasmdir + "INCLUDE\\MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
-	File <<"\nstrlen:\n	mov rdx ,0\n	lenloop:\n	inc rcx\n	inc rdx\n	mov al, byte[rcx]\n	test al, al\n	jnz lenloop\n	mov rax,rdx\nret\nstrcmp:\n	dec rcx\n	dec rdx\n	cmploop:\n		inc rcx\n		inc rdx\n		mov al, byte[rcx]\n		mov ah, byte[rdx]\n		cmp al, 0\n		je cmpsub\n		jmp cmpsubend\n		cmpsub:\n			cmp ah, 0\n			je cmpend\n		cmpsubend:\n		cmp al, ah\n	je cmploop\n	mov rax, 1  \nret\n	cmpend:\n	mov rax, 0  \nret\n\ngetchar:\nadd rcx, 8\ncmp edx, dword [rcx]\njge retnone\n	add rcx, rdx\n	add rcx,  8\n	mov al, byte [rcx]\n	ret\n	retnone:\n	mov al, -1\nret\n\naddchar:\n	sub rcx, 8\n		mov eax, dword [rcx +4]\n		sub eax, dword [rcx]\n		cmp eax, 8\n		jne recharskip\n			push rdx\n				mov eax, dword [ecx + 4]\n				imul rax, 2\n				mov dword[ecx + 4], eax\n				sub rsp, 32\n					mov r9, rax\n					mov r8, rcx\n					mov rdx, 0\n					mov rcx, [hHeap]\n					call [HeapReAlloc]\n				add rsp, 32\n				mov rcx, rax\n			pop rdx\n		recharskip:\n		mov rax, rcx	\n		mov ecx, dword [rax]\n		add rax, rcx\n		add rax, 8\n		mov byte [rax+1], 0 \n		mov byte [rax], dl	\n		sub rax, 8\n		sub rax, rcx\n		add ecx, 1\n		mov dword [rax], ecx\n		add rax, 8\nret\n\ngenstr:\n	push rcx\n	sub rsp, 32\n		mov r8, rcx\n		mov rcx, [hHeap]\n		mov rdx, 0\n		call [HeapAlloc]\n	add rsp, 32\n	pop rcx\n	mov dword [rax], 0\n	mov dword [rax+4], ecx\n	add rax, 8\nret\n\ngenstrlab: \n	push rcx\n		call strlen\n	pop rcx\n	push rcx\n		sub rsp, 32\n			mov r8, rax\n			mov rcx, [hHeap]\n			mov rdx, 0\n			call [HeapAlloc]\n		add rsp, 32\n	pop rcx\n\n	mov dword [rax], 0\n	mov dword [rax+4], ecx\n\n	add rax, 8\n	push rax\n		genloop:\n			mov dl, byte [rcx]\n			mov byte[rax], dl\n			inc rax\n			inc rcx\n			; mov dl, byte [rcx]\n			test dl, dl\n		jnz genloop\n	pop rax\n\nret\n\ndelstr:\n	sub rcx, 8\n	sub rsp, 32\n			mov r8, rcx \n			mov rdx, 0\n			mov rcx, [hHeap]\n			call [HeapFree]	\n	add rsp, 32\nret\n\n\n";
+	string tempString;
+	auto libdf = ifstream(libd);
+	while(getline(libdf, tempString))
+		File << tempString << endl;
+	libdf.close();
 
 	for (Statement* st : tree)
 		compileStatement(st,nullptr);
@@ -21,7 +25,7 @@ void compile(const vector<Statement*>& tree, const int stack, const string& loc,
 	File << datarw.str();
 
 
-	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, 'MSVCRT.DLL'\nimport kernel,\\exit,'ExitProcess',\\beep,'Beep',\\HeapCreate, 'HeapCreate',\\HeapAlloc, 'HeapAlloc',\\HeapReAlloc, 'HeapReAlloc',\\HeapFree, 'HeapFree'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
+	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, '"+msvcrt+"'\nimport kernel,\\exit,'ExitProcess',\\beep,'Beep',\\HeapCreate, 'HeapCreate',\\HeapAlloc, 'HeapAlloc',\\HeapReAlloc, 'HeapReAlloc',\\HeapFree, 'HeapFree'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
 	File.close();
 }
 
@@ -213,10 +217,6 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 
 
 			//actually doing the changes on stack
-			if(a->value->getType() == STRING_STMT)
-			{
-				a->value = new CompilationToken(compileValue(a->value,fn));
-			}
 			const int szonstack = static_cast<int>(ceil(static_cast<double>(sz.sz)/ALIGN)*ALIGN);
 			fn->scopesStack.back()++;
 			if (fn->varsStack.empty()) {
@@ -730,12 +730,9 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 			fn->fbody << "sub rsp, " << ALIGN << endl;
 			fn->fbody << "mov qword[rsp+8], rax" << endl;
 
-			fpt->heapaddr = rspOff.back()+ STRPTR_SIZE.sz;
 
 			fn->varsStack.emplace_back(nullptr, rspOff.back()+ STRPTR_SIZE.sz, STRPTR_SIZE, IdentifierToken()	);
 			rspOff.back() += ALIGN;
-			heapDels.back()++;
-			heaped.push_back(fpt);
 
 			Register* reg = regs8[0];
 			if(regIdx != -1)
@@ -749,7 +746,6 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 
 			return CompilationToken{ reg };
 		}
-			return CompilationToken(new Pointer("[rbp - "+to_string(fpt->heapaddr)+"]", LONG_SIZE));
 	}
 	case REFERENCE: {
 		const auto* id = dynamic_cast<Reference*>(v);

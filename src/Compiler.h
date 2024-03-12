@@ -98,9 +98,6 @@ inline auto rsp = new Register("rsp", LONG_SIZE);
 inline auto rbp = new Register("rbp", LONG_SIZE);
 
 inline auto rspOff = vector<int>();
-inline auto heapDels = vector<int>();
-
-inline auto heaped = vector<Value*>();
 inline auto saves = vector<Register*>();
 
 inline vector<Variable> globalRefs;
@@ -119,7 +116,7 @@ Register* cast(Value* v, AsmSize from, AsmSize to, Func* fn);
 
 CompilationToken compileValue(Value* v, Func* fn);
 
-void compile(const vector<Statement*>& tree,int stack, const string& loc, const string& fasmdir);
+void compile(const vector<Statement*>& tree,int stack, const string& loc, const string& fasmdir, const string& msvcrt, const string& libd);
 
 void compileStatement(Statement* b, Func* fn);
 
@@ -241,26 +238,10 @@ static void restoreScratch(Func* fn) {
 static void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		rspOff.push_back(0);
-		heapDels.push_back(0);
 	}
 inline void epiloguefree(Func* fn, const unsigned int exclude) {
-		for (int i = 0; i < heapDels.back(); i++)
-			if(heaped[i]->heapaddr != -1 && heaped[i]->heapaddr != exclude){
-				auto [sz, prec] = getSize(heaped[i],fn, false);
-				if(sz == STRPTR_SIZE.sz && prec == STRPTR_SIZE.prec)
-				{
-					saveScratch(fn);
-					compileInstruction(MOV2, regs8[1], new Pointer("[rbp - " + to_string(heaped[i]->heapaddr) + "]", STRPTR_SIZE), fn, STRPTR_SIZE);
-					fn->fbody << "call delstr" << endl;
-					restoreScratch(fn);
-				}
-			}
 		fn->fbody << "add rsp," << rspOff.back() << endl;}
 static void epilogue(Func* fn) {
-		for (int i = 0; i < heapDels.back(); i++)
-				heaped.pop_back();
-		heapDels.pop_back();
-
 		for (int i = 0; i < fn->scopesStack.back(); i++)
 			fn->varsStack.pop_back();
 		fn->scopesStack.pop_back();

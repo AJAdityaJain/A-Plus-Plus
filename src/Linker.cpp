@@ -21,7 +21,7 @@ void linkerConfig(const filesystem::path& file)
         }
         else if(line.substr(0,8) == "msvcrt: ")
         {
-            msvcrt = line.substr(8).c_str();
+            msvcrt = line.substr(8);
         }
         else if(line.substr(0,5) == "out: ")
         {
@@ -103,7 +103,7 @@ void pipeline()
             const auto fns = dynamic_cast<Func*>(st);
             globalRefs.emplace_back(nullptr, 0, fns->returns, fns->name, 0);
         }
-    compile(tree, stackKB, midput, fasmdir.string());
+    compile(tree, stackKB, midput, fasmdir.string(), msvcrt, libd.string());
     for (const Statement* s : tree) delete s;
 
     system((fasmdir.string() + "FASM.exe "+ midput + " " + output).c_str());

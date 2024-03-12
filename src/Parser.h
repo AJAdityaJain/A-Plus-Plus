@@ -29,10 +29,7 @@ struct Statement {
 	}
 };
 
-struct Value : Statement
-{
-	unsigned int heapaddr = -1;
-};
+struct Value : Statement{};
 
 
 
@@ -488,12 +485,12 @@ struct CompilationToken final:Value {
 	CompilationToken(): type(COMPILETIME_NONE) {}
 };
 
-	Statement* parseStatement(vector<Token*> stack, unsigned int line);
+Statement* parseStatement(vector<Token*> stack, unsigned int line);
 
-	vector<Statement*> parse(const vector<Token*>& stack);
+vector<Statement*> parse(const vector<Token*>& stack);
 
-	static void checkDepth(const TokenType tt, int&depth)
-	{
-		if(tt == BRACKET_OPEN || tt == CURLY_OPEN || tt == PARENTHESIS_OPEN) depth++;
-		else if(tt == BRACKET_CLOSE || tt == CURLY_CLOSE || tt == PARENTHESIS_CLOSE) depth--;
-	}
+static void checkDepth(const TokenType tt, int&depth)
+{
+	if(tt == BRACKET_OPEN || tt == CURLY_OPEN || tt == PARENTHESIS_OPEN) depth++;
+	else if(tt == BRACKET_CLOSE || tt == CURLY_CLOSE || tt == PARENTHESIS_CLOSE) depth--;
+}
