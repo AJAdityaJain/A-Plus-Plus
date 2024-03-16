@@ -6,6 +6,7 @@
 
 struct Variable {
 	bool isConst = false;
+	int isHeaped = false;
 	void* val;
 	unsigned int off;
 	int share;

@@ -9,6 +9,8 @@ void compile(const vector<Statement*>& tree, const int stack, const string& loc,
 	addToData("charfmt db '%c'");
 	addToData("chardiscard db '?'");
 	addToData("hHeap dq 0");
+	addToData("gc dq 0");
+	addToData("gcsz dd 10");
 
 	File = ofstream(loc);
 	File << "format PE64 console\nentry LABFUNC" + to_string(MAIN)+"\nstack "+to_string(stack*1024)+"\ninclude '" + fasmdir + "INCLUDE\\MACRO\\IMPORT64.INC'\nsection '.text' code readable executable\n\n\n";
@@ -59,7 +61,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 			File << "push rbp" << endl;
 			File << "mov rbp, rsp" << endl;
 			if (fun->name.value == MAIN)
-				File << "\nxor rcx, rcx\nxor rdx, rdx\nxor r8, r8\ncall [HeapCreate]\n mov [hHeap], rax" << endl;
+				File << "\nxor rcx, rcx\nxor rdx, rdx\nxor r8, r8\ncall [HeapCreate]\n mov [hHeap], rax\ncall gengc" << endl;
 			savePreserved();
 			File << endl;
 			File << fun->fbody.str();
@@ -92,7 +94,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 				{
 				case RETURN:
 					{
-						unsigned int returnvaraddrs = -1;
+						Value* returnvaraddrs = nullptr;
 						if(inter->value != nullptr)
 						{
 							Register* returnreg = nullptr;
@@ -110,21 +112,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 							else returnreg = regsXMM[0];
 
 							compileInstruction(MOV2,returnreg,inter->value,fn,returnreg->size);
-
-							switch(inter->value->getType()){
-							case REFERENCE:
-								{
-									unsigned int name = dynamic_cast<Reference*>(inter->value)->value;
-									for(const auto& var : fn->varsStack)
-										if(var.name.value == name)
-										{
-											returnvaraddrs = var.off;
-											break;
-										}
-									break;
-								}
-							default: break;
-							}
+							returnvaraddrs = inter->value;
 						}
 						epiloguefree(fn,returnvaraddrs);
 						fn->fbody << "jmp " << scope->returnPtr << endl;
@@ -137,8 +125,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 			}
 			else compileStatement(i, fn);
 		}
-
-			epiloguefree(fn, -1);
+		epiloguefree(fn, nullptr);
 		epilogue(fn);
 		return;
 	}
@@ -224,6 +211,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 				compileInstruction(SUB2, rsp, new Int(szonstack), fn, LONG_SIZE);
 				rspOff.back() += szonstack;
 				fn->varsStack.emplace_back(a->value, sz.sz, sz, a->name);
+				if(sz.prec == -1)fn->varsStack.back().isHeaped = true;
 				fn->varsStack.back().isConst = a->isconst;
 				return;
 			}
@@ -238,6 +226,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 				rspOff.back() += szonstack;
 				fn->varsStack.emplace_back(a->value,v.off + sz.sz + v.share, sz, a->name);
 			}
+			if(sz.prec == -1)fn->varsStack.back().isHeaped = true;
 			fn->varsStack.back().isConst = a->isconst;
 
 			return;
@@ -364,16 +353,6 @@ void compileInstruction(const INSTRUCTION i, Value* op, Value* op2, Func* fn, co
 				break;
 		}
 		case CMP2: {
-				if(sz.prec == -1)
-				{
-					saveScratch(fn);
-					compileInstruction(MOV2, regs8[1], op, fn, sz);
-					compileInstruction(MOV2, regs8[2], op2, fn, sz);
-					fn->fbody << "call strcmp" << endl;
-
-					restoreScratch(fn);
-					break;
-				}
 				if (o1.type == COMPILETIME_REGISTER || o2.type == COMPILETIME_REGISTER) {
 					if (sz.prec == 0)
 						fn->fbody << "cmp " << o1.line << ", " << o2.line << endl;
@@ -481,8 +460,10 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 					case 8:
 						if(prec == -1)
 						{
-							compileInstruction(MOV2, regs8[1], &cpar, fn, LONG_SIZE);
-							fn->fbody << "call [printf]" << endl;
+							fn->fbody
+								<< "mov rcx, " << cpar.line << endl
+								<< "mov rcx, [rcx]" << endl
+								<< "call [printf]" << endl;
 						}
 						if(prec == 0)
 						{
@@ -723,16 +704,9 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 			}
 			addToData(label + " db '" + fmt.str() + '\'');
 			dataLabelIdx++;
-
 			saveScratch(fn);
 			fn->fbody << "mov rcx, " << label << endl;
 			fn->fbody << "call genstrlab" << endl;
-			fn->fbody << "sub rsp, " << ALIGN << endl;
-			fn->fbody << "mov qword[rsp+8], rax" << endl;
-
-
-			fn->varsStack.emplace_back(nullptr, rspOff.back()+ STRPTR_SIZE.sz, STRPTR_SIZE, IdentifierToken()	);
-			rspOff.back() += ALIGN;
 
 			Register* reg = regs8[0];
 			if(regIdx != -1)
@@ -742,10 +716,9 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 				free(reg);
 			}
 			restoreScratch(fn);
-
-
 			return CompilationToken{ reg };
 		}
+			// return CompilationToken{ regs8[13] };
 	}
 	case REFERENCE: {
 		const auto* id = dynamic_cast<Reference*>(v);
@@ -833,9 +806,24 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 				}
 	}
 	case MULTI_OPERATION: {
-		auto* mo = dynamic_cast<MultipleOperation*>(v);
-		const AsmSize sz = getSize(mo, fn, true);
-		switch (mo->op) {
+			auto* mo = dynamic_cast<MultipleOperation*>(v);
+			const AsmSize sz = getSize(mo, fn, true);
+
+			if(mo->size.prec == -1 && mo->operands.size() == 2)
+			{
+				saveScratch(fn);
+				CompilationToken ct1 = compileValue(mo->operands[0],fn);
+				fn->fbody << "mov rcx, " << ct1.line << endl << "push rcx" << endl;
+				CompilationToken ct2 = compileValue(mo->operands[1],fn);
+				fn->fbody << "mov rdx, " << ct1.line << endl << "pop rcx" << endl << "call strcmp" << endl;
+				Register* reg = alloc(BOOL_SIZE);
+				fn->fbody << "mov " << reg->reg << ", al" << endl;
+				free(reg);
+				restoreScratch(fn);
+				return CompilationToken(reg);
+			}
+
+			switch (mo->op) {
 
 		case PLUS: {
 			Register* reg = alloc(sz);

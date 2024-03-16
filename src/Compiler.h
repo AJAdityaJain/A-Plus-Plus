@@ -239,8 +239,29 @@ static void prologue(Func* fn) {
 		fn->scopesStack.push_back(0);
 		rspOff.push_back(0);
 	}
-inline void epiloguefree(Func* fn, const unsigned int exclude) {
-		fn->fbody << "add rsp," << rspOff.back() << endl;}
+inline void epiloguefree(Func* fn, Value* exclude)
+{
+	const auto max = fn->varsStack.size()-fn->scopesStack.back();
+	for(auto i = 0; i < max; i++)
+	{
+		const auto& v = fn->varsStack[i];
+		if(v.isHeaped)
+		{
+			fn->fbody << "mov rcx, qword[rbp-" << v.off << "]" << endl << "call markgc" << endl;
+		}
+	}
+	if(nullptr != exclude)
+	{
+		compileInstruction(MOV2, regs8[1], exclude, fn, STRPTR_SIZE);
+		fn->fbody << "call markgc" << endl;
+	}
+
+
+	fn->fbody
+		<< "call sweepgc" << endl
+		<< "add rsp," << rspOff.back() << endl;
+}
+
 static void epilogue(Func* fn) {
 		for (int i = 0; i < fn->scopesStack.back(); i++)
 			fn->varsStack.pop_back();

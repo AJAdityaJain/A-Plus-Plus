@@ -1,3 +1,4 @@
+
 ;String length
 ;rcx - pointer to string
 ;rax - length of string
@@ -36,10 +37,10 @@ strcmp:
 		strcmpwhileend:
 		cmp al, ah
 	je strcmpwhile
-	mov rax, 1
+	mov rax, 0
 ret
 	strcmp0:
-	mov rax, 0
+	mov rax, 1
 ret
 
 ;Add char to end of string
@@ -99,6 +100,12 @@ genstr:
 	mov qword [rax], rdx
 	mov dword [rax+8], 0
     mov dword [rax+12], ecx
+
+    push rax
+        lea rdx,  [delstr]
+        mov rcx, rax
+        call addgc
+    pop rax
 ret
 
 ;Generate string from label
@@ -157,4 +164,171 @@ delstr:
 			mov rcx, [hHeap]
 			call [HeapFree]
 	add rsp, 32
+ret
+
+;Add Item
+;rcx - item
+;rdx - destructor
+addgc:
+    mov r8, [gc]
+    mov rax, 0
+    sub rax, 17
+    addgcwhile:
+        add rax, 17
+        cmp byte[r8 + rax], 0
+        jne addgcwhileend
+            mov byte[r8 + rax], 1
+            add rax, 1
+            mov qword[r8 + rax], rcx
+            add rax, 8
+            mov qword[r8 + rax], rdx
+jmp addgcend
+        addgcwhileend:
+            mov r9d, dword[gcsz]
+            sub r9, 1
+            imul r9, 17
+            cmp rax, r9
+            je addgcfail
+
+        jmp addgcwhile
+        addgcfail:
+        ; jmp addgcfail
+        push rcx
+        push rdx
+        sub rsp, 32
+            mov r9d, dword [gcsz]
+            add r9, r9
+            mov dword[gcsz], r9d
+            mov r8, [gc]
+            mov rdx, 0
+            mov rcx, [hHeap]
+            call [HeapReAlloc]
+            mov [gc], rax
+        add rsp, 32
+        pop rdx
+        pop rcx
+        call addgc        
+    addgcend:
+ret
+
+;Mark a address
+;rcx - address
+markgc:
+    push rax
+    mov r8, [gc]
+
+    mov rax, 0
+    markgcwhile:
+        cmp eax, dword [gcsz]
+        je markgcwhileend
+            mov rdx, rax
+            imul rdx, 17
+            add rdx, 1
+            add rdx, r8
+
+            cmp qword[rdx], rcx
+            je markgcsub
+            
+        inc rax
+    jmp markgcwhile
+    markgcwhileend:
+    pop rax
+ret
+
+;Sweep useless addresses
+sweepgc:
+    push rax
+    mov rdx, [gc]
+    mov rax, 0
+    sweepgcwhile:
+        cmp eax, dword [gcsz]
+        je sweepgcwhileend
+            mov rcx, rax
+            imul rcx, 17
+            add rcx, rdx
+            cmp byte[rcx], 1
+            je sweepclean
+            cmp byte[rcx], 4
+            je resetused
+        inc rax 
+        jmp sweepgcwhile
+
+        resetused:
+            mov byte[rcx], 1
+        inc rax 
+        jmp sweepgcwhile
+        
+        sweepclean:
+            push rax
+            push rcx
+            push rdx
+                mov rcx, qword[rcx+1]
+                call delstr;;;;;;;;;;;;;;;;;;;;;;;
+                ; call qword [rcx+9]
+            pop rdx
+            pop rcx
+            pop rax
+
+
+            mov byte[rcx], 0
+            mov qword[rcx+1], 0
+            mov qword[rcx+9], 0
+        inc rax 
+        jmp sweepgcwhile
+    sweepgcwhileend:
+    pop rax
+ret
+
+markgcsub:
+    sub rdx, 1
+    mov byte[rdx], 4
+    jmp markgcwhileend
+
+;Create GC
+gengc:
+    sub rsp, 32
+        mov r8, gcsz
+        imul r8, 17
+        mov rdx, 0
+        mov rcx, [hHeap]
+        call [HeapAlloc]
+    add rsp, 32
+    mov r8d, gcsz
+    imul r8, 17
+    gengcwhile:
+            sub r8, 8
+            mov qword[rax + r8], 0
+            sub r8, 8
+            mov qword[rax + r8], 0
+            sub r8, 1
+            mov byte[rax + r8], 0
+        cmp r8,0
+        je gengcwhileend
+        jmp gengcwhile
+    gengcwhileend:
+    mov [gc], rax
+ret
+
+
+prntn:
+    mov rax, 0
+    ssc:
+    cmp rax, rcx
+    jg ssend
+            push rcx
+            push rax
+            push rdx
+        sub rsp, 32
+            mov rcx, intfmt
+            mov al, byte[rdx + rax]
+            mov rdx, 0
+            mov dl, al
+            call [printf]
+        add rsp, 32
+            pop rdx
+            pop rax
+            pop rcx
+    inc rax
+    jmp ssc
+    ssend:
 ret
