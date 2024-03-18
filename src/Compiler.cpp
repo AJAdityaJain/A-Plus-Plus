@@ -196,6 +196,15 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 						default: break;
 						}
 
+						if(sz.prec == -1 && ins == ADD2)
+						{
+							fn->fbody << "mov rcx, " << "qword [rbp - " + to_string(fn->varsStack[i].off) + "]" << endl;
+							fn->fbody << "push rcx" << endl;
+							compileInstruction(MOV2, regs8[2], a->value, fn, sz);
+							fn->fbody << "pop rcx" << endl << "call addstr" << endl;
+							return;
+						}
+
 						compileInstruction(ins, new Pointer("[rbp - " + to_string(fn->varsStack[i].off) + "]", fn->varsStack[i].size), a->value, fn, sz);
 						return;
 					}
@@ -815,8 +824,10 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 				CompilationToken ct1 = compileValue(mo->operands[0],fn);
 				fn->fbody << "mov rcx, " << ct1.line << endl << "push rcx" << endl;
 				CompilationToken ct2 = compileValue(mo->operands[1],fn);
-				fn->fbody << "mov rdx, " << ct1.line << endl << "pop rcx" << endl << "call strcmp" << endl;
+				fn->fbody << "mov rdx, " << ct2.line << endl << "pop rcx" << endl << "call strcmp" << endl;
 				Register* reg = alloc(BOOL_SIZE);
+				if(mo->op == NOT_EQUAL)
+					fn->fbody << "xor al, 1" << endl;
 				fn->fbody << "mov " << reg->reg << ", al" << endl;
 				free(reg);
 				restoreScratch(fn);

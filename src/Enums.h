@@ -171,8 +171,8 @@ enum CompilationTokenType {
 
 constexpr static int ALIGN = 16;
 struct AsmSize {
-	int sz;
-	int prec;
+	int8_t sz;
+	int8_t prec;
 };
 constexpr AsmSize VOID_SIZE = { 0 ,0 };
 

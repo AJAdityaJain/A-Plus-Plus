@@ -6,6 +6,7 @@
 #include "Parser.h"
 #include <fstream>
 
+vector<Statement*> readFatFile(const char* filename);
 void createFatFile(const char* filename, const vector<Statement*>& abstractTree);
-
-void addBytes(Statement* statement, ofstream& bytes);
+Statement* readBytes(vector<uint8_t>& bytes);
+void addBytes(Statement* statement, vector<uint8_t>& bytes);

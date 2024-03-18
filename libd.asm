@@ -1,8 +1,6 @@
-
 ;String length
 ;rcx - pointer to string
 ;rax - length of string
-;rdx - temp
 strlen:
     mov rcx, qword[rcx]
 	mov rdx ,0
@@ -19,7 +17,6 @@ ret
 ;rcx - pointer to string 1
 ;rdx - pointer to string 2
 ;rax - 0 if strings are equal, 1 if not
-;rdx - temp
 strcmp:
     mov rcx, qword[rcx]
     mov rdx, qword[rdx]
@@ -46,15 +43,15 @@ ret
 ;Add char to end of string
 ;rcx - pointer to string
 ;rdx - character
-;rax,r9,r8 - temp
 addchar:
     mov eax, dword[rcx+8]
+    add rax, 1
     cmp eax, dword[rcx+12]
     jl addcharskip
         push rcx
         push rdx
         sub rsp, 32
-            mov r8, rcx
+            mov r8, qword [rcx]
             mov r9d, dword[rcx+12]
             add r9, r9
             mov dword[rcx+12], r9d
@@ -64,22 +61,52 @@ addchar:
         add rsp, 32
         pop rdx
         pop rcx
-    mov rcx, rax
+    mov qword [rcx], rax
     addcharskip:
     mov rax, qword[rcx]
     add eax, dword[rcx+8]
     mov byte[rax], dl
+    mov byte[rax+1], 0
 
     mov eax, dword[rcx+8]
     inc rax
     mov dword[rcx+8], eax
 ret
 
+
+;Add string to end of string
+;rcx - pointer to string
+;rdx - pointer to string 2
+addstr:
+    mov rax, 0
+    mov rdx, qword[rdx]
+    addstrwhile:
+        cmp byte[rdx + rax],0
+        je addstrend
+            push rcx
+            push rdx
+            push rax
+                mov dl, byte[rdx + rax]
+                call addchar
+            pop rax
+            pop rdx
+            pop rcx
+            inc rax
+        jmp addstrwhile
+    addstrend:
+ret
+
 ;Generate string with reverved space
 ;rcx - length of string
 ;rax - pointer to string
-;rdx, r8 - temp
 genstr:
+    cmp rcx, 0
+    je genstr0
+    jmp genstr0end
+    genstr0:
+    add rcx, 16
+    genstr0end:
+
 	push rcx
         sub rsp, 32
             mov r8, rcx
@@ -111,7 +138,6 @@ ret
 ;Generate string from label
 ;rcx - label
 ;rax - pointer to string
-;rdx, r8, r9 - temp
 genstrlab:
     mov rax, 0
     push rcx
@@ -147,7 +173,6 @@ ret
 
 ;Delete string
 ;rcx - pointer to string
-;rdx, r8 - temp
 delstr:
     push rcx
 	sub rsp, 32

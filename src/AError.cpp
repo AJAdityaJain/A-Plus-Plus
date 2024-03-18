@@ -20,6 +20,7 @@ void aThrowError(const AXXCode code,const  unsigned int line) {
 	case ASSIGNED_WRONG_TYPE: cout << "Variable assigned to a different type from what it was defined with";break;
 	case REDUNDANT_IMMUTABLE_ARRAY: cout << "0 element immutable array. Why is it here?";break;
 	case UNDEFINED_FUNCTION: cout << "Can't find function definition. Try linking source file";break;
+	case UNABLE_TO_COMPILE_FAT: cout << "Unable to compile fatfile. Feature in beta and may malfunction.";break;
 	}
 	printf("\n\033[0m\t\t");
 
