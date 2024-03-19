@@ -97,6 +97,8 @@ void pipeline()
     }
     globalRefs.emplace_back(nullptr, 0, INT_SIZE, IdentifierToken(LEN), 0);
     globalRefs.emplace_back(nullptr, 0, INT_SIZE, IdentifierToken(SIZEOF), 0);
+    globalRefs.emplace_back(nullptr, 0, STRPTR_SIZE, IdentifierToken(COPY), 0);
+    globalRefs.emplace_back(nullptr, 0, VOID_SIZE, IdentifierToken(CAST), 0);
     for (const auto st : tree)
         if (st->getType() == FUNC_DEFINITION)
         {

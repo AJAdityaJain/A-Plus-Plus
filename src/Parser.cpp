@@ -23,6 +23,7 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 		case DOUBLE:return new Double(dynamic_cast<DoubleToken*>(stack[0])->value);
 		case BOOL:return new Boolean(dynamic_cast<BooleanToken*>(stack[0])->value);
 		case STRING:return new String(dynamic_cast<StringToken*>(stack[0])->value);
+		case SIZE_T:return new Size(dynamic_cast<SizeToken*>(stack[0])->value);
 		default:aThrowError(ILLEGAL_EXPRESSION,line);
 		}
 

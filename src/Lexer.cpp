@@ -18,6 +18,8 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 	symbols.insert({ "beep", idx++ });
 	symbols.insert({ "len", idx++ });
 	symbols.insert({ "size", idx++ });
+	symbols.insert({ "copy", idx++ });
+	symbols.insert({ "cast", idx++ });
 
 
 	for (string line : lines) {
@@ -168,6 +170,8 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 					else if (sub == "xor")		tokens.push_back(new OperatorToken{ XOR });
 					else if (sub == "true")		tokens.push_back(new BooleanToken{ true  });
 					else if (sub == "false")	tokens.push_back(new BooleanToken{ false  });
+					else if (sub == "void")		tokens.push_back(new SizeToken{ VOID_SIZE  });
+					else if (sub == "bool")		tokens.push_back(new SizeToken{ BOOL_SIZE  });
 					else if (sub == "int")		tokens.push_back(new SizeToken{ INT_SIZE  });
 					else if (sub == "float")	tokens.push_back(new SizeToken{ FLOAT_SIZE });
 					else if (sub == "double")	tokens.push_back(new SizeToken{ DOUBLE_SIZE });
