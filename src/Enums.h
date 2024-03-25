@@ -30,7 +30,6 @@ enum TokenType {
 	CURLY_OPEN,
 	CURLY_CLOSE,
 	ATR,
-	HASH,
 
 	LINE_END,
 	COMMA,

@@ -53,7 +53,6 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 						case '(': token = PARENTHESIS_OPEN;break;
 						case ')': token = PARENTHESIS_CLOSE;break;
 						case '@': token = ATR;break;
-						case '#': token = HASH;break;
 						case '{': token = CURLY_OPEN;break;
 						case '}': token = CURLY_CLOSE;break;
 						case '[': token = BRACKET_OPEN;break;
@@ -157,7 +156,12 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 
 					if (sub == "func")			tokens.push_back(new KeyWordToken{ FUNC });
 					else if (sub == "if")		tokens.push_back(new KeyWordToken{ IF  });
-					else if (sub == "else")		tokens.push_back(new KeyWordToken{ ELSE  });
+					else if (sub == "else")
+					{
+						if(tokens.back()->getType() != CURLY_CLOSE)
+							tokens.push_back(new KeyWordToken{ CURLY_CLOSE });
+						tokens.push_back(new KeyWordToken{ ELSE  });
+					}
 					else if (sub == "while")	tokens.push_back(new KeyWordToken{ WHILE  });
 					else if (sub == "loop")		tokens.push_back(new KeyWordToken{ LOOP  });
 					else if (sub == "pool")		tokens.push_back(new KeyWordToken{ POOL  });
@@ -165,6 +169,8 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 					else if (sub == "return")	tokens.push_back(new KeyWordToken{ RETURN  });
 					else if (sub == "stop")		tokens.push_back(new KeyWordToken{ STOP  });
 					else if (sub == "skip")		tokens.push_back(new KeyWordToken{ SKIP  });
+					else if (sub == "do")		tokens.push_back(new KeyWordToken{ CURLY_OPEN });
+					else if (sub == "end")		tokens.push_back(new KeyWordToken{ CURLY_CLOSE });
 					else if (sub == "and")		tokens.push_back(new OperatorToken{ AND  });
 					else if (sub == "or")		tokens.push_back(new OperatorToken{ OR  });
 					else if (sub == "xor")		tokens.push_back(new OperatorToken{ XOR });

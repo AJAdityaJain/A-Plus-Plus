@@ -321,29 +321,23 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 
 		int ifstart = -1;
 		int elsestart = -1;
-		if (st1 == PARENTHESIS_OPEN) {
-			int depth = 0;
-			for (int i = 1; i < stack.size() - 1; i++) {
-				checkDepth(stack[i]->getType(),depth);
-				depth = abs(depth);
-				if (depth == 0) {
-					if(ifstart == -1)
-						ifstart = i;
-					else if(stack[i]->getType() == ELSE)
-					{
-						elsestart = i;
-						break;
-					}
-				}
+		for (int i = 1; i < stack.size(); i++)
+		{
+			if(ifstart == -1 && stack[i]->getType() == CURLY_OPEN)
+				ifstart = i;
+			else if(stack[i]->getType() == ELSE)
+			{
+				elsestart = i;
+				break;
 			}
 		}
-		con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + ifstart),line));
+		con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + ifstart),line));
 		if(elsestart == -1)
-			ifb = new CodeBlock(parseStatement(vector(stack.begin() + ifstart + 1, stack.end()),line));
+			ifb = new CodeBlock(parseStatement(vector(stack.begin() + ifstart, stack.end()),line));
 		else
 		{
-			ifb = new CodeBlock(parseStatement(vector(stack.begin() + ifstart + 1, stack.begin() + elsestart),line));
-			elseb = new CodeBlock(parseStatement(vector(stack.begin() + elsestart + 1, stack.end()),line));
+			ifb = new CodeBlock(parseStatement(vector(stack.begin() + ifstart, stack.begin() + elsestart),line));
+			elseb = new CodeBlock(parseStatement(vector(stack.begin() + elsestart +1, stack.end()),line));
 		}
 
 

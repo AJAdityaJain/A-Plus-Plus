@@ -28,7 +28,7 @@ void compile(const vector<Statement*>& tree, const int stack, const string& loc,
 	File << datarw.str();
 
 
-	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, '"+msvcrt+"'\nimport kernel,\\exit,'ExitProcess',\\beep,'Beep',\\HeapCreate, 'HeapCreate',\\HeapAlloc, 'HeapAlloc',\\HeapReAlloc, 'HeapReAlloc',\\HeapFree, 'HeapFree'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
+	File << "\n\n\n\n\nsection '.idata' import data readable writeable\nlibrary kernel, 'KERNEL32.DLL', \\msvcrt, '"+msvcrt+"'\nimport kernel,\\ExitProcess,'ExitProcess',\\beep,'Beep',\\HeapCreate, 'HeapCreate',\\HeapAlloc, 'HeapAlloc',\\HeapReAlloc, 'HeapReAlloc',\\HeapFree, 'HeapFree'\nimport msvcrt,\\printf, 'printf',\\scanf, 'scanf'";
 	File.close();
 }
 
@@ -70,7 +70,7 @@ void compileStatement(Statement* b, Func* fn) { // NOLINT(*-no-recursion)
 			File << "LABFUNCEND" + to_string(fun->name.value) << ":" << endl;
 			restorePreserved();
 			File << "mov rsp, rbp" << endl;
-			if (fun->name.value == MAIN) File << "\nmov rcx,0\ncall [exit]" << endl;
+			if (fun->name.value == MAIN) File << "\nmov rcx,0\ncall [ExitProcess]" << endl;
 			File << "pop rbp;" << endl;
 			File << "ret" << endl;
 
