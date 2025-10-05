@@ -157,6 +157,7 @@ struct String final : Value
 struct Array final: Value
 {
 	vector<Value*> values;
+	AsmSize size;
 
 	StatementType getType()override {
 		return ARRAY;
@@ -171,25 +172,28 @@ struct Array final: Value
 		values.shrink_to_fit();
 	}
 
-	explicit Array(const vector<Value*>& val) {
+	explicit Array(const vector<Value*>& val, const AsmSize size) {
 		this->values = val;
+		this->size = size;
 	}
 };
-struct ArrayAccess final:Value
+
+struct Accessor final : Value 
 {
-	IdentifierToken name;
+	Value* accessed;
 	Value* index;
 
-	StatementType getType()override {
-		return ARRAY_ACCESS;
-	}
-
-	~ArrayAccess() override {
+	~Accessor() {
+		delete accessed;
 		delete index;
 	}
+	StatementType getType()override {
+		return ACCESSOR;
+	}
 
-	explicit ArrayAccess(const IdentifierToken& name, Value* index) {
-		this->name = name;
+
+	explicit Accessor(Value* accessed, Value* index) {
+		this->accessed = accessed;
 		this->index = index;
 	}
 };
@@ -198,6 +202,7 @@ struct Reference final: Value
 {
 
 	unsigned int value;
+	//going fwd include idx here
 
 	StatementType getType()override {
 		return REFERENCE;

@@ -50,8 +50,9 @@ enum StatementType {
 	STRING_STMT,
 	SIZE,
 	ARRAY,
-	ARRAY_ACCESS,
+	ACCESSOR,
 	REFERENCE,
+
 	REGISTER,
 	PTR,
 	COMPILETIME_TOKEN,
@@ -112,6 +113,7 @@ enum MultipleOperatorType {
 	DIVIDE,
 	MULTIPLY,
 	MODULO,
+	EXP,
 };
 
 enum InBuiltIds {
@@ -172,8 +174,9 @@ enum CompilationTokenType {
 
 constexpr static int ALIGN = 16;
 struct AsmSize {
-	int8_t sz;
-	int8_t prec;
+	uint8_t sz;
+	uint8_t prec;
+	AsmSize* sub = nullptr;
 };
 
 constexpr AsmSize VOID_SIZE = { 0 ,0 };
@@ -181,6 +184,6 @@ constexpr AsmSize BOOL_SIZE = { 1,0 };
 constexpr AsmSize SHORT_SIZE = { 2,0 };
 constexpr AsmSize INT_SIZE = { 4,0 };
 constexpr AsmSize FLOAT_SIZE = { 4,1 };
-constexpr AsmSize STRPTR_SIZE = { 8,-1 };
+constexpr AsmSize STRPTR_SIZE = { 8,255 };
 constexpr AsmSize LONG_SIZE = { 8,0 };
 constexpr AsmSize DOUBLE_SIZE = { 8,2 };

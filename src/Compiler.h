@@ -146,7 +146,7 @@ inline [[nodiscard]] Register* D(const AsmSize sz) {
 		return nullptr;
 	}
 inline[[nodiscard]] Register* realloc(const AsmSize sz)  {
-	if (sz.prec > 0) {
+	if (sz.prec > 0 && sz.prec < 10) {
 		Register* r = regsXMM[xmmIdx];
 		r->size = sz;
 		return r;
@@ -165,7 +165,7 @@ inline[[nodiscard]] Register* realloc(const AsmSize sz)  {
 
 inline Register* alloc(const AsmSize sz) {
 		Register* rptr;
-		if (sz.prec <= 0) {
+		if (sz.prec == 0 || sz.prec >= 10) {
 			regIdx++;
 			if (regIdx >= 14) aThrowError(OVERFLOW_REGISTER,-1);
 			rptr = regs8[regIdx];
@@ -192,7 +192,7 @@ inline Register* alloc(const AsmSize sz) {
 		return realloc(sz);
 	}
 inline void free(const Register* r) {
-		if (r->size.prec > 0)
+		if (r->size.prec > 0 && r->size.prec < 10)
 			xmmIdx--;
 		else
 			regIdx--;
@@ -258,7 +258,7 @@ inline void epiloguefree(Func* fn, Value* exclude)
 
 
 	fn->fbody
-		<< "call sweepgc" << endl
+		//<< "call sweepgc" << endl
 		<< "add rsp," << rspOff.back() << endl;
 }
 
@@ -273,7 +273,7 @@ static void epilogue(Func* fn) {
 static void savePreserved() {
 		for (const Register* rptr : saves)
 		{
-			if (rptr->size.prec <= 0) {
+			if (rptr->size.prec == 0 || rptr->size.prec >= 10) {
 				File << "push " << rptr->reg << endl;
 			}
 			else {
@@ -286,7 +286,7 @@ static void savePreserved() {
 static void restorePreserved() {
 		for (const Register* rptr : saves)
 		{
-			if (rptr->size.prec <= 0) {
+			if (rptr->size.prec == 0 || rptr->size.prec >= 10) {
 				File << "pop " << rptr->reg << endl;
 			}
 			else {

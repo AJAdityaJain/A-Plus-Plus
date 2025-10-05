@@ -100,12 +100,12 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 	}
 
 	//Array def
-	if(st0 == BRACKET_OPEN && stb == BRACKET_CLOSE){
+	if(st0 == SIZE_T && st1 == BRACKET_OPEN && stb == BRACKET_CLOSE){
 		auto values = vector<Value*>();
-		if (stack.size() > 2) {
-			int tstart = 1;
+		if (stack.size() > 3) {
+			int tstart = 2;
 			int depth = 0;
-			for(int i = 1; i < stack.size() - 1; i++){
+			for(int i = 2; i < stack.size() - 1; i++){
 				const TokenType toktype = stack[i]->getType();
 				checkDepth(toktype,depth);
 				if(depth == 0 && toktype == COMMA){
@@ -119,16 +119,9 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 				parseStatement(vector(stack.begin() + tstart, stack.end() - 1),line))
 				);
 		}
-		return new Array(values);
+		return new Array(values, dynamic_cast<SizeToken*>(stack[0])->value);
 	}
 
-	//Array Access
-	if(st0 == ID && st1 == BRACKET_OPEN && stb == BRACKET_CLOSE){
-		return new ArrayAccess(
-			*dynamic_cast<IdentifierToken*>(stack[0]),
-			dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end() - 1),line))
-		);
-	}
 
 	/// Variable Assignment
 	if (size >= 3 && st0 == ID && st1 == ASSIGN) {
@@ -239,7 +232,7 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 		}
 	}
 
-	//poooooooooooooL
+	//qooooooooooooo_| 
 	if( st0 == POOL)
 	{
 		int colon = -1;
@@ -294,17 +287,13 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 	if (st0 == WHILE) {
 		Value* con = nullptr;
 		CodeBlock* whileb = nullptr;
-
-		if (st1 == PARENTHESIS_OPEN) {
-			int depth = 0;
-			for (int i = 1; i < stack.size() - 1; i++) {
-				checkDepth(stack[i]->getType(),depth);
-				depth = abs(depth);
-				if (depth == 0) {
-					con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.begin() + i),line));
-					whileb = new CodeBlock(parseStatement(vector(stack.begin() + i + 1, stack.end()),line));
-					break;
-				}
+		for (int i = 1; i < stack.size(); i++)
+		{
+			if(stack[i]->getType() == CURLY_OPEN)
+			{
+				con = dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 1, stack.begin() + i),line));
+				whileb = new CodeBlock(parseStatement(vector(stack.begin() + i, stack.end()),line));
+				break;
 			}
 		}
 
@@ -356,6 +345,30 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 			if (depth == 0)
 				return parseStatement(vector(stack.begin() + 1, stack.end() - 1),line);
 		mismatched = true;
+	}
+
+	//Accessor
+	if (stb == BRACKET_CLOSE) {
+		int depth = 0;
+		for (int i = stack.size() - 1; i >= 0; i--)
+		{
+			const TokenType toktype = stack[i]->getType();
+			checkDepth(toktype, depth);
+			if (depth == 0) {
+				return new Accessor(dynamic_cast<Value*>(
+					parseStatement(
+						vector(
+							stack.begin(),
+							stack.begin() + i),
+						line)), dynamic_cast<Value*>(
+							parseStatement(
+								vector(
+									stack.begin() + i + 1,
+									stack.end() - 1),
+								line)
+							));
+			}
+		}
 	}
 
 

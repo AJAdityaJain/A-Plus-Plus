@@ -141,7 +141,7 @@ void addBytes(Statement* statement, vector<uint8_t>& bytes) // NOLINT(*-no-recur
         }
     case SIZE:
         {
-            const auto [sz, prec] = dynamic_cast<Size*>(statement)->value;
+            const auto [sz, prec,sub] = dynamic_cast<Size*>(statement)->value;
             bytes.push_back(sz);
             bytes.push_back(prec);
             break;

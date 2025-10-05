@@ -13,9 +13,9 @@ inline string msvcrt = "msvcrt.dll";
 inline string output;
 inline string midput;
 const filesystem::path base = exeDirectory();
-const filesystem::path TEMPFOLDER = base.parent_path().string().append("\\TEMP\\");
-const filesystem::path libd = base.parent_path().string().append("\\libd.asm");
-const filesystem::path fasmdir = base.parent_path().string().append("\\FASM\\");
+const filesystem::path TEMPFOLDER = base.parent_path().parent_path().parent_path().string().append("\\TEMP\\");
+const filesystem::path libd = base.parent_path().parent_path().parent_path().string().append("\\heaper.asm");
+const filesystem::path fasmdir = base.parent_path().parent_path().parent_path().string().append("\\FASM\\");
 
 void linkerConfig(const filesystem::path& file);
 

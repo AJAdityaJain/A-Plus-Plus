@@ -67,6 +67,7 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 						case '*': tokenmul = MULTIPLY;break;
 						case '/': tokenmul = DIVIDE;break;
 						case '%': tokenmul = MODULO;break;
+						case '^': tokenmul = EXP; break;
 						case '>': tokenmul = GREATER_THAN;break;
 						case '<': tokenmul = SMALLER_THAN;break;
 						case '&': tokenmul = BITWISE_AND;break;
@@ -74,6 +75,18 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 						case '~': tokenun = BITWISE_NOT;break;
 						case ' ': case '\r': case '\t': tempString.pop_back();break;
 						case '\n': lineIdx++; tempString.pop_back();break;
+						case '$': {
+							if (tokens.back()->getType() == SIZE_T) {
+								auto Sztoken = dynamic_cast<SizeToken*>(tokens.back());
+								Sztoken->value.sub = &Sztoken->value;
+								Sztoken->value.prec = 255;
+								Sztoken->value.sz = 8;
+							}
+							else {
+								token = ATR;
+							}
+							break;
+						}
 						default: { inwhat = 2; cont = true; }break;
 					}
 
