@@ -1174,7 +1174,7 @@ CompilationToken compileValue(Value* v, Func* fn) { // NOLINT(*-no-recursion)
 		auto* ptr = dynamic_cast<Array*>(v);
 		saveScratch(fn);
 		auto reg = alloc(STRPTR_SIZE);
-		fn->fbody << "mov rcx, " << ptr->values.size() << endl << "mov rdx, " << (int)ptr->size.sz << endl;
+		fn->fbody << "mov rcx, " << ptr->values.size() << endl << "mov rdx, " << static_cast<int>(ptr->size.sz) << endl;
 		fn->fbody << "call genlist" << endl << "mov " << reg->reg << ", rax" << endl;
 		free(reg);
 		restoreScratch(fn);
@@ -1215,7 +1215,7 @@ AsmSize getSize(Value* v, Func* fn, const bool inp) // NOLINT(*-no-recursion)
 	}
 	case FUNC_CALL:
 		{
-			auto fc = dynamic_cast<FuncCall*>(v);
+			const auto fc = dynamic_cast<FuncCall*>(v);
 			if(fc->name.value == CAST && fc->params.size() == 2 && fc->params[0]->getType() == SIZE)
 			{
 				return dynamic_cast<Size*>(fc->params[0])->value;

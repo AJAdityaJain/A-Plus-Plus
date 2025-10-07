@@ -149,7 +149,7 @@ void addBytes(Statement* statement, vector<uint8_t>& bytes) // NOLINT(*-no-recur
     case FUNC_CALL:
         {
             const auto _call = dynamic_cast<FuncCall*>(statement);
-            auto i = static_cast<int>(bytes.size());
+            const auto i = static_cast<int>(bytes.size());
             bytes.push_back(0);
             bytes.push_back(0);
             longintshortbyte.a = static_cast<long>(_call->name.value);
@@ -230,7 +230,7 @@ void addBytes(Statement* statement, vector<uint8_t>& bytes) // NOLINT(*-no-recur
     case SCOPE:
         {
             const auto _scope = dynamic_cast<CodeBlock*>(statement);
-            int i = static_cast<int>(bytes.size());
+            const int i = static_cast<int>(bytes.size());
             bytes.push_back(0);
             bytes.push_back(0);
             bytes.push_back(0);
@@ -311,7 +311,7 @@ Statement* readBytes(vector<uint8_t>& bytes)
     {
     case BOOL_STMT:
         {
-            uint8_t b = bytes.back();bytes.pop_back();
+            const uint8_t b = bytes.back();bytes.pop_back();
             return new Boolean(b == 1);
         }
     case SHORT_STMT:

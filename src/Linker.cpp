@@ -2,7 +2,7 @@
 
 void linkerConfig(const filesystem::path& file)
 {
-    ifstream File(file);
+    ifstream inFile(file);
     string line;
     string parent = file.parent_path().string();
     if(!parent.empty())
@@ -10,7 +10,7 @@ void linkerConfig(const filesystem::path& file)
         parent.append("\\");
     }
 
-    while(getline(File, line))
+    while(getline(inFile, line))
     {
         if(line.substr(0,7) == "stack: ")
         {
@@ -55,7 +55,7 @@ void linkerConfig(const filesystem::path& file)
         }
 
     }
-    File.close();
+    inFile.close();
 }
 
 void pipeline()
@@ -87,8 +87,8 @@ void pipeline()
         programString.shrink_to_fit();
 
 
-        const vector<Statement*> newtree = parse(tokens);
-        tree.insert(tree.end(), newtree.begin(), newtree.end());
+        const vector<Statement*> new_tree = parse(tokens);
+        tree.insert(tree.end(), new_tree.begin(), new_tree.end());
 
         for(const auto* t : tokens)
             delete t;

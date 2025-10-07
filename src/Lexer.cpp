@@ -1,5 +1,9 @@
 #include "Lexer.h"
 
+bool is_alphanum_underscore(const char c) {
+	return isalnum(c) || c == '_';
+}
+
 void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, unsigned int>& symbols)
 {
 	string tempString;
@@ -113,6 +117,7 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 								case SMALLER_THAN:replace = new OperatorToken(SMALLER_THAN_EQUAL); break;
 								case BITWISE_AND:replace = new AssignToken(BITWISE_AND_EQUAL); break;
 								case BITWISE_OR:replace = new AssignToken(BITWISE_OR_EQUAL); break;
+								case MODULO:replace = new AssignToken(MODULO_EQUAL); break;
 								default:aThrowError(UNKNOWN_OPERATION,lineIdx);
 								}
 							else if(tokenun != NONE_UN_OPERATOR)
@@ -162,7 +167,7 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 				break;
 			}
 			case 2:{
-				if (!isalnum(c) && c != '.') {
+				if (!is_alphanum_underscore(c) && c != '.') {
 					inwhat = 0;
 					string sub = tempString.substr(0, tempString.size() - 1);
 					i--;
@@ -203,10 +208,10 @@ void tokenize(const vector<string>& lines, vector<Token*>& tokens, map<string, u
 						case ID:
 							{
 								for (const char subc : sub)
-									if (!isalnum(subc))
+									if (!is_alphanum_underscore(subc))
 										aThrowError(ILLEGAL_CHARACTER,lineIdx);
 
-								if (symbols.find(sub) != symbols.end())
+								if (symbols.contains(sub))
 									tokens.push_back(new IdentifierToken{ symbols[sub]  });
 								else {
 									symbols.insert({ sub, idx });

@@ -13,7 +13,7 @@
 > - [x] 16-byte Stack aligned
 > ### Why is this even a thing?
 > <a href='https://en.wikipedia.org/wiki/A%2B_(programming_language)'>A and A+</a> existed 40 years ago, but became obsolete with the arrival of C and C++
-> Then I was bored on a Monday and decided to start this journey.
+> Then I was bored on a Tuesday and decided to start this journey.
 
 
 ## Requirements
@@ -27,33 +27,72 @@
 
 
 ## Syntax
-> The syntax is very similar to Python but with {CURLY BRACES}.
-> None of that indentation nonsense.
+> The syntax is very mildly Pythonic
+> None of that indentation nonsense though, we love our {CURLY BRACES}
 > 
 ### Example
  - Variable definition and assignment
 ```python 
-x = 12;    #Integers
-y = 1.05;  #Floats
-z = 1.05d; #Doubles
-z = y+x;   #Dynamic casting and assignment
-x = 0;
+func main(){
+    f = 25; #Defining variables
+
+    y = 2.2; #Float
+    y *= f; #Integers auto casts to float
+    
+    z = cast(int, f * y); #Manual cast down float to int
+    z %= 50; #Augmented assignment
+    
+    write(z, '\n' ,y,'\n');
+    
+    @pi = 3.14; #Defining constants
+write(pi);
+}
 ```
 
  - If-else
  ```python
-if(x == 0){
-    write("Value of x is 0\n");
+func main(){    
+    write('Enter your age:');
+    age = -1; #Default value
+    read(age);
+
+    if(age >= 18){
+        write('You can drive');
+    }
+    else
+        write('Can\'t drive');
+    
+    write('\nEnd');
 }
-else if (x > 0)
-    write("Value of x is more than 0\n");
+
 ```
 
 - Loops
 ```python
-x = 0;
-while(x < 10){
-    write("Value of x is ", x, "\n");
-    x += 1;
+
+func main(){
+    x = 0;
+    while(x < 10){
+        write("Value of x is ", x, "\n");
+        x += 1;
+    }
+}
+
+```
+```python
+func main(){    
+
+    start_inclusive = 2;
+    end_exclusive = 12;
+    
+    #loop from start_inclusive to end_exclusive - 1
+    loop start_inclusive:end_exclusive with iter{
+        write(iter,'\n');
+    }
+
+    #pool keword for reverse loop from 9 to 0
+    pool 9:-1 with j{
+        write(j,'\n');
+    }
 }
 ```

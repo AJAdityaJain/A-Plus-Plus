@@ -289,11 +289,11 @@ struct Assignment final: Statement {
 		delete value;
 	}
 
-	Assignment(const IdentifierToken& name, Value* value,const AssignmentType type, const bool isconst = false) {
+	Assignment(const IdentifierToken& name, Value* value,const AssignmentType type, const bool is_const) {
 		this -> name = name;
 		this->value = value;
 		this->type = type;
-		this->isconst = isconst;
+		this->isconst = is_const;
 	}
 
 };

@@ -85,7 +85,7 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 				}
 				if(stack[i]->getType() == ID && sizeToken != nullptr){
 					auto idt = dynamic_cast<IdentifierToken*>(stack[i]);
-					body->code.push_back(new Assignment(*idt,new Size(sizeToken->value),EQUALS));
+					body->code.push_back(new Assignment(*idt,new Size(sizeToken->value),EQUALS, false));
 					params++;
 				}
 			}
@@ -135,11 +135,27 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 			return new Assignment(
 				*dynamic_cast<IdentifierToken*>(stack[0]),
 				new MultipleOperation(
-					MULTIPLY, 
+					MULTIPLY,
 					op,
 					invop
 					),
-				EQUALS
+				EQUALS, false
+			);
+		}
+		if (at == MINUS_EQUAL) {
+			auto invop = vector<Value*>();
+			invop.push_back( dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line)));
+			auto op = vector<Value*>();
+			op.push_back(new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value));
+
+			return new Assignment(
+				*dynamic_cast<IdentifierToken*>(stack[0]),
+				new MultipleOperation(
+					PLUS,
+					op,
+					invop
+					),
+				EQUALS, false
 			);
 		}
 		if (at == MODULO_EQUAL) {
@@ -154,15 +170,45 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 					op,
 					vector<Value*>()
 					),
-				EQUALS
+				EQUALS, false
 			);
 
+		}
+		if (at == MULTIPLY_EQUAL) {
+			auto op = vector<Value*>();
+			op.push_back(new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value));
+			op.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line)));
+
+			return new Assignment(
+				*dynamic_cast<IdentifierToken*>(stack[0]),
+				new MultipleOperation(
+					MULTIPLY,
+					op,
+					vector<Value*>()
+					),
+				EQUALS, false
+			);
+		}
+		if (at == PLUS_EQUAL) {
+			auto op = vector<Value*>();
+			op.push_back(new Reference(dynamic_cast<IdentifierToken*>(stack[0])->value));
+			op.push_back(dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line)));
+
+			return new Assignment(
+				*dynamic_cast<IdentifierToken*>(stack[0]),
+				new MultipleOperation(
+					PLUS,
+					op,
+					vector<Value*>()
+					),
+				EQUALS, false
+			);
 		}
 
 		return new Assignment(
 		*dynamic_cast<IdentifierToken*>(stack[0]),
 		dynamic_cast<Value*>(parseStatement(vector(stack.begin() + 2, stack.end()),line))
-		, at
+		, at, false
 		);
 	}
 
@@ -213,10 +259,10 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 		}
 		if(body != nullptr && Start != nullptr && Till != nullptr)
 		{
-			body->code.push_back(new Assignment(id,new Int(1),PLUS_EQUAL));
+			body->code.push_back(new Assignment(id,new Int(1),PLUS_EQUAL, false));
 
 			auto lines = vector<Statement*>();
-			lines.push_back(new Assignment(id,Start,EQUALS));
+			lines.push_back(new Assignment(id,Start,EQUALS, false));
 			lines.push_back(
 				new WhileStatement(
 					new MultipleOperation(
@@ -264,10 +310,10 @@ Statement* parseStatement(vector<Token*> stack, const unsigned int line) { // NO
 		}
 		if(body != nullptr && Start != nullptr && Till != nullptr)
 		{
-			body->code.push_back(new Assignment(id,new Int(1),MINUS_EQUAL));
+			body->code.push_back(new Assignment(id,new Int(1),MINUS_EQUAL, false));
 
 			auto lines = vector<Statement*>();
-			lines.push_back(new Assignment(id,Start,EQUALS));
+			lines.push_back(new Assignment(id,Start,EQUALS, false));
 			lines.push_back(
 				new WhileStatement(
 					new MultipleOperation(
